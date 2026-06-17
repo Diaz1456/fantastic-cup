@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fantastic Cup – Score Lead</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ─── PARTICLE CANVAS ─── -->
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- ─── APP CONTAINER ─── -->
+  <div id="app">
+
+    <!-- ═══════════════ LANDING PAGE ═══════════════ -->
+    <div id="view-landing" class="view active">
+      <div class="landing-overlay"></div>
+      <div class="landing-skip-btn" id="skip-intro">Skip →</div>
+      <div class="landing-content">
+        <div class="landing-title-wrapper">
+          <h1 class="landing-title" id="landing-title">Fantastic Cup – <span class="gold-text">Score Lead</span></h1>
+        </div>
+        <div class="story-scene" id="story-scene">
+          <div class="story-container">
+            <svg class="child-silhouette" id="child-svg" viewBox="0 0 200 400" width="140" height="280">
+              <defs>
+                <linearGradient id="silhouetteGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#2d1b69"/>
+                  <stop offset="100%" stop-color="#0f0c29"/>
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+                <filter id="glowStrong">
+                  <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+                <radialGradient id="quranGlow" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#ffd700" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
+                </radialGradient>
+                <radialGradient id="lightRay" cx="50%" cy="0%" r="80%">
+                  <stop offset="0%" stop-color="#ffd700" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+
+              <!-- Light rays from sky -->
+              <g class="light-rays" id="light-rays" opacity="0">
+                <rect x="40" y="0" width="4" height="200" fill="url(#lightRay)" transform="rotate(-15, 100, 0)"/>
+                <rect x="60" y="0" width="5" height="250" fill="url(#lightRay)" transform="rotate(-5, 100, 0)"/>
+                <rect x="95" y="0" width="6" height="280" fill="url(#lightRay)" transform="rotate(5, 100, 0)"/>
+                <rect x="130" y="0" width="5" height="250" fill="url(#lightRay)" transform="rotate(15, 100, 0)"/>
+                <rect x="155" y="0" width="4" height="200" fill="url(#lightRay)" transform="rotate(25, 100, 0)"/>
+              </g>
+
+              <!-- Ground -->
+              <ellipse cx="100" cy="370" rx="90" ry="10" fill="#1a1a3e" opacity="0.5"/>
+
+              <!-- Child group - all parts move together -->
+              <g id="child-group" class="child-group">
+                <!-- Shadow -->
+                <ellipse cx="100" cy="365" rx="35" ry="6" fill="rgba(0,0,0,0.3)" class="child-shadow"/>
+
+                <!-- Legs -->
+                <g class="legs">
+                  <line x1="95" y1="190" x2="80" y2="250" stroke="url(#silhouetteGrad)" stroke-width="10" stroke-linecap="round" class="leg left-leg"/>
+                  <line x1="105" y1="190" x2="120" y2="250" stroke="url(#silhouetteGrad)" stroke-width="10" stroke-linecap="round" class="leg right-leg"/>
+                </g>
+
+                <!-- Body -->
+                <rect x="80" y="90" width="40" height="65" rx="12" fill="url(#silhouetteGrad)" class="body-torso"/>
+
+                <!-- Arms -->
+                <g class="arms">
+                  <line x1="80" y1="105" x2="50" y2="125" stroke="url(#silhouetteGrad)" stroke-width="8" stroke-linecap="round" class="arm left-arm"/>
+                  <line x1="120" y1="105" x2="150" y2="125" stroke="url(#silhouetteGrad)" stroke-width="8" stroke-linecap="round" class="arm right-arm"/>
+                </g>
+
+                <!-- Head -->
+                <circle cx="100" cy="65" r="27" fill="url(#silhouetteGrad)" class="head"/>
+              </g>
+
+              <!-- Quran Book -->
+              <g id="quran-book" class="quran-book" opacity="0" transform="translate(0, 0)">
+                <circle cx="100" cy="140" r="60" fill="url(#quranGlow)" class="quran-glow-bg" opacity="0"/>
+                <text x="100" y="95" text-anchor="middle" font-size="22" fill="#ffd700" font-family="serif" class="ayat-icon" opacity="0">۩</text>
+                <rect x="72" y="115" width="56" height="40" rx="4" fill="#1a472a" stroke="#ffd700" stroke-width="1.5" class="quran-cover"/>
+                <rect x="75" y="118" width="50" height="34" rx="2" fill="#2d6a4f" class="quran-pages"/>
+                <line x1="100" y1="118" x2="100" y2="152" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
+                <text x="100" y="140" text-anchor="middle" font-size="12" fill="#ffd700" font-family="serif">القرآن</text>
+                <circle cx="100" cy="140" r="50" fill="none" stroke="#ffd700" stroke-width="0.5" opacity="0.6" class="quran-outer-glow"/>
+                <circle cx="100" cy="140" r="65" fill="none" stroke="#ffd700" stroke-width="0.3" opacity="0.3" class="quran-outer-glow-2"/>
+              </g>
+            </svg>
+
+            <!-- Floating particles around child -->
+            <div class="particles-container" id="particles-container">
+              <div class="particle p1"></div>
+              <div class="particle p2"></div>
+              <div class="particle p3"></div>
+              <div class="particle p4"></div>
+              <div class="particle p5"></div>
+              <div class="particle p6"></div>
+              <div class="particle p7"></div>
+              <div class="particle p8"></div>
+              <div class="particle p9"></div>
+              <div class="particle p10"></div>
+            </div>
+          </div>
+        </div>
+        <div class="quran-verse-container" id="quran-verse">
+          <p class="quran-verse-arabic">وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ</p>
+          <p class="quran-verse-translation">"And We have certainly made the Quran easy to remember, so is there any who will remember?"</p>
+          <p class="quran-verse-surah">— Surah Al-Qamar, 54:17</p>
+        </div>
+        <p class="landing-hint" id="landing-hint">The journey begins...</p>
+      </div>
+    </div>
+
+    <!-- ═══════════════ LOGIN PAGE ═══════════════ -->
+    <div id="view-login" class="view">
+      <div class="login-wrapper">
+        <div class="login-card glass">
+          <div class="login-header">
+            <div class="login-icon">🏆</div>
+            <h2>Welcome Back</h2>
+            <p class="login-subtitle">Sign in to your account</p>
+          </div>
+          <form id="login-form" class="login-form" autocomplete="off">
+            <div class="form-group">
+              <label for="login-username">Username</label>
+              <div class="input-wrapper">
+                <span class="input-icon">👤</span>
+                <input type="text" id="login-username" placeholder="Enter username" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🔒</span>
+                <input type="password" id="login-password" placeholder="Enter password" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="login-role">Role</label>
+              <div class="input-wrapper">
+                <span class="input-icon">🎯</span>
+                <select id="login-role" required>
+                  <option value="player">Player</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+            <div id="login-error" class="login-error"></div>
+            <button type="submit" class="btn btn-primary btn-full">
+              <span class="btn-text">Sign In</span>
+              <span class="btn-loader"></span>
+            </button>
+          </form>
+          <div class="login-footer">
+            <p>Fantastic Cup – Score Lead</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ ADMIN DASHBOARD ═══════════════ -->
+    <div id="view-admin" class="view">
+      <nav class="navbar">
+        <div class="nav-brand">
+          <span class="nav-logo">🏆</span>
+          <span class="nav-title">Fantastic Cup</span>
+        </div>
+        <div class="nav-links">
+          <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+          <button class="nav-btn" data-section="players">Players</button>
+          <button class="nav-btn" data-section="achievements">Achievements</button>
+          <button class="nav-btn" data-section="leaderboard">Leaderboard</button>
+          <button class="nav-btn" data-section="feedback">Feedback</button>
+        </div>
+        <div class="nav-actions">
+          <button id="theme-toggle" class="icon-btn" title="Toggle Theme">🌙</button>
+          <button id="logout-btn" class="icon-btn" title="Logout">🚪</button>
+        </div>
+      </nav>
+
+      <div class="dashboard-content">
+
+        <!-- Section: Dashboard Overview -->
+        <section id="section-dashboard" class="dashboard-section active">
+          <h2 class="section-title">Dashboard Overview</h2>
+          <div class="stats-grid" id="admin-stats">
+            <div class="stat-card glass">
+              <div class="stat-icon">👥</div>
+              <div class="stat-info">
+                <span class="stat-number" id="stat-players">0</span>
+                <span class="stat-label">Total Players</span>
+              </div>
+            </div>
+            <div class="stat-card glass">
+              <div class="stat-icon">🏅</div>
+              <div class="stat-info">
+                <span class="stat-number" id="stat-categories">0</span>
+                <span class="stat-label">Categories</span>
+              </div>
+            </div>
+            <div class="stat-card glass">
+              <div class="stat-icon">📝</div>
+              <div class="stat-info">
+                <span class="stat-number" id="stat-feedback">0</span>
+                <span class="stat-label">Feedbacks</span>
+              </div>
+            </div>
+            <div class="stat-card glass">
+              <div class="stat-icon">⭐</div>
+              <div class="stat-info">
+                <span class="stat-number" id="stat-topscore">0</span>
+                <span class="stat-label">Top Score</span>
+              </div>
+            </div>
+          </div>
+          <div class="admin-leaderboard-preview">
+            <h3>Top 15 Leaderboard</h3>
+            <div id="admin-lb-preview"></div>
+          </div>
+        </section>
+
+        <!-- Section: Players -->
+        <section id="section-players" class="dashboard-section">
+          <div class="section-header">
+            <h2 class="section-title">Player Management</h2>
+            <button class="btn btn-primary" id="btn-add-player">+ Add Player</button>
+          </div>
+          <div class="add-player-form-wrapper" id="add-player-form-wrapper" style="display:none;">
+            <form id="add-player-form" class="add-player-form glass">
+              <input type="text" id="new-player-username" placeholder="Username" required>
+              <input type="password" id="new-player-password" placeholder="Password" required>
+              <button type="submit" class="btn btn-primary">Create Player</button>
+              <button type="button" class="btn btn-secondary" id="btn-cancel-add">Cancel</button>
+            </form>
+          </div>
+          <div class="table-wrapper glass">
+            <table class="data-table" id="players-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="players-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Section: Achievements -->
+        <section id="section-achievements" class="dashboard-section">
+          <div class="section-header">
+            <h2 class="section-title">Achievement Categories</h2>
+            <button class="btn btn-primary" id="btn-add-category">+ Add Category</button>
+          </div>
+          <div class="achievement-categories" id="achievement-categories"></div>
+        </section>
+
+        <!-- Section: Leaderboard -->
+        <section id="section-leaderboard" class="dashboard-section">
+          <div class="section-header">
+            <h2 class="section-title">Score Lead – Top 15</h2>
+            <button class="btn btn-primary" id="btn-export-csv">📥 Export CSV</button>
+          </div>
+          <div id="admin-leaderboard-full" class="leaderboard-container"></div>
+        </section>
+
+        <!-- Section: Feedback -->
+        <section id="section-feedback" class="dashboard-section">
+          <h2 class="section-title">Player Feedback</h2>
+          <div id="feedback-list" class="feedback-list"></div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════ PLAYER DASHBOARD ═══════════════ -->
+    <div id="view-player" class="view">
+      <nav class="navbar player-nav">
+        <div class="nav-brand">
+          <span class="nav-logo">🏆</span>
+          <span class="nav-title">Fantastic Cup</span>
+        </div>
+        <div class="nav-brand-center">
+          <span class="player-greeting" id="player-greeting">Welcome, <strong id="player-name-display">Player</strong></span>
+        </div>
+        <div class="nav-actions">
+          <button id="theme-toggle-player" class="icon-btn" title="Toggle Theme">🌙</button>
+          <button id="logout-btn-player" class="icon-btn" title="Logout">🚪</button>
+        </div>
+      </nav>
+
+      <div class="player-content">
+        <!-- Player Hero Section -->
+        <div class="player-hero glass" id="player-hero">
+          <div class="hero-badge" id="hero-badge">🏅 YOUR SCORE</div>
+          <div class="hero-player">
+            <div class="hero-avatar" id="hero-avatar">👤</div>
+            <h1 class="hero-name" id="hero-name">—</h1>
+            <div class="hero-score-wrapper">
+              <span class="hero-score-label">Total Score</span>
+              <span class="hero-score" id="hero-score">0</span>
+            </div>
+          </div>
+          <div class="hero-rank-info" id="hero-rank-info"></div>
+          <div class="mvp-sparkles" id="mvp-sparkles">
+            <span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span>
+            <span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span>
+          </div>
+          <div class="hero-glow-ring" id="hero-glow-ring"></div>
+        </div>
+
+        <!-- MVP of the Week -->
+        <div class="mvp-mini glass">
+          <div class="mvp-mini-badge">⭐ MVP OF THE WEEK</div>
+          <div class="mvp-mini-content">
+            <span class="mvp-mini-avatar">👑</span>
+            <span class="mvp-mini-name" id="mvp-mini-name">—</span>
+            <span class="mvp-mini-score" id="mvp-mini-score">0</span>
+          </div>
+        </div>
+
+        <!-- Leaderboard -->
+        <div class="player-section">
+          <h3 class="player-section-title">Top 15 Leaderboard</h3>
+          <div id="player-leaderboard" class="leaderboard-container"></div>
+        </div>
+
+        <!-- My Achievements -->
+        <div class="player-section">
+          <h3 class="player-section-title">My Achievements</h3>
+          <div id="player-achievements" class="player-achievements-grid"></div>
+        </div>
+
+        <!-- Feedback -->
+        <div class="player-section">
+          <button class="collapsible-btn glass" id="feedback-toggle">
+            <span>💬</span> Send Feedback <span class="collapse-arrow">▼</span>
+          </button>
+          <div class="collapsible-content" id="feedback-collapse">
+            <form id="feedback-form" class="feedback-form glass">
+              <textarea id="feedback-message" placeholder="Share your thoughts, suggestions, or appreciation..." rows="4" required></textarea>
+              <button type="submit" class="btn btn-primary">Send Message</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Motivational Quote -->
+        <div class="quote-bar glass">
+          <span class="quote-icon">💫</span>
+          <span class="quote-text" id="motivational-quote">"The only limit to your impact is your imagination and commitment."</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════ STANDALONE LEADERBOARD ═══════════════ -->
+    <div id="view-leaderboard" class="view">
+      <div class="leaderboard-page">
+        <div class="lb-header glass">
+          <h1>🏆 Fantastic Cup</h1>
+          <h2>Score Lead – Top 15</h2>
+        </div>
+        <div id="public-leaderboard" class="leaderboard-container"></div>
+        <button class="btn btn-primary" id="back-from-lb">← Back to Home</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── NOTIFICATION TOAST ─── -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
