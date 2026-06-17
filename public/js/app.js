@@ -55,6 +55,8 @@
     getPlayerAchievements: (player) => API.request('GET', `/achievements/${encodeURIComponent(player)}`),
     sendFeedback: (data) => API.request('POST', '/feedback', data),
     getFeedbacks: () => API.request('GET', '/feedbacks'),
+    getPlayerNotes: () => API.request('GET', '/player-notes'),
+    savePlayerNotes: (data) => API.request('POST', '/player-notes', data),
   };
 
   /* ─── ROUTER ─── */
@@ -239,7 +241,7 @@
   }
 
   /* ─── ADMIN DASHBOARD ─── */
-  let adminDataCache = { players: [], categories: [], feedbacks: [], leaderboard: [] };
+  let adminDataCache = { players: [], categories: [], feedbacks: [], leaderboard: [], notes: {} };
 
   async function loadAdminDashboard() {
     showView('admin');
@@ -251,16 +253,18 @@
 
   async function refreshAdminData() {
     try {
-      const [playersRes, catRes, fbRes, lbRes] = await Promise.all([
+      const [playersRes, catRes, fbRes, lbRes, notesRes] = await Promise.all([
         API.getPlayers(),
         API.getCategories(),
         API.getFeedbacks(),
         API.getLeaderboard(),
+        API.getPlayerNotes(),
       ]);
       adminDataCache.players = playersRes.players || [];
       adminDataCache.categories = catRes.categories || [];
       adminDataCache.feedbacks = fbRes.feedbacks || [];
       adminDataCache.leaderboard = lbRes.leaderboard || [];
+      adminDataCache.notes = notesRes.notes || {};
     } catch (err) {
       toast('Failed to load data', 'error');
     }
@@ -344,14 +348,24 @@
     await refreshAdminData();
     const tbody = document.getElementById('players-tbody');
     const players = adminDataCache.players;
+    const notes = adminDataCache.notes || {};
     if (players.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:2rem;color:var(--text-muted)">No players yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted)">No players yet.</td></tr>';
       return;
     }
-    tbody.innerHTML = players.map(p => `
+    tbody.innerHTML = players.map(p => {
+      const playerNotes = notes[p.username] || '';
+      const notesId = 'notes-' + p.username.replace(/[^a-zA-Z0-9]/g, '_');
+      return `
       <tr>
-        <td>${p.username}</td>
+        <td><strong>${p.username}</strong></td>
         <td><span class="status-badge ${p.enabled !== false ? 'active' : 'disabled'}">${p.enabled !== false ? 'Active' : 'Disabled'}</span></td>
+        <td>
+          <div class="player-notes-textarea-wrapper">
+            <textarea class="player-notes-textarea" id="${notesId}" placeholder="Write notes for ${p.username}..." rows="2">${playerNotes}</textarea>
+            <button class="notes-save-btn" onclick="window.__saveNotes('${p.username}', '${notesId}')">Save</button>
+          </div>
+        </td>
         <td class="actions-cell">
           <button class="btn btn-sm ${p.enabled !== false ? 'btn-secondary' : 'btn-primary'}" onclick="window.__togglePlayer('${p.username}')">
             ${p.enabled !== false ? 'Disable' : 'Enable'}
@@ -359,8 +373,29 @@
           <button class="btn btn-sm btn-danger" onclick="window.__deletePlayer('${p.username}')">Delete</button>
         </td>
       </tr>
-    `).join('');
+    `}).join('');
   }
+
+  window.__saveNotes = async (username, notesId) => {
+    const textarea = document.getElementById(notesId);
+    if (!textarea) return;
+    const notes = textarea.value;
+    const btn = textarea.parentElement.querySelector('.notes-save-btn');
+    btn.textContent = 'Saving...';
+    const res = await API.savePlayerNotes({ username, notes });
+    if (res.success) {
+      btn.textContent = '✓ Saved';
+      btn.classList.add('saved');
+      setTimeout(() => {
+        btn.textContent = 'Save';
+        btn.classList.remove('saved');
+      }, 2000);
+      toast('Notes saved for ' + username);
+    } else {
+      btn.textContent = 'Save';
+      toast('Failed to save notes', 'error');
+    }
+  };
 
   window.__togglePlayer = async (username) => {
     const res = await API.togglePlayer({ username });
@@ -567,9 +602,10 @@
 
   async function refreshPlayerData() {
     try {
-      const [lbRes, achRes] = await Promise.all([
+      const [lbRes, achRes, notesRes] = await Promise.all([
         API.getLeaderboard(),
         API.getPlayerAchievements(authState.username),
+        API.getPlayerNotes(),
       ]);
       const leaderboard = lbRes.leaderboard || [];
       const categories = lbRes.categories || [];
@@ -623,6 +659,18 @@
       // Leaderboard
       const lbContainer = document.getElementById('player-leaderboard');
       lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories);
+
+      // Coach Notes
+      const notesData = notesRes.notes || {};
+      const myNotes = notesData[authState.username];
+      const notesCard = document.getElementById('player-notes-card');
+      const notesText = document.getElementById('player-notes-text');
+      if (myNotes && myNotes.trim()) {
+        notesCard.style.display = 'block';
+        notesText.textContent = myNotes;
+      } else {
+        notesCard.style.display = 'none';
+      }
 
       // Player's own achievements
       const achContainer = document.getElementById('player-achievements');

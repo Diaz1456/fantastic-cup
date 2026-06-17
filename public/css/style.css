@@ -1148,6 +1148,77 @@ input, select, textarea {
   transform: scale(1.1);
 }
 
+/* ─── PLAYER NOTES (Admin textarea) ─── */
+.player-notes-textarea-wrapper {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.player-notes-textarea {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xs);
+  color: var(--text-dark);
+  font-size: 0.85rem;
+  padding: 0.5rem 0.7rem;
+  width: 100%;
+  min-width: 180px;
+  min-height: 50px;
+  resize: vertical;
+  font-family: var(--font);
+  transition: border-color var(--transition);
+}
+.player-notes-textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  background: rgba(102, 126, 234, 0.04);
+}
+.player-notes-textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+.notes-save-btn {
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--primary);
+  border: none;
+  border-radius: var(--radius-xs);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition);
+}
+.notes-save-btn:hover {
+  background: rgba(102, 126, 234, 0.2);
+  transform: translateY(-1px);
+}
+.notes-save-btn.saved {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+/* ─── PLAYER NOTES (Player view) ─── */
+.player-notes-card {
+  padding: 1.2rem 1.5rem;
+  border-left: 3px solid var(--accent);
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(255, 215, 0, 0.03));
+}
+.player-notes-header {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.6rem;
+}
+.player-notes-text {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text-dark);
+  white-space: pre-wrap;
+}
+
 /* ═══════════════════════════════════════════════
    LEADERBOARD
    ═══════════════════════════════════════════════ */

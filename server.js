@@ -30,6 +30,7 @@ const DEFAULT_DATA = {
     player3: { cat_goals: 20, cat_assists: 5, cat_points: 55 },
   },
   feedback: [],
+  playerNotes: {},
 };
 
 function readData() {
@@ -92,6 +93,7 @@ app.delete('/player/:username', (req, res) => {
   if (idx === -1) return res.json({ success: false, message: 'Player not found.' });
   data.users.splice(idx, 1);
   delete data.achievements[req.params.username];
+  if (data.playerNotes) delete data.playerNotes[req.params.username];
   writeData(data);
   res.json({ success: true });
 });
@@ -104,6 +106,22 @@ app.post('/toggle-player', (req, res) => {
   user.enabled = user.enabled === false ? true : false;
   writeData(data);
   res.json({ success: true, enabled: user.enabled });
+});
+
+/* ───────────── PLAYER NOTES ───────────── */
+app.get('/player-notes', (req, res) => {
+  const data = readData();
+  res.json({ notes: data.playerNotes || {} });
+});
+
+app.post('/player-notes', (req, res) => {
+  const { username, notes } = req.body;
+  if (!username) return res.json({ success: false, message: 'Username required.' });
+  const data = readData();
+  if (!data.playerNotes) data.playerNotes = {};
+  data.playerNotes[username] = notes || '';
+  writeData(data);
+  res.json({ success: true });
 });
 
 /* ───────────── ACHIEVEMENT CATEGORIES ───────────── */
