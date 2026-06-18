@@ -309,12 +309,6 @@
 
     // Load section content
     switch (section) {
-      case 'events':
-        if (window.__eventsApp) {
-          window.__eventsApp.loadAdminEvents();
-          window.__eventsApp.loadCoinLeaderboard();
-        }
-        break;
       case 'players': renderPlayersTable(); break;
       case 'achievements': renderAchievementCategories(); break;
       case 'leaderboard': renderAdminFullLeaderboard(); break;
@@ -605,29 +599,7 @@
     document.getElementById('motivational-quote').textContent = randomQuote();
 
     await refreshPlayerData();
-    if (window.__eventsApp && window.__eventsApp.initSocket) {
-      window.__eventsApp.initSocket();
-    }
-    loadActiveEvent();
     startPlayerPolling();
-  }
-
-  async function loadActiveEvent() {
-    try {
-      const res = await fetch('/api/events').then(r => r.json());
-      const active = (res.events || []).find(e => e.active);
-      const section = document.getElementById('player-event-section');
-      if (!active) {
-        section.style.display = 'none';
-        return;
-      }
-      section.style.display = 'block';
-      document.getElementById('event-name-display').textContent = active.name;
-      if (window.__eventsApp) {
-        window.__eventsApp.activeEventId = active._id;
-        window.__eventsApp.loadTop3();
-      }
-    } catch {}
   }
 
   async function refreshPlayerData() {
@@ -850,74 +822,7 @@
     const themeBtns = $$('#theme-toggle, #theme-toggle-player');
     themeBtns.forEach(btn => btn.addEventListener('click', toggleTheme));
 
-    // ── Events Module Setup ──
-    document.getElementById('btn-create-event')?.addEventListener('click', async () => {
-      const name = prompt('Event name:');
-      if (!name) return;
-      const res = await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      }).then(r => r.json());
-      if (res.success && window.__eventsApp) {
-        window.__eventsApp.openEventEditor(res.event._id);
-      }
-    });
-
-    document.getElementById('btn-close-editor')?.addEventListener('click', () => {
-      if (window.__eventsApp) window.__eventsApp.closeEventEditor();
-    });
-
-    document.getElementById('btn-set-deadline')?.addEventListener('click', async () => {
-      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
-      const deadline = document.getElementById('event-deadline-input').value;
-      if (!deadline) { toast('Pick a date/time', 'error'); return; }
-      await fetch(`/api/events/${window.__eventsApp.editingEventId}/timer`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deadline: new Date(deadline).toISOString() }),
-      });
-      toast('Timer set');
-    });
-
-    document.getElementById('timer-pause-toggle')?.addEventListener('change', async (e) => {
-      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
-      await fetch(`/api/events/${window.__eventsApp.editingEventId}/timer`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ timerPaused: e.target.checked }),
-      });
-    });
-
-    document.getElementById('timer-surprise-toggle')?.addEventListener('change', async (e) => {
-      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
-      await fetch(`/api/events/${window.__eventsApp.editingEventId}/timer`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ surpriseMode: e.target.checked }),
-      });
-    });
-
-    document.getElementById('event-active-toggle')?.addEventListener('change', async (e) => {
-      if (window.__eventsApp && window.__eventsApp.saveEventChanges) {
-        window.__eventsApp.saveEventChanges();
-      }
-    });
-
-    document.getElementById('btn-add-event-category')?.addEventListener('click', async () => {
-      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
-      const name = document.getElementById('new-category-input').value.trim();
-      if (!name) { toast('Enter category name', 'error'); return; }
-      await fetch(`/api/events/${window.__eventsApp.editingEventId}/categories`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      document.getElementById('new-category-input').value = '';
-      if (window.__eventsApp) window.__eventsApp.refreshEditor();
-    });
-
-    // Coin awarding
+    // ── Coin Awarding ──
     document.getElementById('btn-award-coins')?.addEventListener('click', async () => {
       const playerUsername = document.getElementById('coin-player-input').value.trim();
       const amount = parseInt(document.getElementById('coin-amount-input').value);
@@ -932,7 +837,7 @@
         toast(`Awarded ${amount} 🪙 to ${playerUsername}`);
         document.getElementById('coin-player-input').value = '';
         document.getElementById('coin-amount-input').value = '';
-        if (window.__eventsApp) window.__eventsApp.loadCoinLeaderboard();
+        window.__loadCoinLeaderboard();
       } else {
         toast(res.message || 'Failed', 'error');
       }
@@ -967,6 +872,92 @@
         }
       }
     });
+
+    // ── War Password Gate ──
+    const warBtn = document.getElementById('event-war-btn');
+    const warOverlay = document.getElementById('war-password-overlay');
+    const warInput = document.getElementById('war-password-input');
+    const warSubmit = document.getElementById('war-pw-submit');
+    const warCancel = document.getElementById('war-pw-cancel');
+    const warError = document.getElementById('war-pw-error');
+
+    if (warBtn) {
+      warBtn.addEventListener('click', () => {
+        warOverlay.style.display = 'flex';
+        warInput.value = '';
+        warError.style.display = 'none';
+        warInput.focus();
+      });
+    }
+
+    const closeWarGate = () => {
+      warOverlay.style.display = 'none';
+      warInput.value = '';
+    };
+
+    const submitWarPassword = async () => {
+      const pw = warInput.value;
+      if (!pw) {
+        warError.textContent = 'Access code required.';
+        warError.style.display = 'block';
+        return;
+      }
+      try {
+        const res = await fetch('/api/verify-war-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw }),
+        }).then(r => r.json());
+
+        if (res.granted) {
+          localStorage.setItem('warToken', res.token);
+          closeWarGate();
+          window.location.href = '/event/';
+        } else {
+          warError.textContent = 'Invalid access code.';
+          warError.style.display = 'block';
+          warInput.value = '';
+          warInput.focus();
+        }
+      } catch {
+        warError.textContent = 'Connection error.';
+        warError.style.display = 'block';
+      }
+    };
+
+    if (warSubmit) warSubmit.addEventListener('click', submitWarPassword);
+    if (warCancel) warCancel.addEventListener('click', closeWarGate);
+    if (warInput) {
+      warInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') submitWarPassword();
+        if (e.key === 'Escape') closeWarGate();
+      });
+    }
+
+    // Admin nav EVENT button also uses password gate
+    const warBtnAdmin = document.getElementById('event-war-btn-admin');
+    if (warBtnAdmin) {
+      warBtnAdmin.addEventListener('click', () => {
+        warOverlay.style.display = 'flex';
+        warInput.value = '';
+        warError.style.display = 'none';
+        warInput.focus();
+      });
+    }
+
+    // Coin leaderboard refresh
+    window.__loadCoinLeaderboard = async function () {
+      const res = await fetch('/api/coins/leaderboard').then(r => r.json());
+      const container = document.getElementById('coin-leaderboard-admin');
+      if (!container) return;
+      if (!res.balances || res.balances.length === 0) {
+        container.innerHTML = '<p class="text-muted">No coins awarded yet.</p>';
+        return;
+      }
+      container.innerHTML = '<table class="data-table compact"><thead><tr><th>Player</th><th>Coins</th></tr></thead><tbody>' +
+        res.balances.slice(0, 20).map(b => `<tr><td>${b._id}</td><td><strong>${b.total}</strong> 🪙</td></tr>`).join('') +
+        '</tbody></table>';
+    };
 
     // Start router
     router.start();

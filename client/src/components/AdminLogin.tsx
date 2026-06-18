@@ -2,16 +2,35 @@ import { useState } from 'react';
 
 interface Props {
   onLogin: () => void;
-  socket: { adminLogin: (pw: string) => void; error: string | null };
 }
 
-export default function AdminLogin({ onLogin, socket }: Props) {
+export default function AdminLogin({ onLogin }: Props) {
   const [pw, setPw] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    socket.adminLogin(pw);
-    setTimeout(() => { if (!socket.error) onLogin(); }, 500);
+    setError(null);
+    if (!pw) { setError('Access code required.'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/event-bridge/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const data = await res.json();
+      if (data.token === 'granted') {
+        onLogin();
+      } else {
+        setError('Invalid access code.');
+      }
+    } catch {
+      setError('Connection error.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -22,9 +41,9 @@ export default function AdminLogin({ onLogin, socket }: Props) {
         <p className="login-sub">Authorized Personnel Only</p>
         <form onSubmit={handleSubmit}>
           <input type="password" placeholder="Access Code" value={pw} onChange={e => setPw(e.target.value)} className="login-input" autoFocus />
-          <button type="submit" className="login-btn">GAIN ACCESS</button>
+          <button type="submit" className="login-btn" disabled={loading}>{loading ? 'VERIFYING...' : 'GAIN ACCESS'}</button>
         </form>
-        {socket.error && <p className="login-error">{socket.error}</p>}
+        {error && <p className="login-error">{error}</p>}
       </div>
     </div>
   );

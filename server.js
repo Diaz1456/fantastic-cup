@@ -16,6 +16,13 @@ const eventBridge = new EventBridge();
 
 let mongoReady = false;
 
+function isMongoConnected() {
+  try {
+    const mongoose = require('mongoose');
+    return mongoose.connection.readyState === 1;
+  } catch { return false; }
+}
+
 // Broadcast state through Socket.IO when bridge changes
 eventBridge.on((state) => {
   const { _timerRemaining, _timerDisplay, ...clean } = state;
@@ -38,7 +45,7 @@ app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const DEFAULT_USERS = [
-  { username: 'admin', password: 'admin123', role: 'admin', enabled: true },
+  { username: 'admin', password: 'commander48', role: 'admin', enabled: true },
   { username: 'player1', password: 'pass123', role: 'player', enabled: true },
   { username: 'player2', password: 'pass123', role: 'player', enabled: true },
   { username: 'player3', password: 'pass123', role: 'player', enabled: true },
@@ -130,16 +137,31 @@ async function buildLeaderboard() {
 
 app.post('/login', async (req, res) => {
   const { username, password, role } = req.body;
-  const user = await User.findOne({ username, password, role, enabled: { $ne: false } }).lean();
-  if (!user) {
-    return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+  if (!isMongoConnected()) {
+    // Fallback: hardcoded admin login when MongoDB is unavailable
+    if (username === 'admin' && password === 'commander48' && role === 'admin') {
+      return res.json({ success: true, user: { username: 'admin', role: 'admin' } });
+    }
+    if (username === 'player1' && password === 'pass123' && role === 'player') {
+      return res.json({ success: true, user: { username: 'player1', role: 'player' } });
+    }
+    return res.json({ success: false, message: 'Invalid credentials (offline mode).' });
   }
-  res.json({ success: true, user: { username: user.username, role: user.role } });
+  try {
+    const user = await User.findOne({ username, password, role, enabled: { $ne: false } }).lean();
+    if (!user) return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+    res.json({ success: true, user: { username: user.username, role: user.role } });
+  } catch {
+    res.json({ success: false, message: 'Server error.' });
+  }
 });
 
 app.get('/players', async (req, res) => {
-  const players = await User.find({ role: 'player' }).lean();
-  res.json({ players: players.map(p => ({ username: p.username, enabled: p.enabled !== false })) });
+  if (!isMongoConnected()) return res.json({ players: [{ username: 'player1', enabled: true }, { username: 'player2', enabled: true }] });
+  try {
+    const players = await User.find({ role: 'player' }).lean();
+    res.json({ players: players.map(p => ({ username: p.username, enabled: p.enabled !== false })) });
+  } catch { res.json({ players: [] }); }
 });
 
 app.post('/add-player', async (req, res) => {
@@ -185,10 +207,13 @@ app.post('/toggle-player', async (req, res) => {
 });
 
 app.get('/player-notes', async (req, res) => {
-  const notes = await PlayerNote.find().lean();
-  const result = {};
-  notes.forEach(n => { result[n.username] = n.notes; });
-  res.json({ notes: result });
+  if (!isMongoConnected()) return res.json({ notes: {} });
+  try {
+    const notes = await PlayerNote.find().lean();
+    const result = {};
+    notes.forEach(n => { result[n.username] = n.notes; });
+    res.json({ notes: result });
+  } catch { res.json({ notes: {} }); }
 });
 
 app.post('/player-notes', async (req, res) => {
@@ -246,11 +271,14 @@ app.delete('/achievement-category/:id', async (req, res) => {
 });
 
 app.get('/achievements/:player', async (req, res) => {
-  const [achievement, categories] = await Promise.all([
-    Achievement.findOne({ playerUsername: req.params.player }).lean(),
-    Category.find().lean(),
-  ]);
-  res.json({ achievements: achievement?.values || {}, categories });
+  if (!isMongoConnected()) return res.json({ achievements: { cat_goals: 15, cat_assists: 8, cat_points: 42 }, categories: [{ id: 'cat_goals', title: 'Goals' }, { id: 'cat_assists', title: 'Assists' }, { id: 'cat_points', title: 'Points' }] });
+  try {
+    const [achievement, categories] = await Promise.all([
+      Achievement.findOne({ playerUsername: req.params.player }).lean(),
+      Category.find().lean(),
+    ]);
+    res.json({ achievements: achievement?.values || {}, categories });
+  } catch { res.json({ achievements: {}, categories: [] }); }
 });
 
 app.post('/update-achievement', async (req, res) => {
@@ -267,11 +295,23 @@ app.post('/update-achievement', async (req, res) => {
 });
 
 app.get('/leaderboard', async (req, res) => {
-  const [leaderboard, categories] = await Promise.all([
-    buildLeaderboard(),
-    Category.find().lean(),
-  ]);
-  res.json({ leaderboard, categories });
+  if (!isMongoConnected()) {
+    return res.json({
+      leaderboard: [
+        { username: 'player1', total: 42, achievements: {} },
+        { username: 'player2', total: 28, achievements: {} },
+        { username: 'player3', total: 15, achievements: {} },
+      ],
+      categories: [{ id: 'cat_goals', title: 'Goals' }],
+    });
+  }
+  try {
+    const [leaderboard, categories] = await Promise.all([
+      buildLeaderboard(),
+      Category.find().lean(),
+    ]);
+    res.json({ leaderboard, categories });
+  } catch { res.json({ leaderboard: [], categories: [] }); }
 });
 
 app.post('/feedback', async (req, res) => {
@@ -329,156 +369,6 @@ const adminOnly = async (req, res, next) => {
 };
 
 // Get all events
-app.get('/api/events', async (req, res) => {
-  const events = await Event.find().sort({ createdAt: -1 }).lean();
-  res.json({ events });
-});
-
-// Create event
-app.post('/api/events', async (req, res) => {
-  try {
-    const { name, description } = req.body;
-    if (!name) return res.json({ success: false, message: 'Name required' });
-    const event = await Event.create({ name, description });
-    io.emit('events:update');
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed to create event' }); }
-});
-
-// Update event
-app.put('/api/events/:id', async (req, res) => {
-  try {
-    const { name, description, active } = req.body;
-    const event = await Event.findByIdAndUpdate(
-      req.params.id,
-      { name, description, active },
-      { new: true }
-    ).lean();
-    if (!event) return res.json({ success: false, message: 'Not found' });
-    io.emit('events:update');
-    res.json({ success: true, event });
-  } catch { res.json({ success: false, message: 'Failed to update' }); }
-});
-
-// Delete event
-app.delete('/api/events/:id', async (req, res) => {
-  await Event.findByIdAndDelete(req.params.id);
-  io.emit('events:update');
-  res.json({ success: true });
-});
-
-// Add category to event
-app.post('/api/events/:id/categories', async (req, res) => {
-  try {
-    const { name } = req.body;
-    if (!name) return res.json({ success: false, message: 'Name required' });
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.json({ success: false, message: 'Event not found' });
-    event.categories.push({ name, teams: [] });
-    await event.save();
-    io.emit('events:update');
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed' }); }
-});
-
-// Delete category from event
-app.delete('/api/events/:id/categories/:catIdx', async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.json({ success: false, message: 'Not found' });
-    event.categories.splice(parseInt(req.params.catIdx), 1);
-    await event.save();
-    io.emit('events:update');
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed' }); }
-});
-
-// Add team to category
-app.post('/api/events/:id/categories/:catIdx/teams', async (req, res) => {
-  try {
-    const { name, logo } = req.body;
-    if (!name) return res.json({ success: false, message: 'Name required' });
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.json({ success: false, message: 'Not found' });
-    const cat = event.categories[parseInt(req.params.catIdx)];
-    if (!cat) return res.json({ success: false, message: 'Category not found' });
-    cat.teams.push({ name, logo: logo || '🏆', score: 0 });
-    await event.save();
-    io.emit('events:update');
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed' }); }
-});
-
-// Update team
-app.put('/api/events/:id/categories/:catIdx/teams/:teamIdx', async (req, res) => {
-  try {
-    const { name, logo, score } = req.body;
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.json({ success: false, message: 'Not found' });
-    const cat = event.categories[parseInt(req.params.catIdx)];
-    if (!cat) return res.json({ success: false, message: 'Category not found' });
-    const team = cat.teams[parseInt(req.params.teamIdx)];
-    if (!team) return res.json({ success: false, message: 'Team not found' });
-    if (name !== undefined) team.name = name;
-    if (logo !== undefined) team.logo = logo;
-    if (score !== undefined) team.score = Number(score);
-    await event.save();
-    io.emit('events:update');
-    io.emit('leaderboard:update', { eventId: req.params.id });
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed' }); }
-});
-
-// Delete team
-app.delete('/api/events/:id/categories/:catIdx/teams/:teamIdx', async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.json({ success: false, message: 'Not found' });
-    const cat = event.categories[parseInt(req.params.catIdx)];
-    if (!cat) return res.json({ success: false, message: 'Category not found' });
-    cat.teams.splice(parseInt(req.params.teamIdx), 1);
-    await event.save();
-    io.emit('events:update');
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed' }); }
-});
-
-// Timer: set deadline
-app.put('/api/events/:id/timer', async (req, res) => {
-  try {
-    const { deadline, timerPaused, surpriseMode } = req.body;
-    const event = await Event.findById(req.params.id);
-    if (!event) return res.json({ success: false, message: 'Not found' });
-    if (deadline !== undefined) event.deadline = new Date(deadline);
-    if (timerPaused !== undefined) event.timerPaused = timerPaused;
-    if (surpriseMode !== undefined) event.surpriseMode = surpriseMode;
-    await event.save();
-    io.emit('timer:sync', {
-      eventId: event._id.toString(),
-      deadline: event.deadline?.getTime() || null,
-      timerPaused: event.timerPaused,
-      surpriseMode: event.surpriseMode,
-    });
-    res.json({ success: true, event: event.toObject() });
-  } catch { res.json({ success: false, message: 'Failed' }); }
-});
-
-// Get top-3 teams across all categories
-app.get('/api/events/:id/top3', async (req, res) => {
-  try {
-    const event = await Event.findById(req.params.id).lean();
-    if (!event) return res.json({ top3: [] });
-    const allTeams = [];
-    event.categories.forEach(cat => {
-      cat.teams.forEach(team => {
-        allTeams.push({ ...team, category: cat.name });
-      });
-    });
-    allTeams.sort((a, b) => b.score - a.score);
-    res.json({ top3: allTeams.slice(0, 3), all: allTeams, event });
-  } catch { res.json({ top3: [] }); }
-});
-
 // ═══════════════════════════════════════════════
 // COIN ROUTES
 // ═══════════════════════════════════════════════
@@ -649,6 +539,17 @@ const timerSyncInterval = setInterval(async () => {
 // ═══════════════════════════════════════════════
 
 // ─── EVENT BRIDGE REST ROUTES ───
+
+// Password gate for the war section
+app.post('/api/verify-war-password', (req, res) => {
+  const { password } = req.body;
+  if (password === 'commander48') {
+    // Return a simple token the client can store
+    const token = Buffer.from(JSON.stringify({ access: 'war', ts: Date.now() })).toString('base64');
+    return res.json({ granted: true, token });
+  }
+  res.json({ granted: false, message: 'Invalid access code.' });
+});
 app.get('/api/event-bridge/state', (req, res) => res.json(eventBridge.getState()));
 
 app.post('/api/event-bridge/admin/login', (req, res) => {
@@ -690,7 +591,7 @@ async function start() {
     console.log(`✓ Server running on http://0.0.0.0:${PORT}`);
     console.log(`  → Legacy UI:  http://0.0.0.0:${PORT}/`);
     console.log(`  → Event UI:   http://0.0.0.0:${PORT}/event/`);
-    console.log(`  → Admin pass: commander42`);
+    console.log(`  → Admin pass: commander48`);
   });
 }
 
