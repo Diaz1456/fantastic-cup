@@ -352,21 +352,43 @@
     const players = adminDataCache.players;
     const notes = adminDataCache.notes || {};
     if (players.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted)">No players yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">No players yet.</td></tr>';
       return;
     }
+
+    const avatarMap = {};
+    await Promise.all(players.map(async (p) => {
+      try {
+        const res = await fetch('/api/avatar/' + encodeURIComponent(p.username)).then(r => r.json());
+        avatarMap[p.username] = res.avatar || '';
+      } catch { avatarMap[p.username] = ''; }
+    }));
+
     tbody.innerHTML = players.map(p => {
       const playerNotes = notes[p.username] || '';
       const notesId = 'notes-' + p.username.replace(/[^a-zA-Z0-9]/g, '_');
+      const avatarUrl = avatarMap[p.username] || '';
+      const avatarHtml = avatarUrl
+        ? `<img src="${avatarUrl}" class="player-avatar-thumb" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">`
+        : `<span style="font-size:1.5rem;">👤</span>`;
       return `
       <tr>
         <td><strong>${p.username}</strong></td>
+        <td>
+          <div class="avatar-cell">
+            ${avatarHtml}
+            <button class="avatar-set-btn btn btn-sm" onclick="window.__promptAvatar('${p.username}')">Set</button>
+          </div>
+        </td>
         <td><span class="status-badge ${p.enabled !== false ? 'active' : 'disabled'}">${p.enabled !== false ? 'Active' : 'Disabled'}</span></td>
         <td>
           <div class="player-notes-textarea-wrapper">
             <textarea class="player-notes-textarea" id="${notesId}" placeholder="Write notes for ${p.username}..." rows="2">${playerNotes}</textarea>
             <button class="notes-save-btn" onclick="window.__saveNotes('${p.username}', '${notesId}')">Save</button>
           </div>
+        </td>
+        <td>
+          <button class="btn btn-sm" onclick="window.__openPlayerTasks('${p.username}')">📋 Tasks</button>
         </td>
         <td class="actions-cell">
           <button class="btn btn-sm ${p.enabled !== false ? 'btn-secondary' : 'btn-primary'}" onclick="window.__togglePlayer('${p.username}')">
@@ -377,6 +399,51 @@
       </tr>
     `}).join('');
   }
+
+  window.__promptAvatar = async (username) => {
+    const url = prompt(`Enter image URL for "${username}":`);
+    if (url === null) return;
+    if (!url.trim()) {
+      const res = await fetch('/api/avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, avatar: '' }),
+      }).then(r => r.json());
+      if (res.success) {
+        toast('Avatar cleared');
+        renderPlayersTable();
+      }
+      return;
+    }
+    const res = await fetch('/api/avatar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, avatar: url.trim() }),
+    }).then(r => r.json());
+    if (res.success) {
+      toast('Avatar updated');
+      renderPlayersTable();
+    } else {
+      toast(res.message || 'Failed to set avatar', 'error');
+    }
+  };
+
+  window.__openPlayerTasks = async (username) => {
+    const section = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
+    if (section) section.click();
+
+    const select = document.getElementById('admin-task-player-select');
+    if (select) {
+      select.value = username;
+      select.dispatchEvent(new Event('change'));
+    }
+
+    // Scroll to task manager
+    setTimeout(() => {
+      const el = document.querySelector('.admin-tasks-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
+  };
 
   window.__saveNotes = async (username, notesId) => {
     const textarea = document.getElementById(notesId);
@@ -418,6 +485,113 @@
       renderAdminDashboard();
     } else {
       toast(res.message || 'Delete failed', 'error');
+    }
+  };
+
+  /* ─── ADMIN: Tasks ─── */
+  function setupAdminTasks() {
+    const select = document.getElementById('admin-task-player-select');
+    const taskList = document.getElementById('admin-task-list');
+    const addBtn = document.getElementById('btn-admin-add-task');
+    const taskInput = document.getElementById('admin-task-input');
+
+    if (!select) return;
+
+    // Populate player select when achievements tab opens
+    const loadPlayersIntoSelect = () => {
+      select.innerHTML = '<option value="">-- Select a player --</option>';
+      adminDataCache.players.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.username;
+        opt.textContent = p.username;
+        select.appendChild(opt);
+      });
+    };
+
+    select.addEventListener('change', async () => {
+      const player = select.value;
+      if (!player) {
+        taskList.innerHTML = '<p class="text-muted" style="padding:1rem;text-align:center;">Select a player to manage tasks.</p>';
+        return;
+      }
+      const res = await fetch('/api/tasks/' + encodeURIComponent(player)).then(r => r.json());
+      renderAdminTasks(player, res.tasks || []);
+    });
+
+    addBtn.addEventListener('click', async () => {
+      const player = select.value;
+      const text = taskInput.value.trim();
+      if (!player) { toast('Select a player first', 'error'); return; }
+      if (!text) { toast('Enter a task description', 'error'); return; }
+
+      const res = await fetch('/api/tasks/' + encodeURIComponent(player)).then(r => r.json());
+      const tasks = res.tasks || [];
+      tasks.push({ id: 'task_' + Date.now(), text, completed: false });
+
+      const saveRes = await fetch('/api/tasks/' + encodeURIComponent(player), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks }),
+      }).then(r => r.json());
+
+      if (saveRes.success) {
+        taskInput.value = '';
+        renderAdminTasks(player, tasks);
+        toast('Task added');
+      }
+    });
+
+    taskInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addBtn.click();
+    });
+
+    // Hook into achievements section being shown to refresh player list
+    const achievementsNavBtn = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
+    if (achievementsNavBtn) {
+      achievementsNavBtn.addEventListener('click', () => {
+        setTimeout(loadPlayersIntoSelect, 100);
+      });
+    }
+  }
+
+  async function renderAdminTasks(player, tasks) {
+    const taskList = document.getElementById('admin-task-list');
+    if (!tasks || tasks.length === 0) {
+      taskList.innerHTML = '<p class="text-muted" style="padding:1rem;text-align:center;">No tasks for this player. Add one above.</p>';
+      return;
+    }
+    taskList.innerHTML = tasks.map(t => `
+      <div class="admin-task-item ${t.completed ? 'completed' : ''}">
+        <input type="checkbox" ${t.completed ? 'checked' : ''}
+          onchange="window.__toggleAdminTask('${player}', '${t.id}', this.checked)">
+        <span class="admin-task-text">${t.text}</span>
+        <button class="admin-task-del-btn" onclick="window.__deleteAdminTask('${player}', '${t.id}')">✕</button>
+      </div>
+    `).join('');
+  }
+
+  window.__toggleAdminTask = async (player, taskId, completed) => {
+    const res = await fetch(`/api/tasks/${encodeURIComponent(player)}/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed }),
+    }).then(r => r.json());
+    if (res.success) {
+      renderAdminTasks(player, res.tasks);
+    }
+  };
+
+  window.__deleteAdminTask = async (player, taskId) => {
+    const res = await fetch('/api/tasks/' + encodeURIComponent(player)).then(r => r.json());
+    const tasks = (res.tasks || []).filter(t => t.id !== taskId);
+    const saveRes = await fetch('/api/tasks/' + encodeURIComponent(player), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tasks }),
+    }).then(r => r.json());
+    if (saveRes.success) {
+      renderAdminTasks(player, tasks);
+      toast('Task removed');
     }
   };
 
@@ -473,6 +647,10 @@
                 <input type="range" min="0" max="100" value="${a.value}"
                   data-player="${a.username}" data-cat="${cat.id}"
                   oninput="window.__updateAchSlider(this)">
+                <input type="number" min="0" max="99999" value="${a.value}"
+                  data-player="${a.username}" data-cat="${cat.id}"
+                  onchange="window.__updateAchNumber(this)"
+                  class="achievement-number-input">
                 <span class="achievement-value-display" id="disp-${a.username}-${cat.id}">${a.value}</span>
               </div>
             `).join('')}
@@ -499,7 +677,32 @@
     const display = document.getElementById(`disp-${player}-${catId}`);
     if (display) display.textContent = value;
 
+    // Sync number input with slider
+    const row = slider.closest('.achievement-row');
+    const numInput = row ? row.querySelector('.achievement-number-input') : null;
+    if (numInput) numInput.value = value;
+
     const res = await API.updateAchievement({ playerUsername: player, categoryId: catId, value: Number(value) });
+    if (res.success) {
+      adminDataCache.leaderboard = res.leaderboard;
+    }
+  };
+
+  window.__updateAchNumber = async (input) => {
+    const player = input.dataset.player;
+    const catId = input.dataset.cat;
+    let value = parseInt(input.value) || 0;
+    if (value < 0) value = 0;
+
+    const display = document.getElementById(`disp-${player}-${catId}`);
+    if (display) display.textContent = value;
+
+    // Sync slider with number input
+    const row = input.closest('.achievement-row');
+    const slider = row ? row.querySelector('input[type="range"]') : null;
+    if (slider) slider.value = value;
+
+    const res = await API.updateAchievement({ playerUsername: player, categoryId: catId, value });
     if (res.success) {
       adminDataCache.leaderboard = res.leaderboard;
     }
@@ -618,7 +821,21 @@
 
       document.getElementById('hero-name').textContent = authState.username;
       document.getElementById('hero-score').textContent = myTotal;
-      document.getElementById('hero-avatar').textContent = '👤';
+
+      // Load avatar
+      try {
+        const avatarRes = await fetch('/api/avatar/' + encodeURIComponent(authState.username)).then(r => r.json());
+        const avatarImg = document.getElementById('hero-avatar-img');
+        const avatarFallback = document.getElementById('hero-avatar-fallback');
+        if (avatarRes.avatar && avatarRes.avatar.trim()) {
+          avatarImg.src = avatarRes.avatar;
+          avatarImg.style.display = '';
+          avatarFallback.style.display = 'none';
+        } else {
+          avatarImg.style.display = 'none';
+          avatarFallback.style.display = '';
+        }
+      } catch {};
 
       document.getElementById('hero-badge').textContent = '🏅 YOUR SCORE';
 
@@ -666,6 +883,43 @@
           </div>
         `}).join('');
       }
+
+      // Player Tasks
+      try {
+        const taskRes = await fetch('/api/tasks/' + encodeURIComponent(authState.username)).then(r => r.json());
+        const tasks = taskRes.tasks || [];
+        const taskContainer = document.getElementById('player-task-checklist');
+        if (tasks.length === 0) {
+          taskContainer.innerHTML = '<p class="text-muted" style="padding:0.5rem;font-size:0.85rem;">No tasks assigned yet.</p>';
+        } else {
+          taskContainer.innerHTML = tasks.map(t => `
+            <label class="player-task-item ${t.completed ? 'completed' : ''}">
+              <input type="checkbox" ${t.completed ? 'checked' : ''}
+                onchange="window.__togglePlayerTask('${t.id}', this.checked)">
+              <span class="player-task-text">${t.text}</span>
+            </label>
+          `).join('');
+        }
+      } catch {}
+
+      window.__togglePlayerTask = async (taskId, completed) => {
+        const res = await fetch(`/api/tasks/${encodeURIComponent(authState.username)}/${taskId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed }),
+        }).then(r => r.json());
+        if (res.success) {
+          // Re-render tasks
+          const taskContainer = document.getElementById('player-task-checklist');
+          taskContainer.innerHTML = res.tasks.map(t => `
+            <label class="player-task-item ${t.completed ? 'completed' : ''}">
+              <input type="checkbox" ${t.completed ? 'checked' : ''}
+                onchange="window.__togglePlayerTask('${t.id}', this.checked)">
+              <span class="player-task-text">${t.text}</span>
+            </label>
+          `).join('');
+        }
+      };
 
       // Coin balance inside achievements
       try {
@@ -798,6 +1052,60 @@
     const themeBtns = $$('#theme-toggle, #theme-toggle-player');
     themeBtns.forEach(btn => btn.addEventListener('click', toggleTheme));
 
+    // ── Change Password ──
+    const pwToggle = document.getElementById('password-toggle');
+    const pwCollapse = document.getElementById('password-collapse');
+    if (pwToggle) {
+      pwToggle.addEventListener('click', () => {
+        pwToggle.classList.toggle('open');
+        pwCollapse.classList.toggle('open');
+      });
+    }
+    document.getElementById('password-change-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('pw-change-message');
+      const currentPassword = document.getElementById('pw-current').value;
+      const newPassword = document.getElementById('pw-new').value;
+      const confirmPassword = document.getElementById('pw-confirm').value;
+
+      msg.className = 'pw-change-message';
+      msg.textContent = '';
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        msg.textContent = 'All fields required.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        msg.textContent = 'New passwords do not match.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      if (newPassword.length < 4) {
+        msg.textContent = 'Password must be at least 4 characters.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+
+      const res = await fetch('/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: authState.username, currentPassword, newPassword }),
+      }).then(r => r.json());
+
+      if (res.success) {
+        msg.textContent = 'Password updated successfully!';
+        msg.className = 'pw-change-message success';
+        document.getElementById('password-change-form').reset();
+      } else {
+        msg.textContent = res.message || 'Failed to update password.';
+        msg.className = 'pw-change-message error';
+      }
+    });
+
+    // ── Admin Tasks Setup ──
+    setupAdminTasks();
+
     // ── Coin Awarding ──
     document.getElementById('btn-award-coins')?.addEventListener('click', async () => {
       const playerUsername = document.getElementById('coin-player-input').value.trim();
@@ -928,6 +1236,14 @@
         res.balances.slice(0, 20).map(b => `<tr><td>${b._id}</td><td><strong>${b.total}</strong> 🪙</td></tr>`).join('') +
         '</tbody></table>';
     };
+
+    // Load coin leaderboard when achievements tab is shown
+    const achievementsBtn = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
+    if (achievementsBtn) {
+      achievementsBtn.addEventListener('click', () => {
+        setTimeout(() => window.__loadCoinLeaderboard(), 500);
+      });
+    }
 
     // Start router
     router.start();

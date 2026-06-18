@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
-const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, connectDB } = require('./db');
+const bcrypt = require('bcryptjs');
+const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, PlayerTask, connectDB } = require('./db');
 const { EventBridge } = require('./eventBridge');
 
 const app = express();
@@ -155,8 +156,14 @@ app.post('/login', async (req, res) => {
     return res.json({ success: false, message: 'Invalid credentials (offline mode).' });
   }
   try {
-    const user = await User.findOne({ username, password, role, enabled: { $ne: false } }).lean();
+    const user = await User.findOne({ username, role, enabled: { $ne: false } }).lean();
     if (!user) return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+
+    const passwordMatch = await bcrypt.compare(password, user.password).catch(() => false);
+    if (!passwordMatch && user.password !== password) {
+      return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+    }
+
     res.json({ success: true, user: { username: user.username, role: user.role } });
   } catch {
     res.json({ success: false, message: 'Server error.' });
@@ -183,7 +190,8 @@ app.post('/add-player', async (req, res) => {
       return res.json({ success: false, message: 'Username already exists.' });
     }
 
-    await User.create({ username, password, role: 'player', enabled: true });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await User.create({ username, password: hashedPassword, role: 'player', enabled: true });
 
     const categories = await Category.find().lean();
     const values = {};
@@ -431,6 +439,119 @@ app.get('/api/coins/leaderboard', async (req, res) => {
     ]);
     res.json({ balances });
   } catch { res.json({ balances: [] }); }
+});
+
+// ═══════════════════════════════════════════════
+// CHANGE PASSWORD
+// ═══════════════════════════════════════════════
+
+app.post('/change-password', async (req, res) => {
+  try {
+    const { username, currentPassword, newPassword } = req.body;
+    if (!username || !currentPassword || !newPassword) {
+      return res.json({ success: false, message: 'All fields required.' });
+    }
+
+    if (newPassword.length < 4) {
+      return res.json({ success: false, message: 'New password must be at least 4 characters.' });
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) return res.json({ success: false, message: 'User not found.' });
+
+    const passwordMatch = await bcrypt.compare(currentPassword, user.password).catch(() => false);
+    if (!passwordMatch && user.password !== currentPassword) {
+      return res.json({ success: false, message: 'Current password is incorrect.' });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, message: 'Server error.' });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// AVATAR ROUTES
+// ═══════════════════════════════════════════════
+
+app.get('/api/avatar/:username', async (req, res) => {
+  try {
+    const user = await User.findOne({ username: req.params.username }).lean();
+    res.json({ avatar: user?.avatar || '' });
+  } catch {
+    res.json({ avatar: '' });
+  }
+});
+
+app.post('/api/avatar', async (req, res) => {
+  try {
+    const { username, avatar } = req.body;
+    if (!username) return res.json({ success: false, message: 'Username required.' });
+
+    const validExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.bmp'];
+    if (avatar && avatar.trim()) {
+      const lower = avatar.toLowerCase();
+      const hasValidExt = validExts.some(ext => lower.includes(ext));
+      if (!hasValidExt && !lower.startsWith('data:image')) {
+        return res.json({ success: false, message: 'Invalid image URL. Must point to an image file.' });
+      }
+    }
+
+    await User.findOneAndUpdate({ username }, { avatar: avatar || '' });
+    res.json({ success: true, avatar: avatar || '' });
+  } catch {
+    res.json({ success: false, message: 'Failed to update avatar.' });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// TASK ROUTES
+// ═══════════════════════════════════════════════
+
+app.get('/api/tasks/:player', async (req, res) => {
+  try {
+    const pt = await PlayerTask.findOne({ playerUsername: req.params.player }).lean();
+    res.json({ tasks: pt?.tasks || [] });
+  } catch {
+    res.json({ tasks: [] });
+  }
+});
+
+app.post('/api/tasks/:player', async (req, res) => {
+  try {
+    const { tasks } = req.body;
+    if (!Array.isArray(tasks)) return res.json({ success: false, message: 'Tasks must be an array.' });
+
+    await PlayerTask.findOneAndUpdate(
+      { playerUsername: req.params.player },
+      { playerUsername: req.params.player, tasks },
+      { upsert: true }
+    );
+    res.json({ success: true, tasks });
+  } catch {
+    res.json({ success: false, message: 'Failed to save tasks.' });
+  }
+});
+
+app.patch('/api/tasks/:player/:taskId', async (req, res) => {
+  try {
+    const { completed } = req.body;
+    const pt = await PlayerTask.findOne({ playerUsername: req.params.player });
+    if (!pt) return res.json({ success: false, message: 'No tasks found.' });
+
+    const task = pt.tasks.id(req.params.taskId);
+    if (!task) return res.json({ success: false, message: 'Task not found.' });
+
+    task.completed = completed === true;
+    await pt.save();
+    res.json({ success: true, tasks: pt.tasks });
+  } catch {
+    res.json({ success: false, message: 'Failed to update task.' });
+  }
 });
 
 // ═══════════════════════════════════════════════

@@ -192,29 +192,6 @@
           </div>
         </section>
 
-        <div class="admin-coin-section glass">
-          <h4>🪙 Award Pocket Coins</h4>
-          <div class="coin-form-row">
-            <input type="text" id="coin-player-input" placeholder="Player username">
-            <input type="number" id="coin-amount-input" placeholder="Amount" min="1">
-            <select id="coin-stamp-select">
-              <option value="⭐">⭐</option>
-              <option value="🔥">🔥</option>
-              <option value="💎">💎</option>
-              <option value="👑">👑</option>
-              <option value="🎯">🎯</option>
-            </select>
-            <button class="btn btn-sm btn-primary quick-coin" data-amount="100">Top Perf. (+100)</button>
-            <button class="btn btn-sm btn-primary quick-coin" data-amount="50">Clutch (+50)</button>
-            <button class="btn btn-sm btn-primary quick-coin" data-amount="25">Sports (+25)</button>
-            <button class="btn btn-primary" id="btn-award-coins">Award 🪙</button>
-          </div>
-          <div class="coin-history-wrapper">
-            <h5>Coin Leaderboard</h5>
-            <div id="coin-leaderboard-admin"></div>
-          </div>
-        </div>
-
         <!-- Section: Players -->
         <section id="section-players" class="dashboard-section">
           <div class="section-header">
@@ -231,7 +208,7 @@
           </div>
           <div class="table-wrapper glass">
             <table class="data-table">
-              <thead><tr><th>Username</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Username</th><th>Avatar</th><th>Status</th><th>Notes</th><th>Tasks</th><th>Actions</th></tr></thead>
               <tbody id="players-tbody"></tbody>
             </table>
           </div>
@@ -244,6 +221,41 @@
             <button class="btn btn-primary" id="btn-add-category">+ Add Category</button>
           </div>
           <div class="achievement-categories" id="achievement-categories"></div>
+
+          <div class="admin-coin-section glass">
+            <h4>🪙 Award Pocket Coins</h4>
+            <div class="coin-form-row">
+              <input type="text" id="coin-player-input" placeholder="Player username">
+              <input type="number" id="coin-amount-input" placeholder="Amount" min="1">
+              <select id="coin-stamp-select">
+                <option value="⭐">⭐</option>
+                <option value="🔥">🔥</option>
+                <option value="💎">💎</option>
+                <option value="👑">👑</option>
+                <option value="🎯">🎯</option>
+              </select>
+              <button class="btn btn-sm btn-primary quick-coin" data-amount="100">Top Perf. (+100)</button>
+              <button class="btn btn-sm btn-primary quick-coin" data-amount="50">Clutch (+50)</button>
+              <button class="btn btn-sm btn-primary quick-coin" data-amount="25">Sports (+25)</button>
+              <button class="btn btn-primary" id="btn-award-coins">Award 🪙</button>
+            </div>
+            <div class="coin-history-wrapper">
+              <h5>Coin Leaderboard</h5>
+              <div id="coin-leaderboard-admin"></div>
+            </div>
+          </div>
+
+          <div class="admin-tasks-section glass">
+            <h4>📋 Player Task Manager</h4>
+            <div class="task-select-player-row">
+              <select id="admin-task-player-select" class="admin-input"></select>
+            </div>
+            <div id="admin-task-list" class="admin-task-list"></div>
+            <div class="admin-task-add-row">
+              <input type="text" id="admin-task-input" placeholder="New task description..." class="admin-input">
+              <button class="btn btn-primary btn-sm" id="btn-admin-add-task">Add Task</button>
+            </div>
+          </div>
         </section>
 
         <!-- Section: Leaderboard -->
@@ -289,7 +301,7 @@
           <h1 class="hero-name" id="hero-name">—</h1>
           <div class="hero-badge" id="hero-badge">🏅 YOUR SCORE</div>
           <div class="hero-player">
-            <div class="hero-avatar" id="hero-avatar">👤</div>
+            <div class="hero-avatar" id="hero-avatar"><img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 20px rgba(245,158,11,0.3);"><span id="hero-avatar-fallback" style="font-size:4.5rem;">👤</span></div>
             <div class="hero-score-wrapper">
               <span class="hero-score-label">Total Score</span>
               <span class="hero-score" id="hero-score">0</span>
@@ -326,6 +338,26 @@
             <div class="collapsible-content" id="coin-history-collapse-ach">
               <div id="player-coin-history-ach"></div>
             </div>
+          </div>
+        </div>
+
+        <div class="player-section">
+          <h3 class="player-section-title">📋 My Tasks</h3>
+          <div id="player-task-checklist" class="player-task-checklist"></div>
+        </div>
+
+        <div class="player-section">
+          <button class="collapsible-btn glass" id="password-toggle">
+            <span>🔑</span> Change Password <span class="collapse-arrow">▼</span>
+          </button>
+          <div class="collapsible-content" id="password-collapse">
+            <form id="password-change-form" class="password-change-form glass">
+              <input type="password" id="pw-current" placeholder="Current Password" required>
+              <input type="password" id="pw-new" placeholder="New Password" required>
+              <input type="password" id="pw-confirm" placeholder="Confirm New Password" required>
+              <button type="submit" class="btn btn-primary">Update Password</button>
+              <div id="pw-change-message" class="pw-change-message"></div>
+            </form>
           </div>
         </div>
 

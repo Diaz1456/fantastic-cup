@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import CoinAwardModal from './CoinAwardModal';
 
 interface Props {
   socket: any;
@@ -12,7 +11,6 @@ export default function AdminPanel({ socket, onBack }: Props) {
   const [mysteryMode, setMysteryMode] = useState(false);
   const [confirmEliminate, setConfirmEliminate] = useState<string | null>(null);
   const [extendSeconds, setExtendSeconds] = useState(30);
-  const [showCoinAward, setShowCoinAward] = useState(false);
   const [teamEditMode, setTeamEditMode] = useState(false);
 
   if (!state) return <div className="admin-panel"><h2>Loading...</h2></div>;
@@ -121,15 +119,10 @@ export default function AdminPanel({ socket, onBack }: Props) {
         <div className="admin-card team-admin-card">
           <h2>🏟 TEAM ARENA</h2>
           <div className="admin-actions">
-            <button onClick={() => setShowCoinAward(!showCoinAward)} className="admin-btn">
-              {showCoinAward ? 'HIDE COINS' : 'AWARD COINS'}
-            </button>
             <button onClick={() => setTeamEditMode(!teamEditMode)} className="admin-btn">
               {teamEditMode ? 'DONE EDITING' : 'EDIT TEAMS'}
             </button>
           </div>
-
-          {showCoinAward && <CoinAwardModal onAward={(data) => socket.adminAwardCoin(data)} />}
 
           {teamEditMode && (
             <div className="team-edit-list">

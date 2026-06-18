@@ -2152,6 +2152,243 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
+/* ─── Achievement Number Input ─── */
+.achievement-number-input {
+  width: 72px;
+  padding: 0.3rem 0.5rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xs);
+  color: var(--text-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all var(--transition);
+}
+
+.achievement-number-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  background: rgba(102, 126, 234, 0.06);
+}
+
+.achievement-number-input::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+/* ─── Admin Task Manager ─── */
+.admin-tasks-section {
+  padding: 1.2rem;
+  border-radius: var(--radius-sm);
+  margin-top: 1.5rem;
+  border: 1px solid var(--glass-border);
+}
+
+.admin-tasks-section h4 {
+  margin-bottom: 0.8rem;
+  font-size: 1rem;
+}
+
+.task-select-player-row {
+  margin-bottom: 1rem;
+}
+
+.task-select-player-row select {
+  width: 100%;
+  max-width: 300px;
+}
+
+.admin-task-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 0.8rem;
+}
+
+.admin-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-xs);
+  background: rgba(255,255,255,0.03);
+  margin-bottom: 0.3rem;
+  transition: all var(--transition);
+}
+
+.admin-task-item:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.admin-task-item.completed .admin-task-text {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.admin-task-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.admin-task-text {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.admin-task-del-btn {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: none;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all var(--transition);
+  opacity: 0;
+}
+
+.admin-task-item:hover .admin-task-del-btn {
+  opacity: 1;
+}
+
+.admin-task-del-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  transform: scale(1.1);
+}
+
+.admin-task-add-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-task-add-row .admin-input {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-xs);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dark);
+  font-size: 0.85rem;
+}
+
+.admin-task-add-row .admin-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  outline: none;
+}
+
+/* ─── Player Task Checklist ─── */
+.player-task-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.player-task-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-xs);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.player-task-item:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.player-task-item.completed {
+  opacity: 0.6;
+}
+
+.player-task-item.completed .player-task-text {
+  text-decoration: line-through;
+}
+
+.player-task-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.player-task-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: var(--text-dark);
+}
+
+/* ─── Change Password ─── */
+.password-change-form {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.password-change-form input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xs);
+  color: var(--text-dark);
+  font-size: 0.9rem;
+}
+
+.password-change-form input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  outline: none;
+}
+
+.password-change-form input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.pw-change-message {
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-xs);
+  font-size: 0.85rem;
+  display: none;
+}
+
+.pw-change-message.success {
+  display: block;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.pw-change-message.error {
+  display: block;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+/* ─── Avatar Cell in Admin Table ─── */
+.avatar-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.avatar-set-btn {
+  font-size: 0.7rem !important;
+  padding: 0.2rem 0.5rem !important;
+  background: rgba(102, 126, 234, 0.1) !important;
+  color: var(--primary) !important;
+}
+
 /* ─── Player Coin Balance ─── */
 .coin-balance-display {
   display: flex;
