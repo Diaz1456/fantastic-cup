@@ -1310,6 +1310,25 @@ input, select, textarea {
 .lb-avatar {
   font-size: 1.8rem;
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lb-avatar-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+}
+
+.lb-avatar-emoji {
+  font-size: 1.8rem;
+  line-height: 1;
 }
 
 .lb-info {

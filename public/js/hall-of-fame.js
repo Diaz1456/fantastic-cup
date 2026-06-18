@@ -6,9 +6,11 @@
   function initLoader() {
     if (loadPromise) return loadPromise;
     loadPromise = (async function () {
-      const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
-      const mod = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js');
-      return { THREE, OrbitControls: mod.OrbitControls };
+      const threeMod = await import('https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js');
+      const THREE = threeMod.default || threeMod;
+      const orbitMod = await import('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/controls/OrbitControls.js');
+      const OrbitControls = orbitMod.OrbitControls || orbitMod.default;
+      return { THREE, OrbitControls };
     })();
     return loadPromise;
   }

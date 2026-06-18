@@ -287,7 +287,9 @@
   function renderAdminLeaderboardPreview() {
     const container = document.getElementById('admin-lb-preview');
     const top15 = (adminDataCache.leaderboard || []).slice(0, 15);
-    container.innerHTML = renderLeaderboardHTML(top15, adminDataCache.categories);
+    fetchLeaderboardAvatars(top15).then(avatarMap => {
+      container.innerHTML = renderLeaderboardHTML(top15, adminDataCache.categories, avatarMap);
+    });
   }
 
   /* ─── ADMIN: Nav tabs ─── */
@@ -357,11 +359,12 @@
       return;
     }
 
+    const cacheBust = Date.now();
     const avatarMap = {};
     await Promise.all(players.map(async (p) => {
       try {
-        const res = await fetch('/api/avatar/' + encodeURIComponent(p.username)).then(r => r.json());
-        avatarMap[p.username] = res.avatar || '';
+        const res = await fetch('/api/avatar/' + encodeURIComponent(p.username) + '?t=' + cacheBust).then(r => r.json());
+        avatarMap[p.username] = res.avatar ? res.avatar + '?t=' + cacheBust : '';
       } catch { avatarMap[p.username] = ''; }
     }));
 
@@ -404,43 +407,57 @@
     `}).join('');
   }
 
+  let _avatarInputActive = false;
+
   window.__promptAvatar = async (username) => {
+    if (_avatarInputActive) {
+      toast('Please finish the current upload first.', 'info');
+      return;
+    }
+    _avatarInputActive = true;
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/jpeg,image/png,image/gif';
     input.onchange = async () => {
       const file = input.files[0];
-      if (!file) return;
+      if (!file) { _avatarInputActive = false; return; }
       if (file.size > 2 * 1024 * 1024) {
         toast('File too large. Max 2MB.', 'error');
+        _avatarInputActive = false;
         return;
       }
       const formData = new FormData();
       formData.append('avatar', file);
       formData.append('username', username);
-      const res = await fetch('/api/avatar/upload', {
-        method: 'POST',
-        body: formData,
-      }).then(r => r.json());
-      if (res.success) {
-        toast('Avatar uploaded!');
-        renderPlayersTable();
-      } else {
-        toast(res.message || 'Upload failed', 'error');
+      try {
+        const res = await fetch('/api/avatar/upload?t=' + Date.now(), {
+          method: 'POST',
+          body: formData,
+        }).then(r => r.json());
+        if (res.success) {
+          toast('Avatar uploaded for ' + username + '!');
+          renderPlayersTable();
+        } else {
+          toast(res.message || 'Upload failed', 'error');
+        }
+      } catch {
+        toast('Upload failed', 'error');
       }
+      _avatarInputActive = false;
     };
+    setTimeout(() => { _avatarInputActive = false; }, 120000);
     input.click();
   };
 
   window.__removeAvatar = async (username) => {
     if (!confirm(`Remove avatar for "${username}"?`)) return;
-    const res = await fetch('/api/avatar/remove', {
+    const res = await fetch('/api/avatar/remove?t=' + Date.now(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username }),
     }).then(r => r.json());
     if (res.success) {
-      toast('Avatar removed');
+      toast('Avatar removed for ' + username);
       renderPlayersTable();
     } else {
       toast('Failed to remove avatar', 'error');
@@ -719,7 +736,8 @@
       container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No players match your search.</p>';
       return;
     }
-    container.innerHTML = renderLeaderboardHTML(data, adminDataCache.categories);
+    const avatarMap = await fetchLeaderboardAvatars(data);
+    container.innerHTML = renderLeaderboardHTML(data, adminDataCache.categories, avatarMap);
   }
 
   /* ─── ADMIN: Feedback List ─── */
@@ -743,7 +761,7 @@
   }
 
   /* ─── LEADERBOARD RENDERER ─── */
-  function renderLeaderboardHTML(leaderboard, categories) {
+  function renderLeaderboardHTML(leaderboard, categories, avatarMap) {
     if (!leaderboard || leaderboard.length === 0) {
       return '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No data yet.</p>';
     }
@@ -755,10 +773,16 @@
       const pct = (entry.total / maxScore) * 100;
       const delay = i * 0.06;
       const medal = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '👤';
+      const avatarUrl = avatarMap ? (avatarMap[entry.username] || '') : '';
+      const avatarHtml = avatarUrl
+        ? `<img src="${avatarUrl}" class="lb-avatar-img" onerror="this.style.display='none'">`
+        : `<span class="lb-avatar-emoji">${medal}</span>`;
       return `
         <div class="lb-card ${topClass}" style="animation-delay:${delay}s">
           <div class="lb-rank ${rankClass}">${rank}</div>
-          <div class="lb-avatar">${medal}</div>
+          <div class="lb-avatar">
+            ${avatarHtml}
+          </div>
           <div class="lb-info">
             <div class="lb-name">${entry.username}</div>
             <div class="lb-score-bar-wrapper">
@@ -771,6 +795,19 @@
         </div>
       `;
     }).join('');
+  }
+
+  async function fetchLeaderboardAvatars(leaderboard) {
+    const avatarMap = {};
+    await Promise.all(leaderboard.map(async (entry) => {
+      try {
+        const res = await fetch('/api/avatar/' + encodeURIComponent(entry.username) + '?t=' + Date.now()).then(r => r.json());
+        avatarMap[entry.username] = res.avatar || '';
+      } catch {
+        avatarMap[entry.username] = '';
+      }
+    }));
+    return avatarMap;
   }
 
   /* ─── CSV EXPORT ─── */
@@ -821,12 +858,12 @@
 
       // Load avatar
       try {
-        const avatarRes = await fetch('/api/avatar/' + encodeURIComponent(authState.username)).then(r => r.json());
+        const avatarRes = await fetch('/api/avatar/' + encodeURIComponent(authState.username) + '?t=' + Date.now()).then(r => r.json());
         const avatarImg = document.getElementById('hero-avatar-img');
         const avatarFallback = document.getElementById('hero-avatar-fallback');
         const removeBtn = document.getElementById('player-avatar-remove');
         if (avatarRes.avatar && avatarRes.avatar.trim()) {
-          avatarImg.src = avatarRes.avatar;
+          avatarImg.src = avatarRes.avatar + '?t=' + Date.now();
           avatarImg.style.display = '';
           avatarFallback.style.display = 'none';
           if (removeBtn) removeBtn.style.display = '';
@@ -848,7 +885,8 @@
 
       // Leaderboard
       const lbContainer = document.getElementById('player-leaderboard');
-      lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories);
+      const avatarMap = await fetchLeaderboardAvatars(leaderboard);
+      lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories, avatarMap);
 
       // Coach Notes
       const notesData = notesRes.notes || {};
@@ -997,7 +1035,10 @@
     showView('leaderboard');
     const res = await API.getLeaderboard();
     const container = document.getElementById('public-leaderboard');
-    container.innerHTML = renderLeaderboardHTML(res.leaderboard || [], res.categories || []);
+    const lb = res.leaderboard || [];
+    const cats = res.categories || [];
+    const avatarMap = await fetchLeaderboardAvatars(lb);
+    container.innerHTML = renderLeaderboardHTML(lb, cats, avatarMap);
   }
 
   /* ─── LOGOUT ─── */
@@ -1432,7 +1473,7 @@
       const formData = new FormData();
       formData.append('avatar', file);
       formData.append('username', authState.username);
-      const res = await fetch('/api/avatar/upload', {
+      const res = await fetch('/api/avatar/upload?t=' + Date.now(), {
         method: 'POST',
         body: formData,
       }).then(r => r.json());
@@ -1446,7 +1487,7 @@
 
     document.getElementById('player-avatar-remove')?.addEventListener('click', async () => {
       if (!confirm('Remove your profile photo?')) return;
-      const res = await fetch('/api/avatar/remove', {
+      const res = await fetch('/api/avatar/remove?t=' + Date.now(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: authState.username }),
@@ -1518,11 +1559,11 @@
         username: e.username,
         total: e.total,
       }));
-      // Fetch avatars for top 3
+      const cacheBust = Date.now();
       Promise.all(top3.map(async (p) => {
         try {
-          const res = await fetch('/api/avatar/' + encodeURIComponent(p.username)).then(r => r.json());
-          p.avatarUrl = res.avatar || '';
+          const res = await fetch('/api/avatar/' + encodeURIComponent(p.username) + '?t=' + cacheBust).then(r => r.json());
+          p.avatarUrl = res.avatar ? res.avatar + '?t=' + cacheBust : '';
         } catch { p.avatarUrl = ''; }
       })).then(() => {
         if (window.startHallOfFame) {
@@ -1547,10 +1588,11 @@
         total: e.total,
         avatarUrl: '',
       }));
+      const cacheBust = Date.now();
       Promise.all(top3.map(async (p) => {
         try {
-          const res = await fetch('/api/avatar/' + encodeURIComponent(p.username)).then(r => r.json());
-          p.avatarUrl = res.avatar || '';
+          const res = await fetch('/api/avatar/' + encodeURIComponent(p.username) + '?t=' + cacheBust).then(r => r.json());
+          p.avatarUrl = res.avatar ? res.avatar + '?t=' + cacheBust : '';
         } catch { p.avatarUrl = ''; }
       })).then(() => {
         if (window.startHallOfFame) {
