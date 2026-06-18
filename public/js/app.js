@@ -307,6 +307,12 @@
 
     // Load section content
     switch (section) {
+      case 'events':
+        if (window.__eventsApp) {
+          window.__eventsApp.loadAdminEvents();
+          window.__eventsApp.loadCoinLeaderboard();
+        }
+        break;
       case 'players': renderPlayersTable(); break;
       case 'achievements': renderAchievementCategories(); break;
       case 'leaderboard': renderAdminFullLeaderboard(); break;
@@ -597,16 +603,42 @@
     document.getElementById('motivational-quote').textContent = randomQuote();
 
     await refreshPlayerData();
+    if (window.__eventsApp && window.__eventsApp.initSocket) {
+      window.__eventsApp.initSocket();
+    }
+    loadActiveEvent();
     startPlayerPolling();
+  }
+
+  async function loadActiveEvent() {
+    try {
+      const res = await fetch('/api/events').then(r => r.json());
+      const active = (res.events || []).find(e => e.active);
+      const section = document.getElementById('player-event-section');
+      if (!active) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = 'block';
+      document.getElementById('event-name-display').textContent = active.name;
+      if (window.__eventsApp) {
+        window.__eventsApp.activeEventId = active._id;
+        window.__eventsApp.loadTop3();
+      }
+    } catch {}
   }
 
   async function refreshPlayerData() {
     try {
-      const [lbRes, achRes, notesRes] = await Promise.all([
+      const [lbRes, achRes, notesRes, coinRes] = await Promise.all([
         API.getLeaderboard(),
         API.getPlayerAchievements(authState.username),
         API.getPlayerNotes(),
+        fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json()),
       ]);
+
+      const coinBal = document.getElementById('player-coin-balance');
+      if (coinBal) coinBal.textContent = coinRes.balance || 0;
       const leaderboard = lbRes.leaderboard || [];
       const categories = lbRes.categories || [];
       const playerAch = achRes.achievements || {};
@@ -811,6 +843,124 @@
     // Theme toggle
     const themeBtns = $$('#theme-toggle, #theme-toggle-player');
     themeBtns.forEach(btn => btn.addEventListener('click', toggleTheme));
+
+    // ── Events Module Setup ──
+    document.getElementById('btn-create-event')?.addEventListener('click', async () => {
+      const name = prompt('Event name:');
+      if (!name) return;
+      const res = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      }).then(r => r.json());
+      if (res.success && window.__eventsApp) {
+        window.__eventsApp.openEventEditor(res.event._id);
+      }
+    });
+
+    document.getElementById('btn-close-editor')?.addEventListener('click', () => {
+      if (window.__eventsApp) window.__eventsApp.closeEventEditor();
+    });
+
+    document.getElementById('btn-set-deadline')?.addEventListener('click', async () => {
+      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
+      const deadline = document.getElementById('event-deadline-input').value;
+      if (!deadline) { toast('Pick a date/time', 'error'); return; }
+      await fetch(`/api/events/${window.__eventsApp.editingEventId}/timer`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deadline: new Date(deadline).toISOString() }),
+      });
+      toast('Timer set');
+    });
+
+    document.getElementById('timer-pause-toggle')?.addEventListener('change', async (e) => {
+      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
+      await fetch(`/api/events/${window.__eventsApp.editingEventId}/timer`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timerPaused: e.target.checked }),
+      });
+    });
+
+    document.getElementById('timer-surprise-toggle')?.addEventListener('change', async (e) => {
+      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
+      await fetch(`/api/events/${window.__eventsApp.editingEventId}/timer`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ surpriseMode: e.target.checked }),
+      });
+    });
+
+    document.getElementById('event-active-toggle')?.addEventListener('change', async (e) => {
+      if (window.__eventsApp && window.__eventsApp.saveEventChanges) {
+        window.__eventsApp.saveEventChanges();
+      }
+    });
+
+    document.getElementById('btn-add-category')?.addEventListener('click', async () => {
+      if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
+      const name = document.getElementById('new-category-input').value.trim();
+      if (!name) { toast('Enter category name', 'error'); return; }
+      await fetch(`/api/events/${window.__eventsApp.editingEventId}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      document.getElementById('new-category-input').value = '';
+      if (window.__eventsApp) window.__eventsApp.refreshEditor();
+    });
+
+    // Coin awarding
+    document.getElementById('btn-award-coins')?.addEventListener('click', async () => {
+      const playerUsername = document.getElementById('coin-player-input').value.trim();
+      const amount = parseInt(document.getElementById('coin-amount-input').value);
+      const stamp = document.getElementById('coin-stamp-select').value;
+      if (!playerUsername || !amount) { toast('Enter player and amount', 'error'); return; }
+      const res = await fetch('/api/coins/award', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerUsername, amount, stamp, note: 'Admin award' }),
+      }).then(r => r.json());
+      if (res.success) {
+        toast(`Awarded ${amount} 🪙 to ${playerUsername}`);
+        document.getElementById('coin-player-input').value = '';
+        document.getElementById('coin-amount-input').value = '';
+        if (window.__eventsApp) window.__eventsApp.loadCoinLeaderboard();
+      } else {
+        toast(res.message || 'Failed', 'error');
+      }
+    });
+
+    document.querySelectorAll('.quick-coin')?.forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('coin-amount-input').value = btn.dataset.amount;
+      });
+    });
+
+    // Coin history toggle for player
+    document.getElementById('coin-history-toggle')?.addEventListener('click', async () => {
+      const collapse = document.getElementById('coin-history-collapse');
+      const toggle = document.getElementById('coin-history-toggle');
+      toggle.classList.toggle('open');
+      collapse.classList.toggle('open');
+      if (collapse.classList.contains('open') && authState) {
+        const res = await fetch('/api/coins/history/' + encodeURIComponent(authState.username)).then(r => r.json());
+        const container = document.getElementById('player-coin-history');
+        if (res.transactions && res.transactions.length > 0) {
+          container.innerHTML = res.transactions.map(tx => `
+            <div class="coin-history-item">
+              <span class="coin-tx-stamp">${tx.stamp || '⭐'}</span>
+              <span class="coin-tx-amount">+${tx.amount}</span>
+              <span class="coin-tx-note">${tx.note || ''}</span>
+              <span class="coin-tx-time">${new Date(tx.timestamp).toLocaleDateString()}</span>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<p class="text-muted">No coins yet.</p>';
+        }
+      }
+    });
 
     // Start router
     router.start();

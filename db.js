@@ -29,14 +29,42 @@ const playerNoteSchema = new mongoose.Schema({
   notes: { type: String, default: '' },
 });
 
+const eventSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: String,
+  active: { type: Boolean, default: false },
+  deadline: Date,
+  timerPaused: { type: Boolean, default: false },
+  surpriseMode: { type: Boolean, default: false },
+  categories: [{
+    name: String,
+    teams: [{
+      name: String,
+      logo: { type: String, default: '🏆' },
+      score: { type: Number, default: 0 },
+    }],
+  }],
+  createdAt: { type: Date, default: Date.now },
+});
+
+const coinSchema = new mongoose.Schema({
+  playerUsername: { type: String, index: true },
+  amount: Number,
+  note: String,
+  stamp: { type: String, default: '⭐' },
+  timestamp: { type: Number, default: Date.now },
+});
+
 const User = mongoose.model('User', userSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Achievement = mongoose.model('Achievement', achievementSchema);
 const Feedback = mongoose.model('Feedback', feedbackSchema);
 const PlayerNote = mongoose.model('PlayerNote', playerNoteSchema);
+const Event = mongoose.model('Event', eventSchema);
+const CoinTransaction = mongoose.model('CoinTransaction', coinSchema);
 
 async function connectDB(uri) {
   await mongoose.connect(uri);
 }
 
-module.exports = { User, Category, Achievement, Feedback, PlayerNote, connectDB };
+module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, connectDB };

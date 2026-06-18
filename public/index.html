@@ -11,13 +11,11 @@
 </head>
 <body>
 
-  <!-- ─── PARTICLE CANVAS ─── -->
   <canvas id="particle-canvas"></canvas>
 
-  <!-- ─── APP CONTAINER ─── -->
   <div id="app">
 
-    <!-- ═══════════════ LANDING PAGE ═══════════════ -->
+    <!-- ═══ LANDING ═══ -->
     <div id="view-landing" class="view active">
       <div class="landing-overlay"></div>
       <div class="landing-skip-btn" id="skip-intro">Skip →</div>
@@ -27,110 +25,74 @@
         </div>
         <div class="story-scene" id="story-scene">
           <div class="story-container">
-            <svg class="child-silhouette" id="child-svg" viewBox="0 0 200 400" width="140" height="280">
+            <svg class="child-silhouette" viewBox="0 0 200 400" width="140" height="280">
               <defs>
-                <linearGradient id="silhouetteGrad" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#2d1b69"/>
                   <stop offset="100%" stop-color="#0f0c29"/>
                 </linearGradient>
                 <filter id="glow">
-                  <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
+                  <feGaussianBlur stdDeviation="4" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
-                <filter id="glowStrong">
-                  <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
-                  <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
-                  </feMerge>
-                </filter>
-                <radialGradient id="quranGlow" cx="50%" cy="50%" r="50%">
+                <radialGradient id="qg" cx="50%" cy="50%" r="50%">
                   <stop offset="0%" stop-color="#ffd700" stop-opacity="0.8"/>
                   <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
                 </radialGradient>
-                <radialGradient id="lightRay" cx="50%" cy="0%" r="80%">
+                <radialGradient id="lr" cx="50%" cy="0%" r="80%">
                   <stop offset="0%" stop-color="#ffd700" stop-opacity="0.3"/>
                   <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
                 </radialGradient>
               </defs>
-
-              <!-- Light rays from sky -->
-              <g class="light-rays" id="light-rays" opacity="0">
-                <rect x="40" y="0" width="4" height="200" fill="url(#lightRay)" transform="rotate(-15, 100, 0)"/>
-                <rect x="60" y="0" width="5" height="250" fill="url(#lightRay)" transform="rotate(-5, 100, 0)"/>
-                <rect x="95" y="0" width="6" height="280" fill="url(#lightRay)" transform="rotate(5, 100, 0)"/>
-                <rect x="130" y="0" width="5" height="250" fill="url(#lightRay)" transform="rotate(15, 100, 0)"/>
-                <rect x="155" y="0" width="4" height="200" fill="url(#lightRay)" transform="rotate(25, 100, 0)"/>
+              <g class="light-rays" opacity="0">
+                <rect x="40" y="0" width="4" height="200" fill="url(#lr)" transform="rotate(-15,100,0)"/>
+                <rect x="60" y="0" width="5" height="250" fill="url(#lr)" transform="rotate(-5,100,0)"/>
+                <rect x="95" y="0" width="6" height="280" fill="url(#lr)" transform="rotate(5,100,0)"/>
+                <rect x="130" y="0" width="5" height="250" fill="url(#lr)" transform="rotate(15,100,0)"/>
+                <rect x="155" y="0" width="4" height="200" fill="url(#lr)" transform="rotate(25,100,0)"/>
               </g>
-
-              <!-- Ground -->
               <ellipse cx="100" cy="370" rx="90" ry="10" fill="#1a1a3e" opacity="0.5"/>
-
-              <!-- Child group - all parts move together -->
-              <g id="child-group" class="child-group">
-                <!-- Shadow -->
-                <ellipse cx="100" cy="365" rx="35" ry="6" fill="rgba(0,0,0,0.3)" class="child-shadow"/>
-
-                <!-- Legs -->
+              <g id="child-group">
+                <ellipse cx="100" cy="365" rx="35" ry="6" fill="rgba(0,0,0,0.3)"/>
                 <g class="legs">
-                  <line x1="95" y1="190" x2="80" y2="250" stroke="url(#silhouetteGrad)" stroke-width="10" stroke-linecap="round" class="leg left-leg"/>
-                  <line x1="105" y1="190" x2="120" y2="250" stroke="url(#silhouetteGrad)" stroke-width="10" stroke-linecap="round" class="leg right-leg"/>
+                  <line x1="95" y1="190" x2="80" y2="250" stroke="url(#sg)" stroke-width="10" stroke-linecap="round"/>
+                  <line x1="105" y1="190" x2="120" y2="250" stroke="url(#sg)" stroke-width="10" stroke-linecap="round"/>
                 </g>
-
-                <!-- Body -->
-                <rect x="80" y="90" width="40" height="65" rx="12" fill="url(#silhouetteGrad)" class="body-torso"/>
-
-                <!-- Arms -->
+                <rect x="80" y="90" width="40" height="65" rx="12" fill="url(#sg)"/>
                 <g class="arms">
-                  <line x1="80" y1="105" x2="50" y2="125" stroke="url(#silhouetteGrad)" stroke-width="8" stroke-linecap="round" class="arm left-arm"/>
-                  <line x1="120" y1="105" x2="150" y2="125" stroke="url(#silhouetteGrad)" stroke-width="8" stroke-linecap="round" class="arm right-arm"/>
+                  <line x1="80" y1="105" x2="50" y2="125" stroke="url(#sg)" stroke-width="8" stroke-linecap="round"/>
+                  <line x1="120" y1="105" x2="150" y2="125" stroke="url(#sg)" stroke-width="8" stroke-linecap="round"/>
                 </g>
-
-                <!-- Head -->
-                <circle cx="100" cy="65" r="27" fill="url(#silhouetteGrad)" class="head"/>
+                <circle cx="100" cy="65" r="27" fill="url(#sg)"/>
               </g>
-
-              <!-- Quran Book -->
-              <g id="quran-book" class="quran-book" opacity="0" transform="translate(0, 0)">
-                <circle cx="100" cy="140" r="60" fill="url(#quranGlow)" class="quran-glow-bg" opacity="0"/>
-                <text x="100" y="95" text-anchor="middle" font-size="22" fill="#ffd700" font-family="serif" class="ayat-icon" opacity="0">۩</text>
-                <rect x="72" y="115" width="56" height="40" rx="4" fill="#1a472a" stroke="#ffd700" stroke-width="1.5" class="quran-cover"/>
-                <rect x="75" y="118" width="50" height="34" rx="2" fill="#2d6a4f" class="quran-pages"/>
+              <g class="quran-book" opacity="0">
+                <circle cx="100" cy="140" r="60" fill="url(#qg)" opacity="0"/>
+                <text x="100" y="95" text-anchor="middle" font-size="22" fill="#ffd700" font-family="serif" opacity="0">۩</text>
+                <rect x="72" y="115" width="56" height="40" rx="4" fill="#1a472a" stroke="#ffd700" stroke-width="1.5"/>
+                <rect x="75" y="118" width="50" height="34" rx="2" fill="#2d6a4f"/>
                 <line x1="100" y1="118" x2="100" y2="152" stroke="#ffd700" stroke-width="1" opacity="0.5"/>
                 <text x="100" y="140" text-anchor="middle" font-size="12" fill="#ffd700" font-family="serif">القرآن</text>
-                <circle cx="100" cy="140" r="50" fill="none" stroke="#ffd700" stroke-width="0.5" opacity="0.6" class="quran-outer-glow"/>
-                <circle cx="100" cy="140" r="65" fill="none" stroke="#ffd700" stroke-width="0.3" opacity="0.3" class="quran-outer-glow-2"/>
+                <circle cx="100" cy="140" r="50" fill="none" stroke="#ffd700" stroke-width="0.5" opacity="0.6"/>
+                <circle cx="100" cy="140" r="65" fill="none" stroke="#ffd700" stroke-width="0.3" opacity="0.3"/>
               </g>
             </svg>
-
-            <!-- Floating particles around child -->
-            <div class="particles-container" id="particles-container">
-              <div class="particle p1"></div>
-              <div class="particle p2"></div>
-              <div class="particle p3"></div>
-              <div class="particle p4"></div>
-              <div class="particle p5"></div>
-              <div class="particle p6"></div>
-              <div class="particle p7"></div>
-              <div class="particle p8"></div>
-              <div class="particle p9"></div>
-              <div class="particle p10"></div>
+            <div class="particles-container">
+              <div class="particle p1"></div><div class="particle p2"></div><div class="particle p3"></div><div class="particle p4"></div>
+              <div class="particle p5"></div><div class="particle p6"></div><div class="particle p7"></div><div class="particle p8"></div>
+              <div class="particle p9"></div><div class="particle p10"></div>
             </div>
           </div>
         </div>
-        <div class="quran-verse-container" id="quran-verse">
+        <div class="quran-verse-container">
           <p class="quran-verse-arabic">وَلَقَدْ يَسَّرْنَا الْقُرْآنَ لِلذِّكْرِ فَهَلْ مِن مُّدَّكِرٍ</p>
           <p class="quran-verse-translation">"And We have certainly made the Quran easy to remember, so is there any who will remember?"</p>
           <p class="quran-verse-surah">— Surah Al-Qamar, 54:17</p>
         </div>
-        <p class="landing-hint" id="landing-hint">The journey begins...</p>
+        <p class="landing-hint">The journey begins...</p>
       </div>
     </div>
 
-    <!-- ═══════════════ LOGIN PAGE ═══════════════ -->
+    <!-- ═══ LOGIN ═══ -->
     <div id="view-login" class="view">
       <div class="login-wrapper">
         <div class="login-card glass">
@@ -142,22 +104,15 @@
           <form id="login-form" class="login-form" autocomplete="off">
             <div class="form-group">
               <label for="login-username">Username</label>
-              <div class="input-wrapper">
-                <span class="input-icon">👤</span>
-                <input type="text" id="login-username" placeholder="Enter username" required>
-              </div>
+              <div class="input-wrapper"><span class="input-icon">👤</span><input type="text" id="login-username" placeholder="Enter username" required></div>
             </div>
             <div class="form-group">
               <label for="login-password">Password</label>
-              <div class="input-wrapper">
-                <span class="input-icon">🔒</span>
-                <input type="password" id="login-password" placeholder="Enter password" required>
-              </div>
+              <div class="input-wrapper"><span class="input-icon">🔒</span><input type="password" id="login-password" placeholder="Enter password" required></div>
             </div>
             <div class="form-group">
               <label for="login-role">Role</label>
-              <div class="input-wrapper">
-                <span class="input-icon">🎯</span>
+              <div class="input-wrapper"><span class="input-icon">🎯</span>
                 <select id="login-role" required>
                   <option value="player">Player</option>
                   <option value="admin">Admin</option>
@@ -170,22 +125,21 @@
               <span class="btn-loader"></span>
             </button>
           </form>
-          <div class="login-footer">
-            <p>Fantastic Cup – Score Lead</p>
-          </div>
+          <div class="login-footer"><p>Fantastic Cup – Score Lead</p></div>
         </div>
       </div>
     </div>
 
-    <!-- ═══════════════ ADMIN DASHBOARD ═══════════════ -->
+    <!-- ═══ ADMIN ═══ -->
     <div id="view-admin" class="view">
       <nav class="navbar">
         <div class="nav-brand">
           <span class="nav-logo">🏆</span>
           <span class="nav-title">Fantastic Cup</span>
         </div>
-        <div class="nav-links">
+        <div class="nav-links" id="admin-nav-links">
           <button class="nav-btn active" data-section="dashboard">Dashboard</button>
+          <button class="nav-btn" data-section="events">Events</button>
           <button class="nav-btn" data-section="players">Players</button>
           <button class="nav-btn" data-section="achievements">Achievements</button>
           <button class="nav-btn" data-section="leaderboard">Leaderboard</button>
@@ -199,10 +153,10 @@
 
       <div class="dashboard-content">
 
-        <!-- Section: Dashboard Overview -->
+        <!-- Section: Dashboard -->
         <section id="section-dashboard" class="dashboard-section active">
           <h2 class="section-title">Dashboard Overview</h2>
-          <div class="stats-grid" id="admin-stats">
+          <div class="stats-grid">
             <div class="stat-card glass">
               <div class="stat-icon">👥</div>
               <div class="stat-info">
@@ -238,6 +192,71 @@
           </div>
         </section>
 
+        <!-- Section: Events (Admin) -->
+        <section id="section-events" class="dashboard-section">
+          <div class="section-header">
+            <h2 class="section-title">🎪 Special Events</h2>
+            <button class="btn btn-primary" id="btn-create-event">+ New Event</button>
+          </div>
+          <div id="admin-event-list" class="event-list"></div>
+          <div id="admin-event-editor" class="event-editor" style="display:none;">
+            <div class="event-editor-header">
+              <h3 id="event-editor-title">Edit Event</h3>
+              <button class="btn btn-secondary" id="btn-close-editor">← Back</button>
+            </div>
+            <div class="event-editor-body">
+              <div class="event-form-row">
+                <input type="text" id="event-name-input" placeholder="Event Name">
+                <input type="text" id="event-desc-input" placeholder="Description (optional)">
+                <label class="toggle-label"><input type="checkbox" id="event-active-toggle"> Active</label>
+              </div>
+
+              <div class="event-timer-section glass">
+                <h4>⏱ Countdown Timer</h4>
+                <div class="timer-form-row">
+                  <input type="datetime-local" id="event-deadline-input">
+                  <button class="btn btn-sm" id="btn-set-deadline">Set</button>
+                  <label class="toggle-label"><input type="checkbox" id="timer-pause-toggle"> Paused</label>
+                  <label class="toggle-label"><input type="checkbox" id="timer-surprise-toggle"> Surprise Mode</label>
+                </div>
+                <div class="timer-preview" id="timer-preview-admin">— : — : — : —</div>
+              </div>
+
+              <div class="event-categories-section">
+                <h4>📂 Team Categories</h4>
+                <div class="category-form-row">
+                  <input type="text" id="new-category-input" placeholder="Category name (e.g. Rookie League)">
+                  <button class="btn btn-sm" id="btn-add-category">+ Add</button>
+                </div>
+                <div id="event-categories-list"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-coin-section glass">
+            <h4>🪙 Award Pocket Coins</h4>
+            <div class="coin-form-row">
+              <input type="text" id="coin-player-input" placeholder="Player username">
+              <input type="number" id="coin-amount-input" placeholder="Amount" min="1">
+              <select id="coin-stamp-select">
+                <option value="⭐">⭐</option>
+                <option value="🔥">🔥</option>
+                <option value="💎">💎</option>
+                <option value="👑">👑</option>
+                <option value="🎯">🎯</option>
+              </select>
+              <button class="btn btn-sm btn-primary quick-coin" data-amount="100">Top Perf. (+100)</button>
+              <button class="btn btn-sm btn-primary quick-coin" data-amount="50">Clutch (+50)</button>
+              <button class="btn btn-sm btn-primary quick-coin" data-amount="25">Sports (+25)</button>
+              <button class="btn btn-primary" id="btn-award-coins">Award 🪙</button>
+            </div>
+            <div class="coin-history-wrapper">
+              <h5>Coin Leaderboard</h5>
+              <div id="coin-leaderboard-admin"></div>
+            </div>
+          </div>
+        </section>
+
         <!-- Section: Players -->
         <section id="section-players" class="dashboard-section">
           <div class="section-header">
@@ -253,15 +272,8 @@
             </form>
           </div>
           <div class="table-wrapper glass">
-            <table class="data-table" id="players-table">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>Status</th>
-                  <th>Notes</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+            <table class="data-table">
+              <thead><tr><th>Username</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
               <tbody id="players-tbody"></tbody>
             </table>
           </div>
@@ -294,7 +306,7 @@
       </div>
     </div>
 
-    <!-- ═══════════════ PLAYER DASHBOARD ═══════════════ -->
+    <!-- ═══ PLAYER ═══ -->
     <div id="view-player" class="view">
       <nav class="navbar player-nav">
         <div class="nav-brand">
@@ -302,16 +314,20 @@
           <span class="nav-title">Fantastic Cup</span>
         </div>
         <div class="nav-brand-center">
-          <span class="player-greeting" id="player-greeting">Welcome, <strong id="player-name-display">Player</strong></span>
+          <span class="player-greeting">Welcome, <strong id="player-name-display">Player</strong></span>
         </div>
         <div class="nav-actions">
+          <div class="coin-balance-display" id="coin-balance-display" title="Pocket Coins">
+            <span class="coin-icon">🪙</span>
+            <span class="coin-amount" id="player-coin-balance">0</span>
+          </div>
           <button id="theme-toggle-player" class="icon-btn" title="Toggle Theme">🌙</button>
           <button id="logout-btn-player" class="icon-btn" title="Logout">🚪</button>
         </div>
       </nav>
 
       <div class="player-content">
-        <!-- Player Hero Section -->
+
         <div class="player-hero glass" id="player-hero">
           <div class="hero-badge" id="hero-badge">🏅 YOUR SCORE</div>
           <div class="hero-player">
@@ -323,14 +339,10 @@
             </div>
           </div>
           <div class="hero-rank-info" id="hero-rank-info"></div>
-          <div class="mvp-sparkles" id="mvp-sparkles">
-            <span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span>
-            <span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span>
-          </div>
+          <div class="mvp-sparkles"><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span><span>✦</span></div>
           <div class="hero-glow-ring" id="hero-glow-ring"></div>
         </div>
 
-        <!-- MVP of the Week -->
         <div class="mvp-mini glass">
           <div class="mvp-mini-badge">⭐ MVP OF THE WEEK</div>
           <div class="mvp-mini-content">
@@ -340,7 +352,54 @@
           </div>
         </div>
 
-        <!-- Coach Notes -->
+        <!-- ═══ LIVE EVENT SECTION ═══ -->
+        <div class="player-section" id="player-event-section" style="display:none;">
+          <h3 class="player-section-title">🎪 Live Event</h3>
+          <div id="active-event-display" class="active-event-card glass">
+            <div class="event-name-display" id="event-name-display">—</div>
+            <div class="event-countdown-wrapper">
+              <div class="countdown-display neon-countdown" id="player-countdown">
+                <div class="cd-unit"><span class="cd-num" id="cd-days">00</span><span class="cd-label">Days</span></div>
+                <div class="cd-sep">:</div>
+                <div class="cd-unit"><span class="cd-num" id="cd-hours">00</span><span class="cd-label">Hours</span></div>
+                <div class="cd-sep">:</div>
+                <div class="cd-unit"><span class="cd-num" id="cd-mins">00</span><span class="cd-label">Mins</span></div>
+                <div class="cd-sep">:</div>
+                <div class="cd-unit"><span class="cd-num" id="cd-secs">00</span><span class="cd-label">Secs</span></div>
+              </div>
+              <div class="countdown-surprise" id="countdown-surprise" style="display:none;">❓</div>
+            </div>
+
+            <!-- Top 3 Podium -->
+            <div class="podium-container" id="podium-container">
+              <div class="podium-title">🏆 TOP 3 TEAMS</div>
+              <div class="podium-stage">
+                <div class="podium-slot second-podium" id="podium-2">
+                  <div class="podium-avatar">🥈</div>
+                  <div class="podium-name">—</div>
+                  <div class="podium-score">0</div>
+                  <div class="podium-bar silver-bar"></div>
+                </div>
+                <div class="podium-slot first-podium" id="podium-1">
+                  <div class="podium-crown">👑</div>
+                  <div class="podium-avatar gold-glow">🏆</div>
+                  <div class="podium-name">—</div>
+                  <div class="podium-score">0</div>
+                  <div class="podium-bar gold-bar"></div>
+                </div>
+                <div class="podium-slot third-podium" id="podium-3">
+                  <div class="podium-avatar">🥉</div>
+                  <div class="podium-name">—</div>
+                  <div class="podium-score">0</div>
+                  <div class="podium-bar bronze-bar"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="all-teams-list" id="all-teams-list"></div>
+          </div>
+        </div>
+
         <div class="player-section">
           <div class="player-notes-card glass" id="player-notes-card" style="display:none;">
             <div class="player-notes-header">📋 Coach Notes</div>
@@ -348,40 +407,47 @@
           </div>
         </div>
 
-        <!-- Leaderboard -->
         <div class="player-section">
           <h3 class="player-section-title">Top 15 Leaderboard</h3>
           <div id="player-leaderboard" class="leaderboard-container"></div>
         </div>
 
-        <!-- My Achievements -->
         <div class="player-section">
           <h3 class="player-section-title">My Achievements</h3>
           <div id="player-achievements" class="player-achievements-grid"></div>
         </div>
 
-        <!-- Feedback -->
         <div class="player-section">
           <button class="collapsible-btn glass" id="feedback-toggle">
             <span>💬</span> Send Feedback <span class="collapse-arrow">▼</span>
           </button>
           <div class="collapsible-content" id="feedback-collapse">
             <form id="feedback-form" class="feedback-form glass">
-              <textarea id="feedback-message" placeholder="Share your thoughts, suggestions, or appreciation..." rows="4" required></textarea>
+              <textarea id="feedback-message" placeholder="Share your thoughts..." rows="4" required></textarea>
               <button type="submit" class="btn btn-primary">Send Message</button>
             </form>
           </div>
         </div>
 
-        <!-- Motivational Quote -->
         <div class="quote-bar glass">
           <span class="quote-icon">💫</span>
           <span class="quote-text" id="motivational-quote">"The only limit to your impact is your imagination and commitment."</span>
         </div>
+
+        <!-- Coin History -->
+        <div class="player-section">
+          <button class="collapsible-btn glass" id="coin-history-toggle">
+            <span>🪙</span> Coin History <span class="collapse-arrow">▼</span>
+          </button>
+          <div class="collapsible-content" id="coin-history-collapse">
+            <div id="player-coin-history"></div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <!-- ═══════════════ STANDALONE LEADERBOARD ═══════════════ -->
+    <!-- ═══ PUBLIC LEADERBOARD ═══ -->
     <div id="view-leaderboard" class="view">
       <div class="leaderboard-page">
         <div class="lb-header glass">
@@ -395,9 +461,10 @@
 
   </div>
 
-  <!-- ─── NOTIFICATION TOAST ─── -->
   <div id="toast-container" class="toast-container"></div>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/js/events.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

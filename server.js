@@ -4,9 +4,13 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const { User, Category, Achievement, Feedback, PlayerNote, connectDB } = require('./db');
+const http = require('http');
+const { Server } = require('socket.io');
+const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, connectDB } = require('./db');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fantastic-cup';
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -293,6 +297,264 @@ app.get('/leaderboard/csv', async (req, res) => {
   res.send(csv);
 });
 
+// ═══════════════════════════════════════════════
+// SPECIAL EVENT ROUTES
+// ═══════════════════════════════════════════════
+
+const adminOnly = async (req, res, next) => {
+  const { username, password } = req.body;
+  if (!username || !password) return res.status(401).json({ error: 'Auth required' });
+  const user = await User.findOne({ username, password, role: 'admin' }).lean();
+  if (!user) return res.status(403).json({ error: 'Admin only' });
+  req.adminUser = user;
+  next();
+};
+
+// Get all events
+app.get('/api/events', async (req, res) => {
+  const events = await Event.find().sort({ createdAt: -1 }).lean();
+  res.json({ events });
+});
+
+// Create event
+app.post('/api/events', async (req, res) => {
+  try {
+    const { name, description } = req.body;
+    if (!name) return res.json({ success: false, message: 'Name required' });
+    const event = await Event.create({ name, description });
+    io.emit('events:update');
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed to create event' }); }
+});
+
+// Update event
+app.put('/api/events/:id', async (req, res) => {
+  try {
+    const { name, description, active } = req.body;
+    const event = await Event.findByIdAndUpdate(
+      req.params.id,
+      { name, description, active },
+      { new: true }
+    ).lean();
+    if (!event) return res.json({ success: false, message: 'Not found' });
+    io.emit('events:update');
+    res.json({ success: true, event });
+  } catch { res.json({ success: false, message: 'Failed to update' }); }
+});
+
+// Delete event
+app.delete('/api/events/:id', async (req, res) => {
+  await Event.findByIdAndDelete(req.params.id);
+  io.emit('events:update');
+  res.json({ success: true });
+});
+
+// Add category to event
+app.post('/api/events/:id/categories', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.json({ success: false, message: 'Name required' });
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, message: 'Event not found' });
+    event.categories.push({ name, teams: [] });
+    await event.save();
+    io.emit('events:update');
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Delete category from event
+app.delete('/api/events/:id/categories/:catIdx', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, message: 'Not found' });
+    event.categories.splice(parseInt(req.params.catIdx), 1);
+    await event.save();
+    io.emit('events:update');
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Add team to category
+app.post('/api/events/:id/categories/:catIdx/teams', async (req, res) => {
+  try {
+    const { name, logo } = req.body;
+    if (!name) return res.json({ success: false, message: 'Name required' });
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, message: 'Not found' });
+    const cat = event.categories[parseInt(req.params.catIdx)];
+    if (!cat) return res.json({ success: false, message: 'Category not found' });
+    cat.teams.push({ name, logo: logo || '🏆', score: 0 });
+    await event.save();
+    io.emit('events:update');
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Update team
+app.put('/api/events/:id/categories/:catIdx/teams/:teamIdx', async (req, res) => {
+  try {
+    const { name, logo, score } = req.body;
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, message: 'Not found' });
+    const cat = event.categories[parseInt(req.params.catIdx)];
+    if (!cat) return res.json({ success: false, message: 'Category not found' });
+    const team = cat.teams[parseInt(req.params.teamIdx)];
+    if (!team) return res.json({ success: false, message: 'Team not found' });
+    if (name !== undefined) team.name = name;
+    if (logo !== undefined) team.logo = logo;
+    if (score !== undefined) team.score = Number(score);
+    await event.save();
+    io.emit('events:update');
+    io.emit('leaderboard:update', { eventId: req.params.id });
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Delete team
+app.delete('/api/events/:id/categories/:catIdx/teams/:teamIdx', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, message: 'Not found' });
+    const cat = event.categories[parseInt(req.params.catIdx)];
+    if (!cat) return res.json({ success: false, message: 'Category not found' });
+    cat.teams.splice(parseInt(req.params.teamIdx), 1);
+    await event.save();
+    io.emit('events:update');
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Timer: set deadline
+app.put('/api/events/:id/timer', async (req, res) => {
+  try {
+    const { deadline, timerPaused, surpriseMode } = req.body;
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.json({ success: false, message: 'Not found' });
+    if (deadline !== undefined) event.deadline = new Date(deadline);
+    if (timerPaused !== undefined) event.timerPaused = timerPaused;
+    if (surpriseMode !== undefined) event.surpriseMode = surpriseMode;
+    await event.save();
+    io.emit('timer:sync', {
+      eventId: event._id.toString(),
+      deadline: event.deadline?.getTime() || null,
+      timerPaused: event.timerPaused,
+      surpriseMode: event.surpriseMode,
+    });
+    res.json({ success: true, event: event.toObject() });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Get top-3 teams across all categories
+app.get('/api/events/:id/top3', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id).lean();
+    if (!event) return res.json({ top3: [] });
+    const allTeams = [];
+    event.categories.forEach(cat => {
+      cat.teams.forEach(team => {
+        allTeams.push({ ...team, category: cat.name });
+      });
+    });
+    allTeams.sort((a, b) => b.score - a.score);
+    res.json({ top3: allTeams.slice(0, 3), all: allTeams, event });
+  } catch { res.json({ top3: [] }); }
+});
+
+// ═══════════════════════════════════════════════
+// COIN ROUTES
+// ═══════════════════════════════════════════════
+
+// Award coins
+app.post('/api/coins/award', async (req, res) => {
+  try {
+    const { playerUsername, amount, note, stamp } = req.body;
+    if (!playerUsername || !amount) return res.json({ success: false, message: 'Player and amount required' });
+    const tx = await CoinTransaction.create({
+      playerUsername,
+      amount: Number(amount),
+      note: note || '',
+      stamp: stamp || '⭐',
+      timestamp: Date.now(),
+    });
+    const balance = await CoinTransaction.aggregate([
+      { $match: { playerUsername } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    const total = balance.length > 0 ? balance[0].total : 0;
+    io.emit('coins:awarded', { playerUsername, amount: Number(amount), note, stamp: stamp || '⭐', balance: total });
+    res.json({ success: true, transaction: tx.toObject(), balance: total });
+  } catch { res.json({ success: false, message: 'Failed' }); }
+});
+
+// Get coin balance
+app.get('/api/coins/balance/:username', async (req, res) => {
+  try {
+    const balance = await CoinTransaction.aggregate([
+      { $match: { playerUsername: req.params.username } },
+      { $group: { _id: null, total: { $sum: '$amount' } } },
+    ]);
+    res.json({ balance: balance.length > 0 ? balance[0].total : 0 });
+  } catch { res.json({ balance: 0 }); }
+});
+
+// Get coin history
+app.get('/api/coins/history/:username', async (req, res) => {
+  try {
+    const txs = await CoinTransaction.find({ playerUsername: req.params.username })
+      .sort({ timestamp: -1 }).limit(50).lean();
+    res.json({ transactions: txs });
+  } catch { res.json({ transactions: [] }); }
+});
+
+// Get all coin balances (admin)
+app.get('/api/coins/leaderboard', async (req, res) => {
+  try {
+    const balances = await CoinTransaction.aggregate([
+      { $group: { _id: '$playerUsername', total: { $sum: '$amount' } } },
+      { $sort: { total: -1 } },
+    ]);
+    res.json({ balances });
+  } catch { res.json({ balances: [] }); }
+});
+
+// ═══════════════════════════════════════════════
+// SOCKET.IO
+// ═══════════════════════════════════════════════
+
+io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+
+  socket.on('join:event', (eventId) => {
+    socket.join(`event:${eventId}`);
+  });
+
+  socket.on('leave:event', (eventId) => {
+    socket.leave(`event:${eventId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+  });
+});
+
+// Periodically sync timer state for active events
+setInterval(async () => {
+  try {
+    const activeEvents = await Event.find({ active: true }).lean();
+    activeEvents.forEach(ev => {
+      io.emit('timer:sync', {
+        eventId: ev._id.toString(),
+        deadline: ev.deadline?.getTime() || null,
+        timerPaused: ev.timerPaused,
+        surpriseMode: ev.surpriseMode,
+      });
+    });
+  } catch {}
+}, 1000);
+
+// ═══════════════════════════════════════════════
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -306,10 +568,9 @@ async function start() {
     await migrateFromFile();
   } catch (err) {
     console.error('Failed to connect to MongoDB:', err.message);
-    console.log('Falling back to file-based storage');
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 }
