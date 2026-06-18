@@ -56,15 +56,16 @@ const coinSchema = new mongoose.Schema({
   timestamp: { type: Number, default: Date.now },
 });
 
-const taskSchema = new mongoose.Schema({
-  id: { type: String, required: true },
-  text: { type: String, required: true },
-  completed: { type: Boolean, default: false },
+const dailyCompletionSchema = new mongoose.Schema({
+  playerUsername: { type: String, required: true },
+  date: { type: String, required: true },
+  completedAt: { type: Number, default: Date.now },
 });
+dailyCompletionSchema.index({ playerUsername: 1, date: 1 }, { unique: true });
 
-const playerTaskSchema = new mongoose.Schema({
-  playerUsername: { type: String, unique: true },
-  tasks: [taskSchema],
+const dailyTaskConfigSchema = new mongoose.Schema({
+  key: { type: String, default: 'config', unique: true },
+  text: { type: String, default: 'Daily Task' },
 });
 
 const User = mongoose.model('User', userSchema);
@@ -74,10 +75,11 @@ const Feedback = mongoose.model('Feedback', feedbackSchema);
 const PlayerNote = mongoose.model('PlayerNote', playerNoteSchema);
 const Event = mongoose.model('Event', eventSchema);
 const CoinTransaction = mongoose.model('CoinTransaction', coinSchema);
-const PlayerTask = mongoose.model('PlayerTask', playerTaskSchema);
+const DailyCompletion = mongoose.model('DailyCompletion', dailyCompletionSchema);
+const DailyTaskConfig = mongoose.model('DailyTaskConfig', dailyTaskConfigSchema);
 
 async function connectDB(uri) {
   await mongoose.connect(uri);
 }
 
-module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, PlayerTask, connectDB };
+module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, connectDB };

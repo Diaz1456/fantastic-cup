@@ -377,7 +377,10 @@
         <td>
           <div class="avatar-cell">
             ${avatarHtml}
-            <button class="avatar-set-btn btn btn-sm" onclick="window.__promptAvatar('${p.username}')">Set</button>
+            <div class="avatar-cell-actions">
+              <button class="avatar-set-btn btn btn-sm" onclick="window.__promptAvatar('${p.username}')">Set</button>
+              ${avatarUrl ? `<button class="avatar-remove-btn-sm btn btn-sm" onclick="window.__removeAvatar('${p.username}')">✕</button>` : ''}
+            </div>
           </div>
         </td>
         <td><span class="status-badge ${p.enabled !== false ? 'active' : 'disabled'}">${p.enabled !== false ? 'Active' : 'Disabled'}</span></td>
@@ -388,7 +391,7 @@
           </div>
         </td>
         <td>
-          <button class="btn btn-sm" onclick="window.__openPlayerTasks('${p.username}')">📋 Tasks</button>
+          <button class="btn btn-sm" onclick="window.__setPlayerPassword('${p.username}')">🔑 Set</button>
         </td>
         <td class="actions-cell">
           <button class="btn btn-sm ${p.enabled !== false ? 'btn-secondary' : 'btn-primary'}" onclick="window.__togglePlayer('${p.username}')">
@@ -428,21 +431,42 @@
     input.click();
   };
 
-  window.__openPlayerTasks = async (username) => {
-    const section = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
-    if (section) section.click();
-
-    const select = document.getElementById('admin-task-player-select');
-    if (select) {
-      select.value = username;
-      select.dispatchEvent(new Event('change'));
+  window.__removeAvatar = async (username) => {
+    if (!confirm(`Remove avatar for "${username}"?`)) return;
+    const res = await fetch('/api/avatar/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    }).then(r => r.json());
+    if (res.success) {
+      toast('Avatar removed');
+      renderPlayersTable();
+    } else {
+      toast('Failed to remove avatar', 'error');
     }
+  };
 
-    // Scroll to task manager
-    setTimeout(() => {
-      const el = document.querySelector('.admin-tasks-section');
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }, 300);
+  window.__setPlayerPassword = async (username) => {
+    const newPassword = prompt(`Enter new password for "${username}":`);
+    if (!newPassword || newPassword.length < 4) {
+      toast('Password must be at least 4 characters.', 'error');
+      return;
+    }
+    const confirmPw = prompt('Confirm new password:');
+    if (newPassword !== confirmPw) {
+      toast('Passwords do not match.', 'error');
+      return;
+    }
+    const res = await fetch('/api/admin/set-player-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playerUsername: username, newPassword }),
+    }).then(r => r.json());
+    if (res.success) {
+      toast(res.message || 'Password updated!');
+    } else {
+      toast(res.message || 'Failed to update password.', 'error');
+    }
   };
 
   window.__saveNotes = async (username, notesId) => {
@@ -488,112 +512,75 @@
     }
   };
 
-  /* ─── ADMIN: Tasks ─── */
-  function setupAdminTasks() {
-    const select = document.getElementById('admin-task-player-select');
-    const taskList = document.getElementById('admin-task-list');
-    const addBtn = document.getElementById('btn-admin-add-task');
-    const taskInput = document.getElementById('admin-task-input');
+  /* ─── ADMIN: Daily Task ─── */
+  function setupAdminDailyTask() {
+    const setBtn = document.getElementById('btn-admin-set-daily-task');
+    const input = document.getElementById('admin-daily-task-input');
+    if (!setBtn) return;
 
-    if (!select) return;
-
-    // Populate player select when achievements tab opens
-    const loadPlayersIntoSelect = () => {
-      select.innerHTML = '<option value="">-- Select a player --</option>';
-      adminDataCache.players.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.username;
-        opt.textContent = p.username;
-        select.appendChild(opt);
-      });
-    };
-
-    select.addEventListener('change', async () => {
-      const player = select.value;
-      if (!player) {
-        taskList.innerHTML = '<p class="text-muted" style="padding:1rem;text-align:center;">Select a player to manage tasks.</p>';
-        return;
-      }
-      const res = await fetch('/api/tasks/' + encodeURIComponent(player)).then(r => r.json());
-      renderAdminTasks(player, res.tasks || []);
-    });
-
-    addBtn.addEventListener('click', async () => {
-      const player = select.value;
-      const text = taskInput.value.trim();
-      if (!player) { toast('Select a player first', 'error'); return; }
+    setBtn.addEventListener('click', async () => {
+      const text = input.value.trim();
       if (!text) { toast('Enter a task description', 'error'); return; }
-
-      const res = await fetch('/api/tasks/' + encodeURIComponent(player)).then(r => r.json());
-      const tasks = res.tasks || [];
-      tasks.push({ id: 'task_' + Date.now(), text, completed: false });
-
-      const saveRes = await fetch('/api/tasks/' + encodeURIComponent(player), {
+      const res = await fetch('/api/daily-task/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tasks }),
+        body: JSON.stringify({ text }),
       }).then(r => r.json());
-
-      if (saveRes.success) {
-        taskInput.value = '';
-        renderAdminTasks(player, tasks);
-        toast('Task added');
+      if (res.success) {
+        toast('Daily task text updated!');
+        input.value = '';
+        loadDailyTaskLog();
+      } else {
+        toast('Failed to update', 'error');
       }
     });
 
-    taskInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') addBtn.click();
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') setBtn.click();
     });
 
-    // Hook into achievements section being shown to refresh player list
     const achievementsNavBtn = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
     if (achievementsNavBtn) {
       achievementsNavBtn.addEventListener('click', () => {
-        setTimeout(loadPlayersIntoSelect, 100);
+        setTimeout(() => {
+          loadDailyTaskConfig();
+          loadDailyTaskLog();
+        }, 100);
       });
     }
   }
 
-  async function renderAdminTasks(player, tasks) {
-    const taskList = document.getElementById('admin-task-list');
-    if (!tasks || tasks.length === 0) {
-      taskList.innerHTML = '<p class="text-muted" style="padding:1rem;text-align:center;">No tasks for this player. Add one above.</p>';
-      return;
-    }
-    taskList.innerHTML = tasks.map(t => `
-      <div class="admin-task-item ${t.completed ? 'completed' : ''}">
-        <input type="checkbox" ${t.completed ? 'checked' : ''}
-          onchange="window.__toggleAdminTask('${player}', '${t.id}', this.checked)">
-        <span class="admin-task-text">${t.text}</span>
-        <button class="admin-task-del-btn" onclick="window.__deleteAdminTask('${player}', '${t.id}')">✕</button>
-      </div>
-    `).join('');
+  async function loadDailyTaskConfig() {
+    try {
+      const res = await fetch('/api/daily-task/config').then(r => r.json());
+      const input = document.getElementById('admin-daily-task-input');
+      if (input) input.placeholder = 'Current: ' + (res.text || 'Daily Task');
+    } catch {}
   }
 
-  window.__toggleAdminTask = async (player, taskId, completed) => {
-    const res = await fetch(`/api/tasks/${encodeURIComponent(player)}/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed }),
-    }).then(r => r.json());
-    if (res.success) {
-      renderAdminTasks(player, res.tasks);
+  async function loadDailyTaskLog() {
+    const container = document.getElementById('admin-daily-task-log');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/daily-task/log').then(r => r.json());
+      const completions = res.completions || [];
+      const text = res.text || 'Daily Task';
+      if (completions.length === 0) {
+        container.innerHTML = '<p class="text-muted" style="padding:0.5rem;text-align:center;">No completions yet.</p>';
+        return;
+      }
+      container.innerHTML = '<table class="data-table compact"><thead><tr><th>Player</th><th>Date</th><th>Time</th></tr></thead><tbody>' +
+        completions.map(c => `
+          <tr>
+            <td><strong>${c.playerUsername}</strong></td>
+            <td>${c.date}</td>
+            <td>${new Date(c.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+          </tr>
+        `).join('') + '</tbody></table>';
+    } catch {
+      container.innerHTML = '<p class="text-muted" style="padding:0.5rem;">Failed to load log.</p>';
     }
-  };
-
-  window.__deleteAdminTask = async (player, taskId) => {
-    const res = await fetch('/api/tasks/' + encodeURIComponent(player)).then(r => r.json());
-    const tasks = (res.tasks || []).filter(t => t.id !== taskId);
-    const saveRes = await fetch('/api/tasks/' + encodeURIComponent(player), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tasks }),
-    }).then(r => r.json());
-    if (saveRes.success) {
-      renderAdminTasks(player, tasks);
-      toast('Task removed');
-    }
-  };
+  }
 
   /* ─── ADMIN: Achievement Categories ─── */
   function setupAchievementCategories() {
@@ -901,64 +888,55 @@
         }
       } catch {}
 
-      // Player Tasks
-      const taskRes = await fetch('/api/tasks/' + encodeURIComponent(authState.username)).then(r => r.json());
-      const tasks = taskRes.tasks || [];
-      renderPlayerTasks(tasks);
+      // Daily Task
+      renderDailyTask();
     } catch (err) {
       console.error('Player data refresh failed', err);
     }
   }
 
-  function renderPlayerTasks(tasks) {
-    const taskContainer = document.getElementById('player-task-checklist');
-    if (!taskContainer) return;
-    const active = tasks.filter(t => !t.completed);
-    const done = tasks.filter(t => t.completed);
-    let html = '';
-    if (active.length === 0 && done.length === 0) {
-      html = '<p class="text-muted" style="padding:0.5rem;font-size:0.85rem;">No tasks assigned yet.</p>';
-    } else {
-      if (active.length > 0) {
-        html += active.map(t => `
-          <label class="player-task-item">
-            <input type="checkbox"
-              onchange="window.__togglePlayerTask('${t.id}', this.checked)">
-            <span class="player-task-text">${t.text}</span>
-          </label>
-        `).join('');
+  async function renderDailyTask() {
+    const container = document.getElementById('player-daily-task');
+    const checkbox = document.getElementById('daily-task-checkbox');
+    const textEl = document.getElementById('daily-task-text');
+    const hintEl = document.getElementById('daily-task-hint');
+    if (!checkbox) return;
+    try {
+      const res = await fetch('/api/daily-task/status/' + encodeURIComponent(authState.username)).then(r => r.json());
+      textEl.textContent = res.text || 'Daily Task';
+      if (res.completed) {
+        checkbox.checked = true;
+        checkbox.disabled = true;
+        hintEl.textContent = 'Completed for today ✓ — Resets at 6:00 AM';
+        if (container) container.classList.add('completed');
+      } else {
+        checkbox.checked = false;
+        checkbox.disabled = false;
+        hintEl.textContent = 'Resets at 6:00 AM';
+        if (container) container.classList.remove('completed');
       }
-      if (done.length > 0) {
-        html += `<details class="completed-tasks-details">
-          <summary class="completed-tasks-summary">✓ Completed (${done.length})</summary>
-          <div class="completed-tasks-list">
-            ${done.map(t => `
-              <label class="player-task-item completed">
-                <input type="checkbox" checked
-                  onchange="window.__togglePlayerTask('${t.id}', this.checked)">
-                <span class="player-task-text">${t.text}</span>
-              </label>
-            `).join('')}
-          </div>
-        </details>`;
-      }
+    } catch {
+      textEl.textContent = 'Failed to load';
     }
-    taskContainer.innerHTML = html;
   }
 
-  window.__togglePlayerTask = async (taskId, completed) => {
-    const res = await fetch(`/api/tasks/${encodeURIComponent(authState.username)}/${taskId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ completed }),
-    }).then(r => r.json());
-    if (res.success) {
-      renderPlayerTasks(res.tasks || []);
-      if (completed) {
-        window.__playSound && window.__playSound('taskComplete');
+  document.addEventListener('change', async (e) => {
+    if (e.target.id === 'daily-task-checkbox' && e.target.checked) {
+      e.target.disabled = true;
+      const res = await fetch('/api/daily-task/check/' + encodeURIComponent(authState.username), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).then(r => r.json());
+      if (res.success) {
+        window.__playSound && window.__playSound('dailyTaskComplete');
+        renderDailyTask();
+      } else {
+        toast(res.message || 'Failed', 'error');
+        e.target.checked = false;
+        e.target.disabled = false;
       }
     }
-  };
+  });
 
   function startPlayerPolling() {
     if (pollTimer) clearInterval(pollTimer);
@@ -1074,23 +1052,64 @@
       const ctx = this._getCtx();
       if (!ctx) return;
       if (ctx.state === 'suspended') ctx.resume();
+      const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = type;
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(vol, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
       osc.connect(gain);
       gain.connect(ctx.destination);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + duration);
+      osc.start(now);
+      osc.stop(now + duration);
     },
 
-    click() { this._play(800, 0.08, 'sine', 0.08); },
-    check() { this._play(660, 0.1, 'sine', 0.1); setTimeout(() => this._play(990, 0.15, 'sine', 0.1), 80); },
-    taskComplete() { this._play(523, 0.12, 'sine', 0.12); setTimeout(() => this._play(659, 0.12, 'sine', 0.12), 100); setTimeout(() => this._play(784, 0.2, 'sine', 0.12), 200); },
-    coin() { this._play(880, 0.08, 'sine', 0.12); setTimeout(() => this._play(1100, 0.12, 'sine', 0.12), 60); setTimeout(() => this._play(1320, 0.2, 'sine', 0.1), 120); },
-    notification() { this._play(440, 0.15, 'square', 0.06); setTimeout(() => this._play(660, 0.2, 'square', 0.06), 150); },
+    _playTone(freq, duration, type, vol, startDelay = 0) {
+      if (!this._enabled) return;
+      const ctx = this._getCtx();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      const now = ctx.currentTime + startDelay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(vol, now + 0.01);
+      gain.gain.setValueAtTime(vol, now + duration * 0.6);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+    },
+
+    click() {
+      this._playTone(1200, 0.06, 'sine', 0.06);
+      this._playTone(800, 0.04, 'sine', 0.04, 0.02);
+    },
+    check() {
+      this._playTone(880, 0.1, 'sine', 0.08);
+      this._playTone(1320, 0.12, 'sine', 0.07, 0.06);
+    },
+    dailyTaskComplete() {
+      this._playTone(523, 0.1, 'triangle', 0.1);
+      this._playTone(659, 0.1, 'triangle', 0.1, 0.08);
+      this._playTone(784, 0.15, 'triangle', 0.1, 0.16);
+      this._playTone(1047, 0.25, 'triangle', 0.08, 0.26);
+    },
+    coin() {
+      this._playTone(1100, 0.06, 'sine', 0.08);
+      this._playTone(1380, 0.06, 'sine', 0.07, 0.04);
+      this._playTone(1650, 0.08, 'sine', 0.06, 0.08);
+      this._playTone(1980, 0.14, 'sine', 0.05, 0.12);
+    },
+    notification() {
+      this._playTone(660, 0.08, 'sine', 0.06);
+      this._playTone(880, 0.06, 'sine', 0.05, 0.06);
+      this._playTone(660, 0.12, 'sine', 0.05, 0.1);
+    },
     toggle() {
       this._enabled = !this._enabled;
       localStorage.setItem('fc_sound', this._enabled ? 'on' : 'off');
@@ -1196,8 +1215,9 @@
       }
     });
 
-    // ── Admin Tasks Setup ──
-    setupAdminTasks();
+    // ── Admin Daily Task Setup ──
+    setupAdminDailyTask();
+    loadDailyTaskConfig();
 
     // ── Coin Awarding ──
     document.getElementById('btn-award-coins')?.addEventListener('click', async () => {
@@ -1359,18 +1379,22 @@
       btn.disabled = false;
     });
 
-    // ── Admin Socket Listener for Task Completion ──
+    // ── Socket Listeners ──
     const socket = io();
-    socket.on('task:completed', (data) => {
+
+    socket.on('dailyTask:completed', (data) => {
       if (!data) return;
-      const msg = `✅ ${data.player} completed task: "${data.taskText}"`;
+      const msg = `✅ ${data.player} completed daily task: "${data.text}"`;
       toast(msg, 'success');
       SoundManager.notification();
-      // Refresh admin task list if viewing the relevant player
-      const select = document.getElementById('admin-task-player-select');
-      if (select && select.value === data.player) {
-        select.dispatchEvent(new Event('change'));
+      if (authState && authState.role === 'admin') {
+        loadDailyTaskLog();
       }
+    });
+
+    socket.on('dailyTask:configUpdate', (text) => {
+      const input = document.getElementById('admin-daily-task-input');
+      if (input) input.placeholder = 'Current: ' + text;
     });
 
     // ── Socket coin award listener ──

@@ -8,7 +8,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, PlayerTask, connectDB } = require('./db');
+const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, connectDB } = require('./db');
 const { EventBridge } = require('./eventBridge');
 
 const app = express();
@@ -234,6 +234,7 @@ app.delete('/player/:username', async (req, res) => {
 
   await Achievement.deleteOne({ playerUsername: req.params.username });
   await PlayerNote.deleteOne({ username: req.params.username });
+  await DailyCompletion.deleteMany({ playerUsername: req.params.username });
   res.json({ success: true });
 });
 
@@ -554,59 +555,109 @@ app.post('/api/avatar/remove', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// TASK ROUTES
+// DAILY TASK ROUTES
 // ═══════════════════════════════════════════════
 
-app.get('/api/tasks/:player', async (req, res) => {
+const SIX_AM = 6; // hour (server local time)
+
+function getTodayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function isBefore6am() {
+  return new Date().getHours() < SIX_AM;
+}
+
+function getTaskDate() {
+  const d = new Date();
+  if (d.getHours() < SIX_AM) d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// Get daily task config (admin)
+app.get('/api/daily-task/config', async (req, res) => {
   try {
-    const pt = await PlayerTask.findOne({ playerUsername: req.params.player }).lean();
-    res.json({ tasks: pt?.tasks || [] });
+    let config = await DailyTaskConfig.findOne({ key: 'config' }).lean();
+    if (!config) config = { key: 'config', text: 'Daily Task' };
+    res.json({ text: config.text });
   } catch {
-    res.json({ tasks: [] });
+    res.json({ text: 'Daily Task' });
   }
 });
 
-app.post('/api/tasks/:player', async (req, res) => {
+// Set daily task text (admin)
+app.post('/api/daily-task/config', async (req, res) => {
   try {
-    const { tasks } = req.body;
-    if (!Array.isArray(tasks)) return res.json({ success: false, message: 'Tasks must be an array.' });
-
-    await PlayerTask.findOneAndUpdate(
-      { playerUsername: req.params.player },
-      { playerUsername: req.params.player, tasks },
+    const { text } = req.body;
+    await DailyTaskConfig.findOneAndUpdate(
+      { key: 'config' },
+      { key: 'config', text: text || 'Daily Task' },
       { upsert: true }
     );
-    res.json({ success: true, tasks });
+    io.emit('dailyTask:configUpdate', text);
+    res.json({ success: true, text });
   } catch {
-    res.json({ success: false, message: 'Failed to save tasks.' });
+    res.json({ success: false, message: 'Failed to update task text.' });
   }
 });
 
-app.patch('/api/tasks/:player/:taskId', async (req, res) => {
+// Get daily task status for a player
+app.get('/api/daily-task/status/:player', async (req, res) => {
   try {
-    const { completed } = req.body;
-    const pt = await PlayerTask.findOne({ playerUsername: req.params.player });
-    if (!pt) return res.json({ success: false, message: 'No tasks found.' });
-
-    const task = pt.tasks.id(req.params.taskId);
-    if (!task) return res.json({ success: false, message: 'Task not found.' });
-
-    const wasJustCompleted = completed === true && !task.completed;
-    task.completed = completed === true;
-    await pt.save();
-
-    if (wasJustCompleted) {
-      io.emit('task:completed', {
-        player: req.params.player,
-        taskId: task.id,
-        taskText: task.text,
-        timestamp: Date.now(),
-      });
-    }
-
-    res.json({ success: true, tasks: pt.tasks });
+    const taskDate = getTaskDate();
+    const completion = await DailyCompletion.findOne({
+      playerUsername: req.params.player,
+      date: taskDate,
+    }).lean();
+    const config = await DailyTaskConfig.findOne({ key: 'config' }).lean();
+    res.json({
+      completed: !!completion,
+      date: taskDate,
+      text: config?.text || 'Daily Task',
+    });
   } catch {
-    res.json({ success: false, message: 'Failed to update task.' });
+    res.json({ completed: false, date: getTaskDate(), text: 'Daily Task' });
+  }
+});
+
+// Mark daily task as completed
+app.post('/api/daily-task/check/:player', async (req, res) => {
+  try {
+    const taskDate = getTaskDate();
+    const existing = await DailyCompletion.findOne({
+      playerUsername: req.params.player,
+      date: taskDate,
+    });
+    if (existing) {
+      return res.json({ success: false, message: 'Already completed today.' });
+    }
+    const config = await DailyTaskConfig.findOne({ key: 'config' }).lean();
+    await DailyCompletion.create({
+      playerUsername: req.params.player,
+      date: taskDate,
+      completedAt: Date.now(),
+    });
+    io.emit('dailyTask:completed', {
+      player: req.params.player,
+      text: config?.text || 'Daily Task',
+      timestamp: Date.now(),
+    });
+    res.json({ success: true });
+  } catch {
+    res.json({ success: false, message: 'Failed to record completion.' });
+  }
+});
+
+// Get daily task log (admin)
+app.get('/api/daily-task/log', async (req, res) => {
+  try {
+    const completions = await DailyCompletion.find()
+      .sort({ completedAt: -1 }).limit(200).lean();
+    const config = await DailyTaskConfig.findOne({ key: 'config' }).lean();
+    res.json({ completions, text: config?.text || 'Daily Task' });
+  } catch {
+    res.json({ completions: [], text: 'Daily Task' });
   }
 });
 
@@ -646,6 +697,32 @@ app.post('/admin/change-password', async (req, res) => {
     }
 
     res.json({ success: true, message: 'Admin password updated successfully.' });
+  } catch {
+    res.json({ success: false, message: 'Server error.' });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// ADMIN SET PLAYER PASSWORD
+// ═══════════════════════════════════════════════
+
+app.post('/api/admin/set-player-password', async (req, res) => {
+  try {
+    const { playerUsername, newPassword } = req.body;
+    if (!playerUsername || !newPassword) {
+      return res.json({ success: false, message: 'Player username and new password required.' });
+    }
+    if (newPassword.length < 4) {
+      return res.json({ success: false, message: 'Password must be at least 4 characters.' });
+    }
+    const user = await User.findOne({ username: playerUsername, role: 'player' });
+    if (!user) return res.json({ success: false, message: 'Player not found.' });
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+    user.password = hashed;
+    await user.save();
+
+    res.json({ success: true, message: `Password for "${playerUsername}" updated.` });
   } catch {
     res.json({ success: false, message: 'Server error.' });
   }

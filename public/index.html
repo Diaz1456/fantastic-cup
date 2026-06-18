@@ -208,7 +208,7 @@
           </div>
           <div class="table-wrapper glass">
             <table class="data-table">
-              <thead><tr><th>Username</th><th>Avatar</th><th>Status</th><th>Notes</th><th>Tasks</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Username</th><th>Avatar</th><th>Status</th><th>Notes</th><th>Password</th><th>Actions</th></tr></thead>
               <tbody id="players-tbody"></tbody>
             </table>
           </div>
@@ -248,15 +248,17 @@
             </div>
           </div>
 
-          <div class="admin-tasks-section glass">
-            <h4>📋 Player Task Manager</h4>
-            <div class="task-select-player-row">
-              <select id="admin-task-player-select" class="admin-input"></select>
+          <div class="admin-daily-task-section glass">
+            <h4>📅 Daily Task Manager</h4>
+            <div class="daily-task-config-row">
+              <input type="text" id="admin-daily-task-input" placeholder="Set daily task text..." class="admin-input" style="flex:1;">
+              <button class="btn btn-primary btn-sm" id="btn-admin-set-daily-task">Set Task</button>
             </div>
-            <div id="admin-task-list" class="admin-task-list"></div>
-            <div class="admin-task-add-row">
-              <input type="text" id="admin-task-input" placeholder="New task description..." class="admin-input">
-              <button class="btn btn-primary btn-sm" id="btn-admin-add-task">Add Task</button>
+            <div class="daily-task-log-section">
+              <h5>Completion Log</h5>
+              <div id="admin-daily-task-log" class="daily-task-log-list">
+                <p class="text-muted" style="padding:0.5rem;">Loading...</p>
+              </div>
             </div>
           </div>
         </section>
@@ -356,8 +358,18 @@
         </div>
 
         <div class="player-section">
-          <h3 class="player-section-title">📋 My Tasks</h3>
-          <div id="player-task-checklist" class="player-task-checklist"></div>
+          <h3 class="player-section-title">📅 Daily Task</h3>
+          <div id="player-daily-task" class="daily-task-card glass">
+            <div class="daily-task-row">
+              <label class="daily-task-checkbox-wrapper">
+                <input type="checkbox" id="daily-task-checkbox" disabled>
+              </label>
+              <div class="daily-task-info">
+                <span class="daily-task-text" id="daily-task-text">Loading...</span>
+                <span class="daily-task-hint" id="daily-task-hint">Resets at 6:00 AM</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="player-section player-settings-section">
