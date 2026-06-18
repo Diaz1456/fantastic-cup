@@ -7,10 +7,18 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, connectDB } = require('./db');
+const { EventBridge } = require('./eventBridge');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
+const eventBridge = new EventBridge();
+
+// Broadcast state through Socket.IO when bridge changes
+eventBridge.on((state) => {
+  io.emit('eventBridge:sync', state);
+});
+
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fantastic-cup';
 const DATA_FILE = path.join(__dirname, 'data.json');
@@ -533,14 +541,79 @@ io.on('connection', (socket) => {
     socket.leave(`event:${eventId}`);
   });
 
+  // ─── EVENT BRIDGE SOCKET HANDLERS ───
+
+  socket.emit('eventBridge:sync', eventBridge.getState());
+
+  socket.on('eventBridge:join', () => {
+    socket.emit('eventBridge:sync', eventBridge.getState());
+  });
+
+  socket.on('eventBridge:adminLogin', (password) => {
+    if (password !== 'commander42') {
+      return socket.emit('eventBridge:error', 'Invalid admin password');
+    }
+    socket.emit('eventBridge:sync', { ...eventBridge.getState(), adminToken: 'granted' });
+  });
+
+  socket.on('eventBridge:setTimer', (data) => {
+    eventBridge.setTimer(data.deadline, data.mysteryMode);
+  });
+
+  socket.on('eventBridge:pauseTimer', () => eventBridge.pauseTimer());
+  socket.on('eventBridge:resumeTimer', () => eventBridge.resumeTimer());
+  socket.on('eventBridge:resetTimer', () => eventBridge.resetTimer());
+  socket.on('eventBridge:extendTimer', (s) => eventBridge.extendTimer(s));
+
+  socket.on('eventBridge:switchModule', (mod) => {
+    eventBridge.setActiveModule(mod);
+    if (eventBridge.state.phase === 'standby') eventBridge.setPhase('active');
+  });
+
+  socket.on('eventBridge:updateTeams', (teams) => eventBridge.updateTeams(teams));
+
+  socket.on('eventBridge:awardCoin', (data) => {
+    const result = eventBridge.awardCoin(data);
+    io.emit('eventBridge:coinAwarded', result.tx, result.newBalance);
+  });
+
+  socket.on('eventBridge:startBattle', () => eventBridge.startBattle());
+
+  socket.on('eventBridge:eliminateTank', (tankId) => {
+    const state = eventBridge.state;
+    if (state.tankBattle.phase !== 'battle') return socket.emit('eventBridge:error', 'Battle not started');
+    const now = Date.now();
+    if (state.tankBattle.lastEliminationAt && (now - state.tankBattle.lastEliminationAt) < state.tankBattle.eliminationCooldown) {
+      return socket.emit('eventBridge:error', `Cooldown: ${Math.ceil((state.tankBattle.eliminationCooldown - (now - state.tankBattle.lastEliminationAt)) / 1000)}s`);
+    }
+    eventBridge.setTankUnderAttack(tankId);
+    io.emit('eventBridge:tankUnderAttack', tankId);
+    setTimeout(() => {
+      const eliminated = eventBridge.eliminateTank(tankId);
+      if (eliminated) {
+        io.emit('eventBridge:tankEliminated', tankId, eliminated.rank);
+        if (eventBridge.state.tankBattle.phase === 'victory') {
+          const winner = eventBridge.state.tankBattle.tanks.find(t => t.status === 'victorious');
+          const rankings = eventBridge.getTanksSortedByRank();
+          io.emit('eventBridge:battleVictory', winner, rankings);
+        }
+      }
+    }, 2000);
+  });
+
+  socket.on('eventBridge:resetBattle', () => eventBridge.resetTankBattle());
+
+  // ─── END EVENT BRIDGE ───
+
   socket.on('disconnect', () => {
     console.log('Socket disconnected:', socket.id);
   });
 });
 
-// Periodically sync timer state for active events
-setInterval(async () => {
+// Periodically sync timer state for active events (MongoDB only)
+const timerSyncInterval = setInterval(async () => {
   try {
+    if (typeof Event === 'undefined') return;
     const activeEvents = await Event.find({ active: true }).lean();
     activeEvents.forEach(ev => {
       io.emit('timer:sync', {
@@ -555,23 +628,45 @@ setInterval(async () => {
 
 // ═══════════════════════════════════════════════
 
+// ─── EVENT BRIDGE REST ROUTES ───
+app.get('/api/event-bridge/state', (req, res) => res.json(eventBridge.getState()));
+
+app.post('/api/event-bridge/admin/login', (req, res) => {
+  const { password } = req.body;
+  if (password !== 'commander42') return res.status(401).json({ error: 'Invalid password' });
+  res.json({ token: 'granted' });
+});
+
+// Serve the new React Event Section
+const eventDist = path.join(__dirname, 'client', 'dist');
+app.use('/event', express.static(eventDist));
+app.get('/event/*', (req, res) => {
+  res.sendFile(path.join(eventDist, 'index.html'));
+});
+
+// ─── END EVENT BRIDGE ───
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // ---- Start ----
 
-async function start() {
-  try {
-    await connectDB(MONGO_URI);
-    console.log('Connected to MongoDB');
-    await migrateFromFile();
-  } catch (err) {
-    console.error('Failed to connect to MongoDB:', err.message);
-  }
-
+function start() {
+  // Start listening immediately (don't block on MongoDB)
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+    console.log(`✓ Server running on http://0.0.0.0:${PORT}`);
+    console.log(`  → Legacy UI:  http://0.0.0.0:${PORT}/`);
+    console.log(`  → Event UI:   http://0.0.0.0:${PORT}/event/`);
+    console.log(`  → Admin pass: commander42`);
+  });
+
+  // Attempt MongoDB in background (legacy features only)
+  connectDB(MONGO_URI).then(() => {
+    console.log('✓ MongoDB connected');
+    migrateFromFile().catch(() => {});
+  }).catch(err => {
+    console.log('ℹ MongoDB unavailable — legacy features disabled, event section still works');
   });
 }
 

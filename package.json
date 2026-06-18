@@ -1,11 +1,13 @@
 {
   "name": "fantastic-cup",
   "version": "1.0.0",
-  "description": "Fantastic Cup – Score Lead Management System",
+  "description": "Fantastic Cup – Score Lead Management System + Event Section",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build:client": "cd client && npm install && npx vite build",
+    "postinstall": "npm run build:client"
   },
   "dependencies": {
     "body-parser": "^1.20.2",
@@ -13,6 +15,7 @@
     "dotenv": "^17.4.2",
     "express": "^4.18.2",
     "mongoose": "^8.24.0",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "uuid": "^9.0.0"
   }
 }

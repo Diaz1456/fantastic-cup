@@ -1,0 +1,84 @@
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { EventState, ServerToClientEvents, ClientToServerEvents, Tank, Team, CoinTransaction } from '../types';
+
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
+
+export function useSocket() {
+  const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [gameState, setGameState] = useState<EventState | null>(null);
+  const [timerDisplay, setTimerDisplay] = useState<string>('');
+  const [timerRemaining, setTimerRemaining] = useState<number>(0);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [tankUnderAttack, setTankUnderAttack] = useState<string | null>(null);
+  const [lastElimination, setLastElimination] = useState<{ tankId: string; rank: number } | null>(null);
+  const [victoryData, setVictoryData] = useState<{ winner: Tank; rankings: Tank[] } | null>(null);
+  const [coinNotification, setCoinNotification] = useState<{ tx: CoinTransaction; balance: number } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+    socketRef.current = socket as any;
+
+    socket.on('connect', () => setConnected(true));
+    socket.on('disconnect', () => setConnected(false));
+
+    socket.on('stateSync', (state) => {
+      setGameState(state);
+      setTeams(state.teams);
+      setVictoryData(null);
+      setLastElimination(null);
+      setTankUnderAttack(null);
+    });
+
+    socket.on('timerTick', (remaining, display) => {
+      setTimerRemaining(remaining);
+      setTimerDisplay(display);
+    });
+
+    socket.on('teamsUpdate', (updated) => setTeams(updated));
+
+    socket.on('coinAwarded', (tx, balance) => {
+      setCoinNotification({ tx, balance });
+      setTimeout(() => setCoinNotification(null), 4000);
+    });
+
+    socket.on('tankUnderAttack', (id) => setTankUnderAttack(id));
+    socket.on('tankEliminated', (tankId, rank) => {
+      setLastElimination({ tankId, rank });
+      setTankUnderAttack(null);
+    });
+    socket.on('battleVictory', (winner, rankings) => setVictoryData({ winner, rankings }));
+
+    socket.on('error', (msg) => {
+      setError(msg);
+      setTimeout(() => setError(null), 5000);
+    });
+
+    socket.emit('join');
+
+    return () => { socket.disconnect(); };
+  }, []);
+
+  const adminLogin = useCallback((pw: string) => socketRef.current?.emit('adminLogin', pw), []);
+  const adminSetTimer = useCallback((deadline: number, mysteryMode: boolean) => socketRef.current?.emit('adminSetTimer', { deadline, mysteryMode }), []);
+  const adminPauseTimer = useCallback(() => socketRef.current?.emit('adminPauseTimer'), []);
+  const adminResumeTimer = useCallback(() => socketRef.current?.emit('adminResumeTimer'), []);
+  const adminResetTimer = useCallback(() => socketRef.current?.emit('adminResetTimer'), []);
+  const adminExtendTimer = useCallback((s: number) => socketRef.current?.emit('adminExtendTimer', s), []);
+  const adminSwitchModule = useCallback((m: any) => socketRef.current?.emit('adminSwitchModule', m), []);
+  const adminUpdateTeams = useCallback((t: Team[]) => socketRef.current?.emit('adminUpdateTeams', t), []);
+  const adminAwardCoin = useCallback((d: any) => socketRef.current?.emit('adminAwardCoin', d), []);
+  const adminStartBattle = useCallback(() => socketRef.current?.emit('adminStartBattle'), []);
+  const adminEliminateTank = useCallback((id: string) => socketRef.current?.emit('adminEliminateTank', id), []);
+  const adminResetBattle = useCallback(() => socketRef.current?.emit('adminResetBattle'), []);
+
+  return {
+    connected, gameState, teams, timerDisplay, timerRemaining,
+    tankUnderAttack, lastElimination, victoryData, coinNotification, error,
+    adminLogin, adminSetTimer, adminPauseTimer, adminResumeTimer,
+    adminResetTimer, adminExtendTimer, adminSwitchModule, adminUpdateTeams,
+    adminAwardCoin, adminStartBattle, adminEliminateTank, adminResetBattle,
+  };
+}
