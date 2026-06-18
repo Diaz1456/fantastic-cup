@@ -20,6 +20,7 @@ export default function App() {
       )}
 
       <div className="view-toggle">
+        <a href="/" className="main-site-btn">← MAIN SITE</a>
         <button className={`toggle-btn ${view === 'player' ? 'active' : ''}`} onClick={() => setView('player')}>EVENT</button>
         <button className={`toggle-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>ADMIN</button>
       </div>

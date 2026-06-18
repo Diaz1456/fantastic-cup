@@ -14,9 +14,19 @@ const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 const eventBridge = new EventBridge();
 
+let mongoReady = false;
+
 // Broadcast state through Socket.IO when bridge changes
 eventBridge.on((state) => {
-  io.emit('eventBridge:sync', state);
+  const { _timerRemaining, _timerDisplay, ...clean } = state;
+  io.emit('stateSync', clean);
+});
+
+// Emit timer ticks separately
+eventBridge.on((state) => {
+  if (state._timerRemaining !== undefined) {
+    io.emit('timerTick', state._timerRemaining, state._timerDisplay || '');
+  }
 });
 
 const PORT = process.env.PORT || 3000;
@@ -543,65 +553,75 @@ io.on('connection', (socket) => {
 
   // ─── EVENT BRIDGE SOCKET HANDLERS ───
 
-  socket.emit('eventBridge:sync', eventBridge.getState());
+  socket.emit('stateSync', eventBridge.getState());
 
-  socket.on('eventBridge:join', () => {
-    socket.emit('eventBridge:sync', eventBridge.getState());
+  socket.on('join', () => {
+    socket.emit('stateSync', eventBridge.getState());
   });
 
-  socket.on('eventBridge:adminLogin', (password) => {
-    if (password !== 'commander42') {
-      return socket.emit('eventBridge:error', 'Invalid admin password');
+  socket.on('adminLogin', (password) => {
+    if (password !== 'commander48') {
+      return socket.emit('error', 'Invalid admin password');
     }
-    socket.emit('eventBridge:sync', { ...eventBridge.getState(), adminToken: 'granted' });
+    socket.emit('stateSync', { ...eventBridge.getState(), adminToken: 'granted' });
   });
 
-  socket.on('eventBridge:setTimer', (data) => {
+  socket.on('adminSetTimer', (data) => {
     eventBridge.setTimer(data.deadline, data.mysteryMode);
   });
 
-  socket.on('eventBridge:pauseTimer', () => eventBridge.pauseTimer());
-  socket.on('eventBridge:resumeTimer', () => eventBridge.resumeTimer());
-  socket.on('eventBridge:resetTimer', () => eventBridge.resetTimer());
-  socket.on('eventBridge:extendTimer', (s) => eventBridge.extendTimer(s));
+  socket.on('adminPauseTimer', () => eventBridge.pauseTimer());
+  socket.on('adminResumeTimer', () => eventBridge.resumeTimer());
+  socket.on('adminResetTimer', () => eventBridge.resetTimer());
+  socket.on('adminExtendTimer', (s) => eventBridge.extendTimer(s));
 
-  socket.on('eventBridge:switchModule', (mod) => {
+  socket.on('adminSwitchModule', (mod) => {
     eventBridge.setActiveModule(mod);
-    if (eventBridge.state.phase === 'standby') eventBridge.setPhase('active');
+    io.emit('moduleChange', mod);
+    if (eventBridge.state.phase === 'standby') {
+      eventBridge.setPhase('active');
+      io.emit('phaseChange', 'active');
+    }
   });
 
-  socket.on('eventBridge:updateTeams', (teams) => eventBridge.updateTeams(teams));
+  socket.on('adminUpdateTeams', (teams) => {
+    eventBridge.updateTeams(teams);
+    io.emit('teamsUpdate', eventBridge.getState().teams);
+  });
 
-  socket.on('eventBridge:awardCoin', (data) => {
+  socket.on('adminAwardCoin', (data) => {
     const result = eventBridge.awardCoin(data);
-    io.emit('eventBridge:coinAwarded', result.tx, result.newBalance);
+    io.emit('coinAwarded', result.tx, result.newBalance);
   });
 
-  socket.on('eventBridge:startBattle', () => eventBridge.startBattle());
+  socket.on('adminStartBattle', () => {
+    eventBridge.startBattle();
+    io.emit('battleStarted', Date.now());
+  });
 
-  socket.on('eventBridge:eliminateTank', (tankId) => {
+  socket.on('adminEliminateTank', (tankId) => {
     const state = eventBridge.state;
-    if (state.tankBattle.phase !== 'battle') return socket.emit('eventBridge:error', 'Battle not started');
+    if (state.tankBattle.phase !== 'battle') return socket.emit('error', 'Battle not started');
     const now = Date.now();
     if (state.tankBattle.lastEliminationAt && (now - state.tankBattle.lastEliminationAt) < state.tankBattle.eliminationCooldown) {
-      return socket.emit('eventBridge:error', `Cooldown: ${Math.ceil((state.tankBattle.eliminationCooldown - (now - state.tankBattle.lastEliminationAt)) / 1000)}s`);
+      return socket.emit('error', `Cooldown: ${Math.ceil((state.tankBattle.eliminationCooldown - (now - state.tankBattle.lastEliminationAt)) / 1000)}s`);
     }
     eventBridge.setTankUnderAttack(tankId);
-    io.emit('eventBridge:tankUnderAttack', tankId);
+    io.emit('tankUnderAttack', tankId);
     setTimeout(() => {
       const eliminated = eventBridge.eliminateTank(tankId);
       if (eliminated) {
-        io.emit('eventBridge:tankEliminated', tankId, eliminated.rank);
+        io.emit('tankEliminated', tankId, eliminated.rank);
         if (eventBridge.state.tankBattle.phase === 'victory') {
           const winner = eventBridge.state.tankBattle.tanks.find(t => t.status === 'victorious');
           const rankings = eventBridge.getTanksSortedByRank();
-          io.emit('eventBridge:battleVictory', winner, rankings);
+          io.emit('battleVictory', winner, rankings);
         }
       }
     }, 2000);
   });
 
-  socket.on('eventBridge:resetBattle', () => eventBridge.resetTankBattle());
+  socket.on('adminResetBattle', () => eventBridge.resetTankBattle());
 
   // ─── END EVENT BRIDGE ───
 
@@ -633,7 +653,7 @@ app.get('/api/event-bridge/state', (req, res) => res.json(eventBridge.getState()
 
 app.post('/api/event-bridge/admin/login', (req, res) => {
   const { password } = req.body;
-  if (password !== 'commander42') return res.status(401).json({ error: 'Invalid password' });
+  if (password !== 'commander48') return res.status(401).json({ error: 'Invalid password' });
   res.json({ token: 'granted' });
 });
 
