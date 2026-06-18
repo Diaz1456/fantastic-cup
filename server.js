@@ -652,21 +652,25 @@ app.get('*', (req, res) => {
 
 // ---- Start ----
 
-function start() {
-  // Start listening immediately (don't block on MongoDB)
+async function start() {
+  // Try MongoDB with a short timeout (so legacy features work)
+  const mongoConnected = await Promise.race([
+    connectDB(MONGO_URI).then(() => true).catch(() => false),
+    new Promise(resolve => setTimeout(() => resolve(false), 5000)),
+  ]);
+
+  if (mongoConnected) {
+    console.log('✓ MongoDB connected');
+    migrateFromFile().catch(() => {});
+  } else {
+    console.log('ℹ MongoDB not available — legacy data features disabled, event section works');
+  }
+
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`✓ Server running on http://0.0.0.0:${PORT}`);
     console.log(`  → Legacy UI:  http://0.0.0.0:${PORT}/`);
     console.log(`  → Event UI:   http://0.0.0.0:${PORT}/event/`);
     console.log(`  → Admin pass: commander42`);
-  });
-
-  // Attempt MongoDB in background (legacy features only)
-  connectDB(MONGO_URI).then(() => {
-    console.log('✓ MongoDB connected');
-    migrateFromFile().catch(() => {});
-  }).catch(err => {
-    console.log('ℹ MongoDB unavailable — legacy features disabled, event section still works');
   });
 }
 
