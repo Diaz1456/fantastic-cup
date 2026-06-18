@@ -553,7 +553,6 @@
       const rankClass = rank === 1 ? 'lb-rank-1' : rank === 2 ? 'lb-rank-2' : rank === 3 ? 'lb-rank-3' : 'lb-rank-other';
       const topClass = rank === 1 ? 'lb-top1' : rank === 2 ? 'lb-top2' : rank === 3 ? 'lb-top3' : '';
       const pct = (entry.total / maxScore) * 100;
-      const isMvp = rank === 1;
       const delay = i * 0.06;
       const medal = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '👤';
       return `
@@ -561,10 +560,7 @@
           <div class="lb-rank ${rankClass}">${rank}</div>
           <div class="lb-avatar">${medal}</div>
           <div class="lb-info">
-            <div class="lb-name">
-              ${entry.username}
-              ${isMvp ? '<span class="lb-mvp-badge">MVP</span>' : ''}
-            </div>
+            <div class="lb-name">${entry.username}</div>
             <div class="lb-score-bar-wrapper">
               <div class="lb-score-bar">
                 <div class="lb-score-bar-fill" style="width:${pct}%"></div>
@@ -619,44 +615,18 @@
       const myEntry = leaderboard.find(e => e.username === authState.username);
       const myTotal = myEntry ? myEntry.total : 0;
       const myRank = leaderboard.findIndex(e => e.username === authState.username) + 1;
-      const isTop = myRank === 1;
 
       document.getElementById('hero-name').textContent = authState.username;
       document.getElementById('hero-score').textContent = myTotal;
-      document.getElementById('hero-avatar').textContent = isTop ? '👑' : '👤';
+      document.getElementById('hero-avatar').textContent = '👤';
 
-      // When player is MVP, extra visual emphasis
-      const hero = document.getElementById('player-hero');
-      if (isTop) {
-        hero.style.background = 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(255, 215, 0, 0.08), rgba(102, 126, 234, 0.08))';
-        hero.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-      } else {
-        hero.style.background = '';
-        hero.style.borderColor = '';
-      }
-
-      const badge = document.getElementById('hero-badge');
-      badge.textContent = isTop ? '⭐ YOU ARE THE MVP!' : '🏅 YOUR SCORE';
-      badge.style.background = isTop
-        ? 'linear-gradient(135deg, #f59e0b, #ffd700)'
-        : 'linear-gradient(135deg, var(--primary), var(--secondary))';
-      badge.style.color = isTop ? '#1a1a2e' : 'white';
+      document.getElementById('hero-badge').textContent = '🏅 YOUR SCORE';
 
       const rankInfo = document.getElementById('hero-rank-info');
       if (myRank > 0) {
         rankInfo.innerHTML = `You're ranked <strong>#${myRank}</strong> out of ${leaderboard.length} players`;
       } else {
         rankInfo.innerHTML = '';
-      }
-
-      // MVP Mini Card (shows #1 player)
-      if (leaderboard.length > 0) {
-        const mvp = leaderboard[0];
-        document.getElementById('mvp-mini-name').textContent = mvp.username;
-        document.getElementById('mvp-mini-score').textContent = mvp.total;
-      } else {
-        document.getElementById('mvp-mini-name').textContent = '—';
-        document.getElementById('mvp-mini-score').textContent = '0';
       }
 
       // Leaderboard
