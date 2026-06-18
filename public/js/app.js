@@ -92,14 +92,16 @@
     if (el) el.classList.add('active');
   }
 
-  function toast(message, type = 'info') {
-    const container = $('#toast-container');
+  window.__toast = function (message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
     const t = document.createElement('div');
     t.className = 'toast ' + type;
     t.textContent = message;
     container.appendChild(t);
     setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 3500);
-  }
+  };
+  const toast = window.__toast;
 
   function formatTime(ts) {
     const d = new Date(ts);
@@ -630,15 +632,19 @@
 
   async function refreshPlayerData() {
     try {
-      const [lbRes, achRes, notesRes, coinRes] = await Promise.all([
+      const [lbRes, achRes, notesRes] = await Promise.all([
         API.getLeaderboard(),
         API.getPlayerAchievements(authState.username),
         API.getPlayerNotes(),
-        fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json()),
       ]);
 
-      const coinBal = document.getElementById('player-coin-balance');
-      if (coinBal) coinBal.textContent = coinRes.balance || 0;
+      // Coin balance - don't block the main data load
+      try {
+        const coinRes = await fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json());
+        const coinBal = document.getElementById('player-coin-balance');
+        if (coinBal) coinBal.textContent = coinRes.balance || 0;
+      } catch {}
+
       const leaderboard = lbRes.leaderboard || [];
       const categories = lbRes.categories || [];
       const playerAch = achRes.achievements || {};
@@ -898,7 +904,7 @@
       }
     });
 
-    document.getElementById('btn-add-category')?.addEventListener('click', async () => {
+    document.getElementById('btn-add-event-category')?.addEventListener('click', async () => {
       if (!window.__eventsApp || !window.__eventsApp.editingEventId) return;
       const name = document.getElementById('new-category-input').value.trim();
       if (!name) { toast('Enter category name', 'error'); return; }

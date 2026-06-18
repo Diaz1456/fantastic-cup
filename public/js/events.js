@@ -129,7 +129,7 @@
     };
     await API.put(`/api/events/${editingEventId}`, body);
     loadAdminEvents();
-    toast('Event saved');
+    window.__toast('Event saved');
   }
 
   /* ─── Admin: Categories & Teams ─── */
@@ -178,7 +178,7 @@
         const nameInput = container.querySelector(`.new-team-name[data-ci="${ci}"]`);
         const logoInput = container.querySelector(`.new-team-logo[data-ci="${ci}"]`);
         const name = nameInput.value.trim();
-        if (!name) { toast('Enter team name', 'error'); return; }
+        if (!name) { window.__toast('Enter team name', 'error'); return; }
         await API.post(`/api/events/${editingEventId}/categories/${ci}/teams`, { name, logo: logoInput.value || '🏆' });
         nameInput.value = '';
         logoInput.value = '';
@@ -307,7 +307,7 @@
       podium.style.animation = 'none';
       setTimeout(() => { podium.style.animation = 'podium-entrance 0.8s ease-out'; }, 10);
     }
-    toast('⏰ THE EVENT HAS ENDED!', 'success');
+    window.__toast('⏰ THE EVENT HAS ENDED!', 'success');
     // Confetti-like effect
     if (typeof window.__triggerConfetti === 'function') window.__triggerConfetti();
   }
