@@ -7,6 +7,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
 const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, PlayerTask, connectDB } = require('./db');
 const { EventBridge } = require('./eventBridge');
 
@@ -45,6 +46,30 @@ let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'commander48';
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const name = Date.now() + '_' + Math.random().toString(36).substr(2, 6) + ext;
+    cb(null, name);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.jpg', '.jpeg', '.png', '.gif'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowed.includes(ext)) return cb(new Error('Only JPG, PNG, and GIF files allowed.'));
+    cb(null, true);
+  },
+});
 
 const DEFAULT_USERS = [
   { username: 'admin', password: ADMIN_PASSWORD, role: 'admin', enabled: true },
@@ -476,7 +501,7 @@ app.post('/change-password', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
-// AVATAR ROUTES
+// AVATAR ROUTES (File Upload)
 // ═══════════════════════════════════════════════
 
 app.get('/api/avatar/:username', async (req, res) => {
@@ -488,24 +513,43 @@ app.get('/api/avatar/:username', async (req, res) => {
   }
 });
 
-app.post('/api/avatar', async (req, res) => {
+app.post('/api/avatar/upload', upload.single('avatar'), async (req, res) => {
   try {
-    const { username, avatar } = req.body;
+    const { username } = req.body;
     if (!username) return res.json({ success: false, message: 'Username required.' });
+    if (!req.file) return res.json({ success: false, message: 'No file uploaded.' });
 
-    const validExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.bmp'];
-    if (avatar && avatar.trim()) {
-      const lower = avatar.toLowerCase();
-      const hasValidExt = validExts.some(ext => lower.includes(ext));
-      if (!hasValidExt && !lower.startsWith('data:image')) {
-        return res.json({ success: false, message: 'Invalid image URL. Must point to an image file.' });
-      }
+    const avatarPath = '/uploads/' + req.file.filename;
+
+    // Remove old avatar file if it was uploaded
+    const oldUser = await User.findOne({ username }).lean();
+    if (oldUser?.avatar && oldUser.avatar.startsWith('/uploads/')) {
+      const oldPath = path.join(__dirname, oldUser.avatar);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
     }
 
-    await User.findOneAndUpdate({ username }, { avatar: avatar || '' });
-    res.json({ success: true, avatar: avatar || '' });
+    await User.findOneAndUpdate({ username }, { avatar: avatarPath });
+    res.json({ success: true, avatar: avatarPath });
+  } catch (err) {
+    res.json({ success: false, message: err.message || 'Failed to upload avatar.' });
+  }
+});
+
+app.post('/api/avatar/remove', async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username) return res.json({ success: false, message: 'Username required.' });
+
+    const user = await User.findOne({ username }).lean();
+    if (user?.avatar && user.avatar.startsWith('/uploads/')) {
+      const oldPath = path.join(__dirname, user.avatar);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    await User.findOneAndUpdate({ username }, { $set: { avatar: '' } });
+    res.json({ success: true });
   } catch {
-    res.json({ success: false, message: 'Failed to update avatar.' });
+    res.json({ success: false, message: 'Failed to remove avatar.' });
   }
 });
 
@@ -547,8 +591,19 @@ app.patch('/api/tasks/:player/:taskId', async (req, res) => {
     const task = pt.tasks.id(req.params.taskId);
     if (!task) return res.json({ success: false, message: 'Task not found.' });
 
+    const wasJustCompleted = completed === true && !task.completed;
     task.completed = completed === true;
     await pt.save();
+
+    if (wasJustCompleted) {
+      io.emit('task:completed', {
+        player: req.params.player,
+        taskId: task.id,
+        taskText: task.text,
+        timestamp: Date.now(),
+      });
+    }
+
     res.json({ success: true, tasks: pt.tasks });
   } catch {
     res.json({ success: false, message: 'Failed to update task.' });

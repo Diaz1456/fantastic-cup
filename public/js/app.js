@@ -401,31 +401,31 @@
   }
 
   window.__promptAvatar = async (username) => {
-    const url = prompt(`Enter image URL for "${username}":`);
-    if (url === null) return;
-    if (!url.trim()) {
-      const res = await fetch('/api/avatar', {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/gif';
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        toast('File too large. Max 2MB.', 'error');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('avatar', file);
+      formData.append('username', username);
+      const res = await fetch('/api/avatar/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, avatar: '' }),
+        body: formData,
       }).then(r => r.json());
       if (res.success) {
-        toast('Avatar cleared');
+        toast('Avatar uploaded!');
         renderPlayersTable();
+      } else {
+        toast(res.message || 'Upload failed', 'error');
       }
-      return;
-    }
-    const res = await fetch('/api/avatar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, avatar: url.trim() }),
-    }).then(r => r.json());
-    if (res.success) {
-      toast('Avatar updated');
-      renderPlayersTable();
-    } else {
-      toast(res.message || 'Failed to set avatar', 'error');
-    }
+    };
+    input.click();
   };
 
   window.__openPlayerTasks = async (username) => {
@@ -827,13 +827,16 @@
         const avatarRes = await fetch('/api/avatar/' + encodeURIComponent(authState.username)).then(r => r.json());
         const avatarImg = document.getElementById('hero-avatar-img');
         const avatarFallback = document.getElementById('hero-avatar-fallback');
+        const removeBtn = document.getElementById('player-avatar-remove');
         if (avatarRes.avatar && avatarRes.avatar.trim()) {
           avatarImg.src = avatarRes.avatar;
           avatarImg.style.display = '';
           avatarFallback.style.display = 'none';
+          if (removeBtn) removeBtn.style.display = '';
         } else {
           avatarImg.style.display = 'none';
           avatarFallback.style.display = '';
+          if (removeBtn) removeBtn.style.display = 'none';
         }
       } catch {};
 
@@ -884,43 +887,6 @@
         `}).join('');
       }
 
-      // Player Tasks
-      try {
-        const taskRes = await fetch('/api/tasks/' + encodeURIComponent(authState.username)).then(r => r.json());
-        const tasks = taskRes.tasks || [];
-        const taskContainer = document.getElementById('player-task-checklist');
-        if (tasks.length === 0) {
-          taskContainer.innerHTML = '<p class="text-muted" style="padding:0.5rem;font-size:0.85rem;">No tasks assigned yet.</p>';
-        } else {
-          taskContainer.innerHTML = tasks.map(t => `
-            <label class="player-task-item ${t.completed ? 'completed' : ''}">
-              <input type="checkbox" ${t.completed ? 'checked' : ''}
-                onchange="window.__togglePlayerTask('${t.id}', this.checked)">
-              <span class="player-task-text">${t.text}</span>
-            </label>
-          `).join('');
-        }
-      } catch {}
-
-      window.__togglePlayerTask = async (taskId, completed) => {
-        const res = await fetch(`/api/tasks/${encodeURIComponent(authState.username)}/${taskId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ completed }),
-        }).then(r => r.json());
-        if (res.success) {
-          // Re-render tasks
-          const taskContainer = document.getElementById('player-task-checklist');
-          taskContainer.innerHTML = res.tasks.map(t => `
-            <label class="player-task-item ${t.completed ? 'completed' : ''}">
-              <input type="checkbox" ${t.completed ? 'checked' : ''}
-                onchange="window.__togglePlayerTask('${t.id}', this.checked)">
-              <span class="player-task-text">${t.text}</span>
-            </label>
-          `).join('');
-        }
-      };
-
       // Coin balance inside achievements
       try {
         const coinRes = await fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json());
@@ -934,10 +900,65 @@
           }
         }
       } catch {}
+
+      // Player Tasks
+      const taskRes = await fetch('/api/tasks/' + encodeURIComponent(authState.username)).then(r => r.json());
+      const tasks = taskRes.tasks || [];
+      renderPlayerTasks(tasks);
     } catch (err) {
       console.error('Player data refresh failed', err);
     }
   }
+
+  function renderPlayerTasks(tasks) {
+    const taskContainer = document.getElementById('player-task-checklist');
+    if (!taskContainer) return;
+    const active = tasks.filter(t => !t.completed);
+    const done = tasks.filter(t => t.completed);
+    let html = '';
+    if (active.length === 0 && done.length === 0) {
+      html = '<p class="text-muted" style="padding:0.5rem;font-size:0.85rem;">No tasks assigned yet.</p>';
+    } else {
+      if (active.length > 0) {
+        html += active.map(t => `
+          <label class="player-task-item">
+            <input type="checkbox"
+              onchange="window.__togglePlayerTask('${t.id}', this.checked)">
+            <span class="player-task-text">${t.text}</span>
+          </label>
+        `).join('');
+      }
+      if (done.length > 0) {
+        html += `<details class="completed-tasks-details">
+          <summary class="completed-tasks-summary">✓ Completed (${done.length})</summary>
+          <div class="completed-tasks-list">
+            ${done.map(t => `
+              <label class="player-task-item completed">
+                <input type="checkbox" checked
+                  onchange="window.__togglePlayerTask('${t.id}', this.checked)">
+                <span class="player-task-text">${t.text}</span>
+              </label>
+            `).join('')}
+          </div>
+        </details>`;
+      }
+    }
+    taskContainer.innerHTML = html;
+  }
+
+  window.__togglePlayerTask = async (taskId, completed) => {
+    const res = await fetch(`/api/tasks/${encodeURIComponent(authState.username)}/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed }),
+    }).then(r => r.json());
+    if (res.success) {
+      renderPlayerTasks(res.tasks || []);
+      if (completed) {
+        window.__playSound && window.__playSound('taskComplete');
+      }
+    }
+  };
 
   function startPlayerPolling() {
     if (pollTimer) clearInterval(pollTimer);
@@ -1028,10 +1049,82 @@
   });
   router.add('leaderboard', loadPublicLeaderboard);
 
+  /* ─── SOUND MANAGER ─── */
+  const SoundManager = {
+    _ctx: null,
+    _enabled: true,
+
+    init() {
+      this._enabled = localStorage.getItem('fc_sound') !== 'off';
+      const toggle = document.getElementById('sound-toggle');
+      if (toggle) toggle.checked = this._enabled;
+    },
+
+    _getCtx() {
+      if (!this._ctx) {
+        const Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return null;
+        this._ctx = new Ctor();
+      }
+      return this._ctx;
+    },
+
+    _play(freq, duration, type = 'sine', vol = 0.15) {
+      if (!this._enabled) return;
+      const ctx = this._getCtx();
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ctx.currentTime);
+      gain.gain.setValueAtTime(vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    },
+
+    click() { this._play(800, 0.08, 'sine', 0.08); },
+    check() { this._play(660, 0.1, 'sine', 0.1); setTimeout(() => this._play(990, 0.15, 'sine', 0.1), 80); },
+    taskComplete() { this._play(523, 0.12, 'sine', 0.12); setTimeout(() => this._play(659, 0.12, 'sine', 0.12), 100); setTimeout(() => this._play(784, 0.2, 'sine', 0.12), 200); },
+    coin() { this._play(880, 0.08, 'sine', 0.12); setTimeout(() => this._play(1100, 0.12, 'sine', 0.12), 60); setTimeout(() => this._play(1320, 0.2, 'sine', 0.1), 120); },
+    notification() { this._play(440, 0.15, 'square', 0.06); setTimeout(() => this._play(660, 0.2, 'square', 0.06), 150); },
+    toggle() {
+      this._enabled = !this._enabled;
+      localStorage.setItem('fc_sound', this._enabled ? 'on' : 'off');
+      const toggle = document.getElementById('sound-toggle');
+      if (toggle) toggle.checked = this._enabled;
+      if (this._enabled) this.click();
+    },
+  };
+
+  window.__playSound = (name) => {
+    if (SoundManager[name]) SoundManager[name]();
+  };
+
+  // Hook global clicks for click sound
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('button') || e.target.closest('.nav-btn') || e.target.closest('.toggle-switch') || e.target.closest('summary')) {
+      if (SoundManager._enabled) SoundManager.click();
+    }
+  });
+
+  // Hook checkboxes for check sound
+  document.addEventListener('change', (e) => {
+    if (e.target.type === 'checkbox' && SoundManager._enabled) {
+      SoundManager.check();
+    }
+  });
+
   /* ─── STARTUP ─── */
   document.addEventListener('DOMContentLoaded', () => {
     // Init particles
     const stopParticles = initParticles();
+
+    // Init sounds
+    SoundManager.init();
 
     // Setup login
     setupLogin();
@@ -1266,55 +1359,77 @@
       btn.disabled = false;
     });
 
-    // ── Admin Change Password ──
-    const adminPwToggle = document.getElementById('admin-pw-toggle');
-    const adminPwCollapse = document.getElementById('admin-pw-collapse');
-    if (adminPwToggle) {
-      adminPwToggle.addEventListener('click', () => {
-        adminPwToggle.classList.toggle('open');
-        adminPwCollapse.classList.toggle('open');
-      });
-    }
-    document.getElementById('admin-password-change-form')?.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = document.getElementById('admin-pw-message');
-      const currentPassword = document.getElementById('admin-pw-current').value;
-      const newPassword = document.getElementById('admin-pw-new').value;
-      const confirmPassword = document.getElementById('admin-pw-confirm').value;
+    // ── Admin Socket Listener for Task Completion ──
+    const socket = io();
+    socket.on('task:completed', (data) => {
+      if (!data) return;
+      const msg = `✅ ${data.player} completed task: "${data.taskText}"`;
+      toast(msg, 'success');
+      SoundManager.notification();
+      // Refresh admin task list if viewing the relevant player
+      const select = document.getElementById('admin-task-player-select');
+      if (select && select.value === data.player) {
+        select.dispatchEvent(new Event('change'));
+      }
+    });
 
-      msg.className = 'pw-change-message';
-      msg.textContent = '';
+    // ── Socket coin award listener ──
+    socket.on('coins:awarded', (data) => {
+      SoundManager.coin();
+      const bal = document.getElementById('player-coin-balance-ach');
+      if (bal) {
+        bal.textContent = data.balance;
+        const parent = bal.closest('.coin-balance-display');
+        if (parent) {
+          parent.classList.add('coin-jingle');
+          setTimeout(() => parent.classList.remove('coin-jingle'), 600);
+        }
+      }
+    });
 
-      if (!currentPassword || !newPassword || !confirmPassword) {
-        msg.textContent = 'All fields required.';
-        msg.className = 'pw-change-message error';
+    // ── Player Avatar Upload ──
+    document.getElementById('player-avatar-upload')?.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        toast('File too large. Max 2MB.', 'error');
         return;
       }
-      if (newPassword !== confirmPassword) {
-        msg.textContent = 'New passwords do not match.';
-        msg.className = 'pw-change-message error';
-        return;
+      const formData = new FormData();
+      formData.append('avatar', file);
+      formData.append('username', authState.username);
+      const res = await fetch('/api/avatar/upload', {
+        method: 'POST',
+        body: formData,
+      }).then(r => r.json());
+      if (res.success) {
+        toast('Photo uploaded!');
+        refreshPlayerData();
+      } else {
+        toast(res.message || 'Upload failed', 'error');
       }
-      if (newPassword.length < 4) {
-        msg.textContent = 'Password must be at least 4 characters.';
-        msg.className = 'pw-change-message error';
-        return;
-      }
+    });
 
-      const res = await fetch('/admin/change-password', {
+    document.getElementById('player-avatar-remove')?.addEventListener('click', async () => {
+      if (!confirm('Remove your profile photo?')) return;
+      const res = await fetch('/api/avatar/remove', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({ username: authState.username }),
       }).then(r => r.json());
-
       if (res.success) {
-        msg.textContent = 'Admin password updated successfully! It takes effect immediately.';
-        msg.className = 'pw-change-message success';
-        document.getElementById('admin-password-change-form').reset();
+        toast('Photo removed');
+        refreshPlayerData();
       } else {
-        msg.textContent = res.message || 'Failed to update password.';
-        msg.className = 'pw-change-message error';
+        toast('Failed to remove photo', 'error');
       }
+    });
+
+    // ── Sound Toggle ──
+    document.getElementById('sound-toggle')?.addEventListener('change', (e) => {
+      SoundManager._enabled = e.target.checked;
+      localStorage.setItem('fc_sound', SoundManager._enabled ? 'on' : 'off');
+      if (SoundManager._enabled) SoundManager.click();
     });
 
     // Start router

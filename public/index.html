@@ -278,23 +278,6 @@
 
       </div>
 
-      <div class="admin-settings-section glass">
-        <h4>🔑 Admin Settings</h4>
-        <div class="admin-settings-content">
-          <button class="collapsible-btn glass" id="admin-pw-toggle">
-            <span>🔒</span> Change Admin Password <span class="collapse-arrow">▼</span>
-          </button>
-          <div class="collapsible-content" id="admin-pw-collapse">
-            <form id="admin-password-change-form" class="admin-pw-form">
-              <input type="password" id="admin-pw-current" placeholder="Current Password" required>
-              <input type="password" id="admin-pw-new" placeholder="New Password" required>
-              <input type="password" id="admin-pw-confirm" placeholder="Confirm New Password" required>
-              <button type="submit" class="btn btn-primary">Update Admin Password</button>
-              <div id="admin-pw-message" class="pw-change-message"></div>
-            </form>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- ═══ PLAYER ═══ -->
@@ -322,7 +305,17 @@
           <h1 class="hero-name" id="hero-name">—</h1>
           <div class="hero-badge" id="hero-badge">🏅 YOUR SCORE</div>
           <div class="hero-player">
-            <div class="hero-avatar" id="hero-avatar"><img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 20px rgba(245,158,11,0.3);"><span id="hero-avatar-fallback" style="font-size:4.5rem;">👤</span></div>
+            <div class="hero-avatar" id="hero-avatar">
+              <div class="avatar-upload-wrapper">
+                <img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 20px rgba(245,158,11,0.3);">
+                <span id="hero-avatar-fallback" style="font-size:4.5rem;">👤</span>
+                <div class="avatar-actions">
+                  <label for="player-avatar-upload" class="avatar-upload-label" title="Upload Photo">📷</label>
+                  <input type="file" id="player-avatar-upload" accept="image/jpeg,image/png,image/gif" style="display:none">
+                  <button class="avatar-remove-btn" id="player-avatar-remove" title="Remove Photo" style="display:none">✕</button>
+                </div>
+              </div>
+            </div>
             <div class="hero-score-wrapper">
               <span class="hero-score-label">Total Score</span>
               <span class="hero-score" id="hero-score">0</span>
@@ -365,6 +358,16 @@
         <div class="player-section">
           <h3 class="player-section-title">📋 My Tasks</h3>
           <div id="player-task-checklist" class="player-task-checklist"></div>
+        </div>
+
+        <div class="player-section player-settings-section">
+          <div class="player-settings-row">
+            <span class="settings-label">🔊 Sound Effects</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="sound-toggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
 
         <div class="player-section">
