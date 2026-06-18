@@ -286,7 +286,8 @@
 
   function renderAdminLeaderboardPreview() {
     const container = document.getElementById('admin-lb-preview');
-    container.innerHTML = renderLeaderboardHTML(adminDataCache.leaderboard, adminDataCache.categories);
+    const top15 = (adminDataCache.leaderboard || []).slice(0, 15);
+    container.innerHTML = renderLeaderboardHTML(top15, adminDataCache.categories);
   }
 
   /* ─── ADMIN: Nav tabs ─── */
@@ -706,10 +707,19 @@
   };
 
   /* ─── ADMIN: Full Leaderboard ─── */
-  async function renderAdminFullLeaderboard() {
+  async function renderAdminFullLeaderboard(query = '') {
     await refreshAdminData();
     const container = document.getElementById('admin-leaderboard-full');
-    container.innerHTML = renderLeaderboardHTML(adminDataCache.leaderboard, adminDataCache.categories);
+    let data = adminDataCache.leaderboard;
+    if (query) {
+      const q = query.toLowerCase();
+      data = data.filter(e => e.username.toLowerCase().includes(q));
+    }
+    if (data.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No players match your search.</p>';
+      return;
+    }
+    container.innerHTML = renderLeaderboardHTML(data, adminDataCache.categories);
   }
 
   /* ─── ADMIN: Feedback List ─── */
@@ -1454,6 +1464,106 @@
       SoundManager._enabled = e.target.checked;
       localStorage.setItem('fc_sound', SoundManager._enabled ? 'on' : 'off');
       if (SoundManager._enabled) SoundManager.click();
+    });
+
+    // ── Leaderboard Search ──
+    document.getElementById('admin-lb-search')?.addEventListener('input', (e) => {
+      renderAdminFullLeaderboard(e.target.value.trim());
+    });
+
+    // ── Admin Change Own Password (in Players tab) ──
+    document.getElementById('btn-admin-change-pw')?.addEventListener('click', async () => {
+      const current = document.getElementById('admin-pw-current').value;
+      const newPw = document.getElementById('admin-pw-new').value;
+      const confirmPw = document.getElementById('admin-pw-confirm').value;
+      const msg = document.getElementById('admin-pw-message');
+      msg.className = 'pw-change-message';
+      msg.textContent = '';
+      if (!current || !newPw || !confirmPw) {
+        msg.textContent = 'All fields required.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      if (newPw !== confirmPw) {
+        msg.textContent = 'Passwords do not match.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      if (newPw.length < 4) {
+        msg.textContent = 'Password must be at least 4 characters.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      const res = await fetch('/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: current, newPassword: newPw }),
+      }).then(r => r.json());
+      if (res.success) {
+        msg.textContent = 'Admin password updated successfully!';
+        msg.className = 'pw-change-message success';
+        document.getElementById('admin-pw-current').value = '';
+        document.getElementById('admin-pw-new').value = '';
+        document.getElementById('admin-pw-confirm').value = '';
+      } else {
+        msg.textContent = res.message || 'Failed to update.';
+        msg.className = 'pw-change-message error';
+      }
+    });
+
+    // ── Hall of Fame ──
+    function openHallOfFame() {
+      const leaderboard = adminDataCache.leaderboard;
+      const top3 = leaderboard.slice(0, 3).map(e => ({
+        username: e.username,
+        total: e.total,
+      }));
+      // Fetch avatars for top 3
+      Promise.all(top3.map(async (p) => {
+        try {
+          const res = await fetch('/api/avatar/' + encodeURIComponent(p.username)).then(r => r.json());
+          p.avatarUrl = res.avatar || '';
+        } catch { p.avatarUrl = ''; }
+      })).then(() => {
+        if (window.startHallOfFame) {
+          window.startHallOfFame(top3);
+        } else {
+          toast('Hall of Fame loading...', 'info');
+          const check = setInterval(() => {
+            if (window.startHallOfFame) {
+              clearInterval(check);
+              window.startHallOfFame(top3);
+            }
+          }, 200);
+        }
+      });
+    }
+
+    document.getElementById('btn-hof-admin')?.addEventListener('click', openHallOfFame);
+    document.getElementById('btn-hof-player')?.addEventListener('click', async () => {
+      const lbRes = await API.getLeaderboard();
+      const top3 = (lbRes.leaderboard || []).slice(0, 3).map(e => ({
+        username: e.username,
+        total: e.total,
+        avatarUrl: '',
+      }));
+      Promise.all(top3.map(async (p) => {
+        try {
+          const res = await fetch('/api/avatar/' + encodeURIComponent(p.username)).then(r => r.json());
+          p.avatarUrl = res.avatar || '';
+        } catch { p.avatarUrl = ''; }
+      })).then(() => {
+        if (window.startHallOfFame) {
+          window.startHallOfFame(top3);
+        } else {
+          const check = setInterval(() => {
+            if (window.startHallOfFame) {
+              clearInterval(check);
+              window.startHallOfFame(top3);
+            }
+          }, 200);
+        }
+      });
     });
 
     // Start router

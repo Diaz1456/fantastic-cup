@@ -164,7 +164,7 @@ async function buildLeaderboard() {
   });
 
   ranked.sort((a, b) => b.total - a.total);
-  return ranked.slice(0, 15);
+  return ranked;
 }
 
 // ---- Routes ----

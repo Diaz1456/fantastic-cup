@@ -187,7 +187,7 @@
             </div>
           </div>
           <div class="admin-leaderboard-preview">
-            <h3>Top 15 Leaderboard</h3>
+            <h3>Champions Leaderboard</h3>
             <div id="admin-lb-preview"></div>
           </div>
         </section>
@@ -211,6 +211,18 @@
               <thead><tr><th>Username</th><th>Avatar</th><th>Status</th><th>Notes</th><th>Password</th><th>Actions</th></tr></thead>
               <tbody id="players-tbody"></tbody>
             </table>
+          </div>
+
+          <div class="admin-password-section glass">
+            <h4>🔑 Admin Password</h4>
+            <p class="admin-pw-desc">Change your own admin account password.</p>
+            <div class="admin-pw-form-row">
+              <input type="password" id="admin-pw-current" class="admin-input" placeholder="Current password">
+              <input type="password" id="admin-pw-new" class="admin-input" placeholder="New password">
+              <input type="password" id="admin-pw-confirm" class="admin-input" placeholder="Confirm new password">
+              <button class="btn btn-primary" id="btn-admin-change-pw">Update</button>
+            </div>
+            <div id="admin-pw-message" class="pw-change-message"></div>
           </div>
         </section>
 
@@ -266,8 +278,14 @@
         <!-- Section: Leaderboard -->
         <section id="section-leaderboard" class="dashboard-section">
           <div class="section-header">
-            <h2 class="section-title">Score Lead – Top 15</h2>
-            <button class="btn btn-primary" id="btn-export-csv">📥 Export CSV</button>
+            <h2 class="section-title">🏆 Champions Leaderboard</h2>
+            <div class="leaderboard-actions">
+              <button class="btn btn-primary" id="btn-export-csv">📥 Export CSV</button>
+              <button class="btn btn-golden" id="btn-hof-admin">🌟 Hall of Fame</button>
+            </div>
+          </div>
+          <div class="leaderboard-search-wrapper">
+            <input type="text" id="admin-lb-search" class="admin-input" placeholder="Search players..." style="width:100%;max-width:400px;">
           </div>
           <div id="admin-leaderboard-full" class="leaderboard-container"></div>
         </section>
@@ -335,7 +353,10 @@
         </div>
 
         <div class="player-section">
-          <h3 class="player-section-title">Top 15 Leaderboard</h3>
+          <div class="player-section-header">
+            <h3 class="player-section-title">🏆 Champions Leaderboard</h3>
+            <button class="btn btn-golden btn-sm" id="btn-hof-player">🌟 Hall of Fame</button>
+          </div>
           <div id="player-leaderboard" class="leaderboard-container"></div>
         </div>
 
@@ -422,13 +443,25 @@
       <div class="leaderboard-page">
         <div class="lb-header glass">
           <h1>🏆 Fantastic Cup</h1>
-          <h2>Score Lead – Top 15</h2>
+          <h2>Champions Leaderboard</h2>
         </div>
         <div id="public-leaderboard" class="leaderboard-container"></div>
         <button class="btn btn-primary" id="back-from-lb">← Back to Home</button>
       </div>
     </div>
 
+  </div>
+
+  <!-- ═══ HALL OF FAME OVERLAY ═══ -->
+  <div id="hof-overlay" class="hof-overlay" style="display:none;">
+    <div class="hof-header">
+      <h1 class="hof-title">🏆 Legendary Hall of Fame</h1>
+      <div class="hof-controls">
+        <button class="hof-btn" id="hof-music-toggle">🔊 Music</button>
+        <button class="hof-btn" id="hof-close-btn">✕ Close</button>
+      </div>
+    </div>
+    <div id="hof-canvas-container" class="hof-canvas-container"></div>
   </div>
 
   <div id="toast-container" class="toast-container"></div>
@@ -452,5 +485,6 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/hall-of-fame.js"></script>
 </body>
 </html>
