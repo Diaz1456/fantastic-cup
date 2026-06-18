@@ -787,6 +787,22 @@ input, select, textarea {
 
 .nav-btn:hover { color: var(--text-dark); background: rgba(255,255,255,0.05); }
 
+.event-link {
+  background: linear-gradient(135deg, #8b0000, #ff4500) !important;
+  color: white !important;
+  border: 1px solid #ff4500 !important;
+  animation: eventPulse 2s ease infinite;
+  text-decoration: none;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+@keyframes eventPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(255,69,0,0.3); }
+  50% { box-shadow: 0 0 20px rgba(255,69,0,0.6); }
+}
+
 .nav-btn.active {
   color: white;
   background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -1377,6 +1393,13 @@ input, select, textarea {
 .player-nav .nav-brand-center {
   flex: 1;
   text-align: center;
+}
+
+.nav-center-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px;
 }
 
 .player-greeting {
