@@ -111,11 +111,17 @@ async function migrateFromFile() {
 // ---- Helpers ----
 
 async function buildLeaderboard() {
-  const [players, categories, achievements] = await Promise.all([
+  const [players, categories, achievements, coinBalances] = await Promise.all([
     User.find({ role: 'player', enabled: { $ne: false } }).lean(),
     Category.find().lean(),
     Achievement.find().lean(),
+    CoinTransaction.aggregate([
+      { $group: { _id: '$playerUsername', total: { $sum: '$amount' } } },
+    ]),
   ]);
+
+  const coinMap = {};
+  coinBalances.forEach(c => { coinMap[c._id] = c.total; });
 
   const achMap = {};
   achievements.forEach(a => { achMap[a.playerUsername] = a.values || {}; });
@@ -126,6 +132,7 @@ async function buildLeaderboard() {
     categories.forEach(cat => {
       total += Number(ach[cat.id]) || 0;
     });
+    total += coinMap[p.username] || 0;
     return { username: p.username, total, achievements: ach };
   });
 
@@ -583,6 +590,14 @@ async function start() {
   if (mongoConnected) {
     console.log('✓ MongoDB connected');
     migrateFromFile().catch(() => {});
+    // Ensure default categories exist even if migration was skipped
+    try {
+      const catCount = await Category.countDocuments();
+      if (catCount === 0) {
+        await Category.insertMany(DEFAULT_CATEGORIES);
+        console.log('✓ Default categories created');
+      }
+    } catch (e) { console.log('ℹ Could not check categories:', e.message); }
   } else {
     console.log('ℹ MongoDB not available — legacy data features disabled, event section works');
   }

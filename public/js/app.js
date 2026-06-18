@@ -679,7 +679,7 @@
       const achContainer = document.getElementById('player-achievements');
       const catList = categories.length > 0 ? categories : playerCats;
       if (catList.length === 0) {
-        achContainer.innerHTML = '<p style="color:var(--text-muted);">No achievements configured yet.</p>';
+        achContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No achievement categories yet — ask your admin to set them up.</p>';
       } else {
         const allValues = catList.map(cat => Number(playerAch[cat.id]) || 0);
         const maxAch = Math.max(...allValues, 1);
@@ -889,10 +889,7 @@
 
     if (warBtn) {
       warBtn.addEventListener('click', () => {
-        warOverlay.style.display = 'flex';
-        warInput.value = '';
-        warError.style.display = 'none';
-        warInput.focus();
+        window.location.href = '/event/';
       });
     }
 
@@ -940,14 +937,11 @@
       });
     }
 
-    // Admin nav EVENT button also uses password gate
+    // Admin nav EVENT button also goes directly to the event page
     const warBtnAdmin = document.getElementById('event-war-btn-admin');
     if (warBtnAdmin) {
       warBtnAdmin.addEventListener('click', () => {
-        warOverlay.style.display = 'flex';
-        warInput.value = '';
-        warError.style.display = 'none';
-        warInput.focus();
+        window.location.href = '/event/';
       });
     }
 
