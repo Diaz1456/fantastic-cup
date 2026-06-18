@@ -1476,7 +1476,7 @@ input, select, textarea {
 }
 
 .hero-name {
-  font-size: 4.2rem;
+  font-size: 4.8rem;
   font-weight: 900;
   color: var(--text-dark);
   line-height: 1.1;
@@ -1487,6 +1487,7 @@ input, select, textarea {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: heroNameGlow 3s ease-in-out infinite;
+  margin-bottom: 0.25rem;
 }
 @keyframes heroNameGlow {
   0%, 100% { filter: brightness(1); }

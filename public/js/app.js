@@ -610,13 +610,6 @@
         API.getPlayerNotes(),
       ]);
 
-      // Coin balance - don't block the main data load
-      try {
-        const coinRes = await fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json());
-        const coinBal = document.getElementById('player-coin-balance');
-        if (coinBal) coinBal.textContent = coinRes.balance || 0;
-      } catch {}
-
       const leaderboard = lbRes.leaderboard || [];
       const categories = lbRes.categories || [];
       const playerAch = achRes.achievements || {};
@@ -688,7 +681,6 @@
       if (catList.length === 0) {
         achContainer.innerHTML = '<p style="color:var(--text-muted);">No achievements configured yet.</p>';
       } else {
-        // Find max value for scaling bars
         const allValues = catList.map(cat => Number(playerAch[cat.id]) || 0);
         const maxAch = Math.max(...allValues, 1);
         achContainer.innerHTML = catList.map(cat => {
@@ -704,6 +696,20 @@
           </div>
         `}).join('');
       }
+
+      // Coin balance inside achievements
+      try {
+        const coinRes = await fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json());
+        const coinBal = document.getElementById('player-coin-balance-ach');
+        if (coinBal) {
+          coinBal.textContent = coinRes.balance || 0;
+          const parent = coinBal.closest('.coin-balance-display');
+          if (parent) {
+            parent.classList.add('coin-jingle');
+            setTimeout(() => parent.classList.remove('coin-jingle'), 600);
+          }
+        }
+      } catch {}
     } catch (err) {
       console.error('Player data refresh failed', err);
     }
@@ -849,15 +855,15 @@
       });
     });
 
-    // Coin history toggle for player
-    document.getElementById('coin-history-toggle')?.addEventListener('click', async () => {
-      const collapse = document.getElementById('coin-history-collapse');
-      const toggle = document.getElementById('coin-history-toggle');
+    // Coin history toggle inside achievements
+    document.getElementById('coin-history-toggle-ach')?.addEventListener('click', async () => {
+      const collapse = document.getElementById('coin-history-collapse-ach');
+      const toggle = document.getElementById('coin-history-toggle-ach');
       toggle.classList.toggle('open');
       collapse.classList.toggle('open');
       if (collapse.classList.contains('open') && authState) {
         const res = await fetch('/api/coins/history/' + encodeURIComponent(authState.username)).then(r => r.json());
-        const container = document.getElementById('player-coin-history');
+        const container = document.getElementById('player-coin-history-ach');
         if (res.transactions && res.transactions.length > 0) {
           container.innerHTML = res.transactions.map(tx => `
             <div class="coin-history-item">
