@@ -20,7 +20,9 @@ export default function App() {
       )}
 
       <div className="view-toggle">
-        <a href="/" className="main-site-btn">← MAIN SITE</a>
+        <button className={`toggle-btn ${view === 'player' ? 'active' : ''}`} onClick={() => setView('player')}>PLAYER</button>
+        <button className={`toggle-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>ADMIN</button>
+        <a href="/" className="main-site-btn">MAIN SITE</a>
       </div>
 
       {socket.error && <div className="toast-error">{socket.error}</div>}

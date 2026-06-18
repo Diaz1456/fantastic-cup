@@ -592,7 +592,7 @@
     if (!authState) return;
     showView('player');
     document.getElementById('player-name-display').textContent = authState.username;
-    document.getElementById('player-greeting').innerHTML =
+    document.querySelector('.player-greeting').innerHTML =
       `Welcome, <strong>${authState.username}</strong>`;
 
     // Set random quote
