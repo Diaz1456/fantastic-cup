@@ -87,5 +87,5 @@ export interface ClientToServerEvents {
 }
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'fc-secret-2024';
-export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'commander42';
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'commander48';
 export const PORT = parseInt(process.env.PORT || '3001');

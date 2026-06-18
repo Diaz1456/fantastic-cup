@@ -40,13 +40,14 @@ eventBridge.on((state) => {
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fantastic-cup';
 const DATA_FILE = path.join(__dirname, 'data.json');
+let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'commander48';
 
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const DEFAULT_USERS = [
-  { username: 'admin', password: 'commander48', role: 'admin', enabled: true },
+  { username: 'admin', password: ADMIN_PASSWORD, role: 'admin', enabled: true },
   { username: 'player1', password: 'pass123', role: 'player', enabled: true },
   { username: 'player2', password: 'pass123', role: 'player', enabled: true },
   { username: 'player3', password: 'pass123', role: 'player', enabled: true },
@@ -146,8 +147,8 @@ async function buildLeaderboard() {
 app.post('/login', async (req, res) => {
   const { username, password, role } = req.body;
   if (!isMongoConnected()) {
-    // Fallback: hardcoded admin login when MongoDB is unavailable
-    if (username === 'admin' && password === 'commander48' && role === 'admin') {
+    // Fallback: admin login when MongoDB is unavailable
+    if (username === 'admin' && password === ADMIN_PASSWORD && role === 'admin') {
       return res.json({ success: true, user: { username: 'admin', role: 'admin' } });
     }
     if (username === 'player1' && password === 'pass123' && role === 'player') {
@@ -555,6 +556,88 @@ app.patch('/api/tasks/:player/:taskId', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════
+// ADMIN CHANGE PASSWORD
+// ═══════════════════════════════════════════════
+
+app.post('/admin/change-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.json({ success: false, message: 'All fields required.' });
+    }
+
+    if (newPassword.length < 4) {
+      return res.json({ success: false, message: 'New password must be at least 4 characters.' });
+    }
+
+    if (currentPassword !== ADMIN_PASSWORD) {
+      const pwMatch = await User.findOne({ username: 'admin' }).then(u => {
+        if (!u) return false;
+        return bcrypt.compare(currentPassword, u.password).catch(() => false);
+      }).catch(() => false);
+      if (!pwMatch) {
+        return res.json({ success: false, message: 'Current password is incorrect.' });
+      }
+    }
+
+    ADMIN_PASSWORD = newPassword;
+
+    if (isMongoConnected()) {
+      const hashed = await bcrypt.hash(newPassword, 10);
+      await User.findOneAndUpdate(
+        { username: 'admin', role: 'admin' },
+        { password: hashed }
+      );
+    }
+
+    res.json({ success: true, message: 'Admin password updated successfully.' });
+  } catch {
+    res.json({ success: false, message: 'Server error.' });
+  }
+});
+
+// ═══════════════════════════════════════════════
+// RESET COIN LEADERBOARD
+// ═══════════════════════════════════════════════
+
+app.post('/api/coins/reset', async (req, res) => {
+  try {
+    if (!isMongoConnected()) {
+      return res.json({ success: false, message: 'MongoDB required for coin reset.' });
+    }
+
+    const balances = await CoinTransaction.aggregate([
+      { $group: { _id: '$playerUsername', total: { $sum: '$amount' } } },
+    ]);
+
+    const resetTransactions = [];
+    for (const b of balances) {
+      if (b.total > 0) {
+        resetTransactions.push({
+          playerUsername: b._id,
+          amount: -b.total,
+          note: 'Leaderboard reset',
+          stamp: '🔄',
+          timestamp: Date.now(),
+        });
+      }
+    }
+
+    if (resetTransactions.length > 0) {
+      await CoinTransaction.insertMany(resetTransactions);
+    }
+
+    const leaderboard = await buildLeaderboard();
+    io.emit('leaderboard:update');
+    io.emit('coins:reset');
+
+    res.json({ success: true, message: `Coin leaderboard reset. ${resetTransactions.length} balances zeroed.`, leaderboard });
+  } catch {
+    res.json({ success: false, message: 'Failed to reset coin leaderboard.' });
+  }
+});
+
+// ═══════════════════════════════════════════════
 // SOCKET.IO
 // ═══════════════════════════════════════════════
 
@@ -578,7 +661,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('adminLogin', (password) => {
-    if (password !== 'commander48') {
+    if (password !== ADMIN_PASSWORD) {
       return socket.emit('error', 'Invalid admin password');
     }
     socket.emit('stateSync', { ...eventBridge.getState(), adminToken: 'granted' });
@@ -671,7 +754,7 @@ const timerSyncInterval = setInterval(async () => {
 // Password gate for the war section
 app.post('/api/verify-war-password', (req, res) => {
   const { password } = req.body;
-  if (password === 'commander48') {
+  if (password === ADMIN_PASSWORD) {
     // Return a simple token the client can store
     const token = Buffer.from(JSON.stringify({ access: 'war', ts: Date.now() })).toString('base64');
     return res.json({ granted: true, token });
@@ -682,7 +765,7 @@ app.get('/api/event-bridge/state', (req, res) => res.json(eventBridge.getState()
 
 app.post('/api/event-bridge/admin/login', (req, res) => {
   const { password } = req.body;
-  if (password !== 'commander48') return res.status(401).json({ error: 'Invalid password' });
+  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
   res.json({ token: 'granted' });
 });
 
@@ -727,7 +810,7 @@ async function start() {
     console.log(`✓ Server running on http://0.0.0.0:${PORT}`);
     console.log(`  → Legacy UI:  http://0.0.0.0:${PORT}/`);
     console.log(`  → Event UI:   http://0.0.0.0:${PORT}/event/`);
-    console.log(`  → Admin pass: commander48`);
+    console.log(`  → Admin pass: ${ADMIN_PASSWORD}`);
   });
 }
 

@@ -243,6 +243,9 @@
               <h5>Coin Leaderboard</h5>
               <div id="coin-leaderboard-admin"></div>
             </div>
+            <div class="admin-coin-actions">
+              <button class="btn btn-sm btn-danger" id="btn-reset-coins">🔄 Reset Coin Leaderboard</button>
+            </div>
           </div>
 
           <div class="admin-tasks-section glass">
@@ -273,6 +276,24 @@
           <div id="feedback-list" class="feedback-list"></div>
         </section>
 
+      </div>
+
+      <div class="admin-settings-section glass">
+        <h4>🔑 Admin Settings</h4>
+        <div class="admin-settings-content">
+          <button class="collapsible-btn glass" id="admin-pw-toggle">
+            <span>🔒</span> Change Admin Password <span class="collapse-arrow">▼</span>
+          </button>
+          <div class="collapsible-content" id="admin-pw-collapse">
+            <form id="admin-password-change-form" class="admin-pw-form">
+              <input type="password" id="admin-pw-current" placeholder="Current Password" required>
+              <input type="password" id="admin-pw-new" placeholder="New Password" required>
+              <input type="password" id="admin-pw-confirm" placeholder="Confirm New Password" required>
+              <button type="submit" class="btn btn-primary">Update Admin Password</button>
+              <div id="admin-pw-message" class="pw-change-message"></div>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 

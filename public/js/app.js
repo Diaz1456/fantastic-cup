@@ -1245,6 +1245,78 @@
       });
     }
 
+    // ── Reset Coin Leaderboard ──
+    document.getElementById('btn-reset-coins')?.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to reset the coin leaderboard? This will set all coin balances to zero.')) return;
+      const btn = document.getElementById('btn-reset-coins');
+      btn.textContent = 'Resetting...';
+      btn.disabled = true;
+      const res = await fetch('/api/coins/reset', { method: 'POST' }).then(r => r.json());
+      if (res.success) {
+        toast(res.message || 'Coin leaderboard reset!');
+        window.__loadCoinLeaderboard();
+        // Refresh player coin balances if viewing player
+        if (authState && authState.role === 'player') {
+          refreshPlayerData();
+        }
+      } else {
+        toast(res.message || 'Failed to reset', 'error');
+      }
+      btn.textContent = '🔄 Reset Coin Leaderboard';
+      btn.disabled = false;
+    });
+
+    // ── Admin Change Password ──
+    const adminPwToggle = document.getElementById('admin-pw-toggle');
+    const adminPwCollapse = document.getElementById('admin-pw-collapse');
+    if (adminPwToggle) {
+      adminPwToggle.addEventListener('click', () => {
+        adminPwToggle.classList.toggle('open');
+        adminPwCollapse.classList.toggle('open');
+      });
+    }
+    document.getElementById('admin-password-change-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('admin-pw-message');
+      const currentPassword = document.getElementById('admin-pw-current').value;
+      const newPassword = document.getElementById('admin-pw-new').value;
+      const confirmPassword = document.getElementById('admin-pw-confirm').value;
+
+      msg.className = 'pw-change-message';
+      msg.textContent = '';
+
+      if (!currentPassword || !newPassword || !confirmPassword) {
+        msg.textContent = 'All fields required.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        msg.textContent = 'New passwords do not match.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+      if (newPassword.length < 4) {
+        msg.textContent = 'Password must be at least 4 characters.';
+        msg.className = 'pw-change-message error';
+        return;
+      }
+
+      const res = await fetch('/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      }).then(r => r.json());
+
+      if (res.success) {
+        msg.textContent = 'Admin password updated successfully! It takes effect immediately.';
+        msg.className = 'pw-change-message success';
+        document.getElementById('admin-password-change-form').reset();
+      } else {
+        msg.textContent = res.message || 'Failed to update password.';
+        msg.className = 'pw-change-message error';
+      }
+    });
+
     // Start router
     router.start();
   });
