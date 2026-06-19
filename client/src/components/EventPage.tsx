@@ -1,6 +1,6 @@
 import GlobalCountdown from './GlobalCountdown';
 import ModuleTeamArena from './ModuleTeamArena';
-import ModuleTankWarfare from './ModuleTankWarfare';
+import ModuleSquidGame from './ModuleSquidGame';
 
 interface Props {
   socket: any;
@@ -13,7 +13,7 @@ export default function EventPage({ socket }: Props) {
     return (
       <div className="event-page loading">
         <div className="loading-screen">
-          <div className="loading-emblem">⚔</div>
+          <div className="loading-emblem">🎴</div>
           <div className="loading-text">CONNECTING TO EVENT...</div>
           <div className="loading-bar"><div className="loading-fill" /></div>
         </div>
@@ -45,7 +45,7 @@ export default function EventPage({ socket }: Props) {
             />
             <div className="countdown-subtitle">
               <span>The arena is being prepared</span>
-              <span>Team battles & tank warfare await</span>
+              <span>A deadly game awaits</span>
             </div>
           </div>
         )}
@@ -53,13 +53,13 @@ export default function EventPage({ socket }: Props) {
         {phase === 'standby' && (
           <div className="standby-section">
             <div className="standby-message">
-              <div className="standby-icon">⚡</div>
+              <div className="standby-icon">🎴</div>
               <h2>EVENT PRIMED</h2>
               <p>Waiting for the commander's signal...</p>
             </div>
             {activeModule && (
               <div className="active-module-indicator">
-                Active Module: <strong>{activeModule === 'team-arena' ? 'Team Arena' : 'Tank Warfare'}</strong>
+                Active Module: <strong>{activeModule === 'team-arena' ? 'Team Arena' : 'Squid Game'}</strong>
               </div>
             )}
           </div>
@@ -69,8 +69,8 @@ export default function EventPage({ socket }: Props) {
           <ModuleTeamArena socket={socket} />
         )}
 
-        {phase === 'active' && activeModule === 'tank-warfare' && (
-          <ModuleTankWarfare socket={socket} />
+        {phase === 'active' && activeModule === 'squid-game' && (
+          <ModuleSquidGame socket={socket} />
         )}
 
         {phase === 'active' && !activeModule && (

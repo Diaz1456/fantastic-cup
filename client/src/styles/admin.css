@@ -32,9 +32,9 @@
 .admin-btn.small { padding: 5px 10px; font-size: 9px; }
 .admin-btn.full-width { width: 100%; margin-top: 12px; }
 
-.admin-btn.battle-start { width: 100%; padding: 14px; font-size: 16px; background: linear-gradient(135deg, var(--accent-blood), var(--accent-fire)); color: white; border: 2px solid var(--accent-fire); letter-spacing: 4px; margin-top: 12px; animation: pulseStart 2s ease infinite; }
-@keyframes pulseStart { 0%,100% { box-shadow: 0 0 15px rgba(255,69,0,0.3); } 50% { box-shadow: 0 0 35px rgba(255,69,0,0.5); } }
-.admin-btn.battle-start:hover { transform: scale(1.02); }
+.admin-btn.start-game { width: 100%; padding: 14px; font-size: 16px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; border: 2px solid #a855f7; letter-spacing: 4px; margin-top: 12px; animation: pulseStart 2s ease infinite; }
+@keyframes pulseStart { 0%,100% { box-shadow: 0 0 15px rgba(168,85,247,0.3); } 50% { box-shadow: 0 0 35px rgba(168,85,247,0.5); } }
+.admin-btn.start-game:hover { transform: scale(1.02); }
 
 .admin-btn.eliminate-btn { background: var(--danger); color: white; border-color: #ff4444; font-size: 10px; padding: 6px 16px; }
 .admin-btn.eliminate-btn:hover { box-shadow: 0 0 20px rgba(204,34,34,0.3); }
@@ -59,7 +59,6 @@
 .phase-badge.standby { color: #88aaff; }
 .phase-badge.active { color: var(--neon-green); }
 .phase-badge.idle { color: var(--text-dim); }
-.phase-badge.battle { color: var(--accent-fire); }
 .phase-badge.victory { color: var(--accent-gold); }
 
 /* MODULE SWITCH */
@@ -67,13 +66,6 @@
 .module-btn { flex: 1; background: #0a0505; border: 1px solid var(--border-rust); color: var(--text-dim); font-family: 'Black Ops One', monospace; font-size: 11px; padding: 10px; cursor: pointer; border-radius: 4px; letter-spacing: 1px; transition: all 0.2s; }
 .module-btn.active { background: var(--accent-blood); color: white; border-color: var(--accent-fire); box-shadow: 0 0 15px rgba(255,69,0,0.2); }
 .module-hint { font-size: 11px; color: var(--text-dim); font-style: italic; }
-
-/* ELIMINATION */
-.elimination-section { margin-top: 12px; }
-.eliminate-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(60,30,10,0.2); }
-.tank-name-label { font-family: 'Black Ops One', monospace; font-size: 13px; letter-spacing: 1px; }
-.confirm-group { display: flex; gap: 4px; }
-.cooldown-info { font-size: 10px; color: var(--text-dim); margin-top: 8px; letter-spacing: 1px; }
 
 /* STATUS */
 .status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -84,9 +76,46 @@
 .status-badge { font-family: 'Black Ops One', monospace; color: var(--accent-gold); font-size: 12px; margin-left: 6px; }
 .status-tag { font-size: 9px; padding: 1px 6px; border-radius: 2px; letter-spacing: 1px; }
 .status-tag.alive { background: rgba(68,187,68,0.15); color: var(--success); border: 1px solid rgba(68,187,68,0.3); }
-.status-tag.destroyed { background: rgba(204,34,34,0.15); color: var(--danger); border: 1px solid rgba(204,34,34,0.3); }
-.status-tag.victorious { background: rgba(255,215,0,0.15); color: var(--accent-gold); border: 1px solid rgba(255,215,0,0.3); }
+.status-tag.eliminated { background: rgba(204,34,34,0.15); color: var(--danger); border: 1px solid rgba(204,34,34,0.3); }
+.status-tag.winner { background: rgba(255,215,0,0.15); color: var(--accent-gold); border: 1px solid rgba(255,215,0,0.3); }
 
 .admin-toast { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--danger); color: white; padding: 10px 24px; border-radius: 4px; font-family: 'Black Ops One', monospace; font-size: 11px; z-index: 100; animation: toastIn 0.3s ease; }
 
 .admin-card.wide { grid-column: 1 / -1; }
+
+/* ─── SQUID GAME ADMIN ROSTER ─── */
+.squid-roster { margin-top: 12px; }
+.squid-roster h3 { font-family: 'Black Ops One', monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 8px; }
+
+.squid-roster-grid { display: flex; flex-direction: column; gap: 4px; max-height: 400px; overflow-y: auto; }
+
+.squid-roster-card {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+.squid-roster-card.eliminated { opacity: 0.4; filter: grayscale(0.8); }
+
+.squid-roster-avatar {
+  width: 32px; height: 32px; border-radius: 50%; overflow: hidden;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.04); font-size: 1rem;
+}
+.squid-roster-img { width: 100%; height: 100%; object-fit: cover; }
+.squid-roster-fallback { font-size: 1rem; }
+
+.squid-roster-info { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.squid-roster-name { font-size: 12px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.squid-roster-status { font-size: 8px; font-weight: 700; letter-spacing: 1px; }
+.squid-roster-status.alive { color: var(--success); }
+.squid-roster-status.eliminated { color: var(--danger); }
+.squid-roster-status.winner { color: var(--accent-gold); }
+
+.squid-roster-actions { display: flex; gap: 4px; flex-shrink: 0; }
+
+.text-muted { color: var(--text-dim); font-size: 11px; font-style: italic; }
+
+.confirm-group { display: flex; gap: 4px; }

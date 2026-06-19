@@ -128,44 +128,58 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  socket.on('adminStartBattle', () => {
-    eventManager.startBattle();
-    io.emit('battleStarted');
+  // ─── SQUID GAME ─────────────────────────────────────────
+
+  socket.on('adminStartSquidGame', () => {
+    eventManager.startSquidGame();
+    io.emit('squidGameStarted');
     broadcastState();
   });
 
-  socket.on('adminEliminateTank', (tankId) => {
-    const state = eventManager.getState();
-    if (state.tankBattle.phase !== 'battle') {
-      socket.emit('error', 'Battle not started');
-      return;
+  socket.on('adminResetSquidGame', () => {
+    eventManager.resetSquidGame();
+    io.emit('squidGameReset');
+    broadcastState();
+  });
+
+  socket.on('adminAddSquidPlayer', (data) => {
+    const player = eventManager.addSquidPlayer(data.username, data.avatarUrl);
+    if (player) {
+      io.emit('squidPlayerAdded', player);
+      broadcastState();
     }
-    const now = Date.now();
-    if (state.tankBattle.lastEliminationAt && (now - state.tankBattle.lastEliminationAt) < state.tankBattle.eliminationCooldown) {
-      socket.emit('error', `Cooldown: ${Math.ceil((state.tankBattle.eliminationCooldown - (now - state.tankBattle.lastEliminationAt)) / 1000)}s`);
+  });
+
+  socket.on('adminRemoveSquidPlayer', (playerId) => {
+    eventManager.removeSquidPlayer(playerId);
+    io.emit('squidPlayerRemoved', playerId);
+    broadcastState();
+  });
+
+  socket.on('adminEliminateSquidPlayer', (data) => {
+    const state = eventManager.getState();
+    if (state.squidGame.phase !== 'active') {
+      socket.emit('error', 'Game not started');
       return;
     }
 
-    eventManager.setTankUnderAttack(tankId);
-    io.emit('tankUnderAttack', tankId);
+    eventManager.setSquidTarget(data.playerId);
+    io.emit('squidPlayerTargeted', data.playerId);
 
     setTimeout(() => {
-      const eliminated = eventManager.eliminateTank(tankId);
+      const eliminated = eventManager.eliminateSquidPlayer(data.playerId, data.adminName);
       if (eliminated) {
-        io.emit('tankEliminated', tankId, eliminated.rank!);
-        const s = eventManager.getState();
-        if (s.tankBattle.phase === 'victory') {
-          const winner = s.tankBattle.tanks.find(t => t.status === 'victorious')!;
-          io.emit('battleVictory', winner, eventManager.getTanksSortedByRank());
+        io.emit('squidPlayerEliminated', { player: eliminated, rank: data.rank || null });
+
+        const gs = eventManager.getState().squidGame;
+        if (gs.phase === 'victory') {
+          const winner = eventManager.getSquidWinner();
+          const remaining = eventManager.getAliveSquidPlayers();
+          io.emit('squidGameVictory', { winner, remaining });
         }
         broadcastState();
       }
-    }, 2000);
-  });
-
-  socket.on('adminResetBattle', () => {
-    eventManager.resetTankBattle();
-    broadcastState();
+    }, 2500);
   });
 
   socket.on('disconnect', () => console.log(`Disconnected: ${socket.id}`));

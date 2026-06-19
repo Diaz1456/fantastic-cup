@@ -1,11 +1,5 @@
-import { EventState, Team, TankBattleState, Tank, GamePhase, ActiveModule, CoinTransaction } from './types';
+import { EventState, Team, SquidGameState, SquidPlayer, GamePhase, ActiveModule, CoinTransaction } from './types';
 import { v4 as uuidv4 } from 'uuid';
-
-const TANK_TEMPLATES = [
-  { name: 'Ironclad', color: '#4a7c59', accent: '#8bc34a' },
-  { name: 'Warhound', color: '#7c4a4a', accent: '#ff5722' },
-  { name: 'Crimson Dozer', color: '#4a4a7c', accent: '#e91e63' },
-];
 
 const DEFAULT_TEAMS: Team[] = [
   { id: uuidv4(), name: 'Elite Division', logo: '🦅', color: '#ffd700', points: 0, rank: 1 },
@@ -13,26 +7,13 @@ const DEFAULT_TEAMS: Team[] = [
   { id: uuidv4(), name: 'Storm Brigade', logo: '⚡', color: '#cd7f32', points: 0, rank: 3 },
 ];
 
-function createTanks(): Tank[] {
-  return TANK_TEMPLATES.map((t, i) => ({
-    id: uuidv4(),
-    name: t.name,
-    color: t.color,
-    accent: t.accent,
-    status: 'alive' as const,
-    rank: null,
-    eliminatedAt: null,
-  }));
-}
-
-function defaultTankBattle(): TankBattleState {
+function defaultSquidGame(): SquidGameState {
   return {
     phase: 'idle',
-    tanks: createTanks(),
-    battleStartedAt: null,
+    players: [],
+    gameStartedAt: null,
     lastEliminationAt: null,
-    eliminationCooldown: 5000,
-    tankUnderAttackId: null,
+    currentlyTargetedId: null,
   };
 }
 
@@ -49,7 +30,7 @@ function defaultState(): EventState {
     teams: DEFAULT_TEAMS.map(t => ({ ...t })),
     coins: [],
     playerBalances: {},
-    tankBattle: defaultTankBattle(),
+    squidGame: defaultSquidGame(),
   };
 }
 
@@ -61,14 +42,13 @@ class EventStateManager {
   }
 
   getState(): EventState {
-    return { ...this.state, tankBattle: { ...this.state.tankBattle, tanks: [...this.state.tankBattle.tanks] } };
+    return { ...this.state, squidGame: { ...this.state.squidGame, players: [...this.state.squidGame.players] } };
   }
 
   setPhase(phase: GamePhase) { this.state.phase = phase; }
 
   setActiveModule(mod: ActiveModule) { this.state.activeModule = mod; }
 
-  // Timer
   setTimer(data: { deadline: number; mysteryMode: boolean }) {
     this.state.timer.deadline = data.deadline;
     this.state.timer.mysteryMode = data.mysteryMode;
@@ -104,7 +84,6 @@ class EventStateManager {
     return Math.max(0, this.state.timer.deadline - Date.now());
   }
 
-  // Teams
   updateTeams(teams: Team[]) {
     this.state.teams = teams.map((t, i) => ({ ...t, rank: i + 1 }));
   }
@@ -118,7 +97,6 @@ class EventStateManager {
     }
   }
 
-  // Coins
   awardCoin(data: { playerId: string; playerName: string; amount: number; reason: string; emoji: string }): { tx: CoinTransaction; newBalance: number } {
     const tx: CoinTransaction = {
       id: uuidv4(),
@@ -136,54 +114,74 @@ class EventStateManager {
     return this.state.playerBalances[playerId] || 0;
   }
 
-  // Tank Battle
-  resetTankBattle() {
-    this.state.tankBattle = defaultTankBattle();
+  // Squid Game
+  resetSquidGame() {
+    this.state.squidGame = defaultSquidGame();
   }
 
-  startBattle() {
-    this.state.tankBattle.phase = 'battle';
-    this.state.tankBattle.battleStartedAt = Date.now();
-    this.state.tankBattle.lastEliminationAt = null;
-    this.state.tankBattle.tankUnderAttackId = null;
-    this.state.tankBattle.tanks.forEach(t => { t.status = 'alive'; t.rank = null; t.eliminatedAt = null; });
+  startSquidGame() {
+    const g = this.state.squidGame;
+    g.phase = 'active';
+    g.gameStartedAt = Date.now();
+    g.lastEliminationAt = null;
+    g.currentlyTargetedId = null;
+    g.players.forEach(p => { p.status = 'alive'; p.eliminatedAt = null; });
   }
 
-  setTankUnderAttack(tankId: string | null) {
-    this.state.tankBattle.tankUnderAttackId = tankId;
+  addSquidPlayer(username: string, avatarUrl?: string): SquidPlayer | null {
+    const g = this.state.squidGame;
+    if (g.players.find(p => p.username === username)) return null;
+    const player: SquidPlayer = {
+      id: uuidv4(),
+      username,
+      avatarUrl: avatarUrl || '',
+      status: 'alive',
+      eliminatedAt: null,
+      eliminatedBy: null,
+    };
+    g.players.push(player);
+    return player;
   }
 
-  eliminateTank(tankId: string): Tank | null {
-    const tank = this.state.tankBattle.tanks.find(t => t.id === tankId);
-    if (!tank || tank.status !== 'alive') return null;
+  removeSquidPlayer(playerId: string): boolean {
+    const g = this.state.squidGame;
+    const idx = g.players.findIndex(p => p.id === playerId);
+    if (idx === -1) return false;
+    g.players.splice(idx, 1);
+    return true;
+  }
 
-    tank.status = 'destroyed';
-    tank.eliminatedAt = Date.now();
-    this.state.tankBattle.lastEliminationAt = Date.now();
-    this.state.tankBattle.tankUnderAttackId = null;
+  setSquidTarget(playerId: string | null) {
+    this.state.squidGame.currentlyTargetedId = playerId;
+  }
 
-    const destroyedCount = this.state.tankBattle.tanks.filter(t => t.status === 'destroyed').length;
-    tank.rank = 4 - destroyedCount;
+  eliminateSquidPlayer(playerId: string, adminName?: string): SquidPlayer | null {
+    const g = this.state.squidGame;
+    const player = g.players.find(p => p.id === playerId);
+    if (!player || player.status !== 'alive') return null;
 
-    if (destroyedCount === 2) {
-      const winner = this.state.tankBattle.tanks.find(t => t.status === 'alive');
-      if (winner) {
-        winner.status = 'victorious';
-        winner.rank = 1;
-        this.state.tankBattle.phase = 'victory';
-      }
+    player.status = 'eliminated';
+    player.eliminatedAt = Date.now();
+    player.eliminatedBy = adminName || 'Guard';
+    g.lastEliminationAt = Date.now();
+    g.currentlyTargetedId = null;
+
+    const aliveCount = g.players.filter(p => p.status === 'alive').length;
+    if (aliveCount <= 1) {
+      const winner = g.players.find(p => p.status === 'alive');
+      if (winner) winner.status = 'winner';
+      g.phase = 'victory';
     }
 
-    return tank;
+    return player;
   }
 
-  getTanksSortedByRank(): Tank[] {
-    return [...this.state.tankBattle.tanks].sort((a, b) => {
-      if (a.rank === null && b.rank === null) return 0;
-      if (a.rank === null) return 1;
-      if (b.rank === null) return -1;
-      return a.rank - b.rank;
-    });
+  getSquidWinner(): SquidPlayer | null {
+    return this.state.squidGame.players.find(p => p.status === 'winner') || null;
+  }
+
+  getAliveSquidPlayers(): SquidPlayer[] {
+    return this.state.squidGame.players.filter(p => p.status === 'alive');
   }
 
   resetEvent() {

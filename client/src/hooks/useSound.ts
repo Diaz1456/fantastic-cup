@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 
-type SoundType = 'tick' | 'alarm' | 'explosion' | 'siren' | 'victory' | 'coin' | 'whoosh' | 'celebration';
+type SoundType = 'tick' | 'alarm' | 'explosion' | 'siren' | 'victory' | 'coin' | 'whoosh' | 'celebration' | 'gunshot' | 'heartbeat' | 'tense' | 'choir';
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
@@ -131,6 +131,69 @@ class SoundEngine {
           g.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
           o.connect(g).connect(ctx.destination);
           o.start(t); o.stop(t + 0.2);
+        });
+        break;
+      }
+      case 'gunshot': {
+        const src = this.noise(ctx, 0.8);
+        const g = ctx.createGain();
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.setValueAtTime(3000, ctx.currentTime);
+        f.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+        g.gain.setValueAtTime(0.7, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        src.connect(f).connect(g).connect(ctx.destination);
+        src.start(); src.stop(ctx.currentTime + 0.8);
+        // Low rumble
+        const o = ctx.createOscillator();
+        const og = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 60;
+        og.gain.setValueAtTime(0.3, ctx.currentTime);
+        og.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        o.connect(og).connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.5);
+        break;
+      }
+      case 'heartbeat': {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 50;
+        for (let i = 0; i < 3; i++) {
+          const t = ctx.currentTime + i * 0.45;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.25, t + 0.05);
+          g.gain.linearRampToValueAtTime(0, t + 0.15);
+        }
+        o.connect(g).connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 1.5);
+        break;
+      }
+      case 'tense': {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sawtooth'; o.frequency.value = 110;
+        g.gain.setValueAtTime(0.04, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.5);
+        g.gain.linearRampToValueAtTime(0.04, ctx.currentTime + 1);
+        g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 1.5);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 2);
+        o.connect(g).connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 2);
+        break;
+      }
+      case 'choir': {
+        const notes = [261.63, 329.63, 392, 523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, i) => {
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'triangle'; o.frequency.value = freq;
+          const t = ctx.currentTime + i * 0.2;
+          g.gain.setValueAtTime(0.06, t);
+          g.gain.linearRampToValueAtTime(0.1, t + 0.3);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 2);
+          o.connect(g).connect(ctx.destination);
+          o.start(t); o.stop(t + 2);
         });
         break;
       }

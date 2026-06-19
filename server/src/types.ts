@@ -17,18 +17,17 @@ export interface CoinTransaction {
   timestamp: number;
 }
 
-export interface Tank {
+export interface SquidPlayer {
   id: string;
-  name: string;
-  color: string;
-  accent: string;
-  status: 'alive' | 'destroyed' | 'victorious';
-  rank: number | null;
+  username: string;
+  avatarUrl: string;
+  status: 'alive' | 'eliminated' | 'winner';
   eliminatedAt: number | null;
+  eliminatedBy: string | null;
 }
 
 export type GamePhase = 'countdown' | 'standby' | 'active';
-export type ActiveModule = 'team-arena' | 'tank-warfare' | null;
+export type ActiveModule = 'team-arena' | 'squid-game' | null;
 
 export interface TimerState {
   deadline: number | null;
@@ -37,13 +36,12 @@ export interface TimerState {
   pausedRemaining: number | null;
 }
 
-export interface TankBattleState {
-  phase: 'idle' | 'battle' | 'victory';
-  tanks: Tank[];
-  battleStartedAt: number | null;
+export interface SquidGameState {
+  phase: 'idle' | 'active' | 'victory';
+  players: SquidPlayer[];
+  gameStartedAt: number | null;
   lastEliminationAt: number | null;
-  eliminationCooldown: number;
-  tankUnderAttackId: string | null;
+  currentlyTargetedId: string | null;
 }
 
 export interface EventState {
@@ -53,7 +51,7 @@ export interface EventState {
   teams: Team[];
   coins: CoinTransaction[];
   playerBalances: Record<string, number>;
-  tankBattle: TankBattleState;
+  squidGame: SquidGameState;
 }
 
 export interface ServerToClientEvents {
@@ -63,10 +61,13 @@ export interface ServerToClientEvents {
   moduleChange: (module: ActiveModule) => void;
   teamsUpdate: (teams: Team[]) => void;
   coinAwarded: (transaction: CoinTransaction, newBalance: number) => void;
-  battleStarted: () => void;
-  tankUnderAttack: (tankId: string) => void;
-  tankEliminated: (tankId: string, rank: number) => void;
-  battleVictory: (winner: Tank, rankings: Tank[]) => void;
+  squidGameStarted: () => void;
+  squidGameReset: () => void;
+  squidPlayerAdded: (player: SquidPlayer) => void;
+  squidPlayerRemoved: (playerId: string) => void;
+  squidPlayerTargeted: (playerId: string) => void;
+  squidPlayerEliminated: (data: { player: SquidPlayer; rank: number | null }) => void;
+  squidGameVictory: (data: { winner: SquidPlayer | null; remaining: SquidPlayer[] }) => void;
   error: (message: string) => void;
 }
 
@@ -81,9 +82,11 @@ export interface ClientToServerEvents {
   adminSwitchModule: (module: ActiveModule) => void;
   adminUpdateTeams: (teams: Team[]) => void;
   adminAwardCoin: (data: { playerId: string; playerName: string; amount: number; reason: string; emoji: string }) => void;
-  adminStartBattle: () => void;
-  adminEliminateTank: (tankId: string) => void;
-  adminResetBattle: () => void;
+  adminStartSquidGame: () => void;
+  adminResetSquidGame: () => void;
+  adminAddSquidPlayer: (data: { username: string; avatarUrl?: string }) => void;
+  adminRemoveSquidPlayer: (playerId: string) => void;
+  adminEliminateSquidPlayer: (data: { playerId: string; adminName?: string; rank?: number }) => void;
 }
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'fc-secret-2024';

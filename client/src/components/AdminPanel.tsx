@@ -12,23 +12,34 @@ export default function AdminPanel({ socket, onBack }: Props) {
   const [confirmEliminate, setConfirmEliminate] = useState<string | null>(null);
   const [extendSeconds, setExtendSeconds] = useState(30);
   const [teamEditMode, setTeamEditMode] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState('');
 
   if (!state) return <div className="admin-panel"><h2>Loading...</h2></div>;
 
   const phase = state.phase;
   const activeModule = state.activeModule;
   const teams = socket.teams || state.teams || [];
-  const battle = state.tankBattle;
+  const squid = state.squidGame || {};
+  const players = squid.players || [];
+  const alivePlayers = players.filter((p: any) => p.status === 'alive');
 
   const handleSetTimer = () => {
     const deadline = new Date(dateStr).getTime();
     if (!isNaN(deadline)) socket.adminSetTimer(deadline, mysteryMode);
   };
 
+  const handleAddPlayer = () => {
+    const name = newPlayerName.trim();
+    if (name) {
+      socket.adminAddSquidPlayer(name);
+      setNewPlayerName('');
+    }
+  };
+
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <h1 className="admin-title">⚔ FANTASTIC CUP — COMMAND CENTER</h1>
+        <h1 className="admin-title">🎴 FANTASTIC CUP — COMMAND CENTER</h1>
         <button className="admin-back-btn" onClick={onBack}>EXIT</button>
       </div>
 
@@ -84,18 +95,17 @@ export default function AdminPanel({ socket, onBack }: Props) {
                 className={`module-btn ${activeModule === 'team-arena' ? 'active' : ''}`}
                 onClick={() => {
                   socket.adminSwitchModule('team-arena');
-                  if (phase === 'standby') socket.adminSwitchModule('team-arena');
                 }}
               >
                 🏟 TEAM ARENA
               </button>
               <button
-                className={`module-btn ${activeModule === 'tank-warfare' ? 'active' : ''}`}
+                className={`module-btn ${activeModule === 'squid-game' ? 'active' : ''}`}
                 onClick={() => {
-                  socket.adminSwitchModule('tank-warfare');
+                  socket.adminSwitchModule('squid-game');
                 }}
               >
-                💥 TANK WARFARE
+                🎴 SQUID GAME
               </button>
             </div>
 
@@ -160,38 +170,79 @@ export default function AdminPanel({ socket, onBack }: Props) {
           )}
         </div>
 
-        {/* TANK WARFARE ADMIN */}
-        <div className="admin-card tank-admin-card">
-          <h2>💥 TANK WARFARE</h2>
+        {/* SQUID GAME ADMIN */}
+        <div className="admin-card squid-admin-card">
+          <h2>🎴 SQUID GAME</h2>
           <div className="phase-indicator">
-            BATTLE: <span className={`phase-badge ${battle?.phase}`}>{(battle?.phase || 'idle').toUpperCase()}</span>
+            GAME: <span className={`phase-badge ${squid.phase}`}>{(squid.phase || 'idle').toUpperCase()}</span>
           </div>
 
-          {battle?.phase === 'idle' && (
-            <button onClick={socket.adminStartBattle} className="admin-btn battle-start">START BATTLE</button>
-          )}
+          <div className="admin-actions">
+            {squid.phase === 'idle' && (
+              <button onClick={socket.adminStartSquidGame} className="admin-btn start-game">START GAME</button>
+            )}
+            <button onClick={socket.adminResetSquidGame} className="admin-btn danger">RESET GAME</button>
+          </div>
 
-          {battle?.phase === 'battle' && (
-            <div className="elimination-section">
-              <h3>ELIMINATE TANK</h3>
-              {battle.tanks.filter((t: any) => t.status === 'alive').map((tank: any) => (
-                <div key={tank.id} className="eliminate-row">
-                  <span className="tank-name-label" style={{ color: tank.accent }}>{tank.name}</span>
-                  {confirmEliminate === tank.id ? (
-                    <div className="confirm-group">
-                      <button onClick={() => { socket.adminEliminateTank(tank.id); setConfirmEliminate(null); }} className="admin-btn danger small">CONFIRM</button>
-                      <button onClick={() => setConfirmEliminate(null)} className="admin-btn small">CANCEL</button>
+          {/* Add player */}
+          <div className="admin-row">
+            <input
+              type="text"
+              value={newPlayerName}
+              onChange={e => setNewPlayerName(e.target.value)}
+              placeholder="Player username..."
+              className="admin-input small"
+              onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(); }}
+            />
+            <button onClick={handleAddPlayer} className="admin-btn small">ADD</button>
+          </div>
+
+          {/* Player roster */}
+          <div className="squid-roster">
+            <h3>PLAYER ROSTER ({players.length})</h3>
+            {players.length === 0 && <p className="text-muted">No players added yet.</p>}
+            <div className="squid-roster-grid">
+              {players.map((p: any) => {
+                const isEliminated = p.status === 'eliminated';
+                return (
+                  <div key={p.id} className={`squid-roster-card ${isEliminated ? 'eliminated' : ''}`}>
+                    <div className="squid-roster-avatar">
+                      {p.avatarUrl
+                        ? <img src={p.avatarUrl} alt="" className="squid-roster-img" />
+                        : <span className="squid-roster-fallback">🎭</span>
+                      }
                     </div>
-                  ) : (
-                    <button onClick={() => setConfirmEliminate(tank.id)} className="admin-btn eliminate-btn">ELIMINATE</button>
-                  )}
-                </div>
-              ))}
-              <div className="cooldown-info">Min 5s between eliminations</div>
+                    <div className="squid-roster-info">
+                      <span className="squid-roster-name">{p.username}</span>
+                      <span className={`squid-roster-status ${p.status}`}>{p.status.toUpperCase()}</span>
+                    </div>
+                    <div className="squid-roster-actions">
+                      {!isEliminated && squid.phase === 'active' && (
+                        <>
+                          {confirmEliminate === p.id ? (
+                            <div className="confirm-group">
+                              <button
+                                onClick={() => { socket.adminEliminateSquidPlayer(p.id); setConfirmEliminate(null); }}
+                                className="admin-btn danger small"
+                              >✕ CONFIRM</button>
+                              <button onClick={() => setConfirmEliminate(null)} className="admin-btn small">CANCEL</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setConfirmEliminate(p.id)} className="admin-btn eliminate-btn">ELIMINATE</button>
+                          )}
+                        </>
+                      )}
+                      <button
+                        onClick={() => socket.adminRemoveSquidPlayer(p.id)}
+                        className="admin-btn small danger"
+                        title="Remove player"
+                      >✕</button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-
-          <button onClick={socket.adminResetBattle} className="admin-btn danger full-width">RESET BATTLE</button>
+          </div>
         </div>
 
         {/* STATUS OVERVIEW */}
@@ -210,13 +261,13 @@ export default function AdminPanel({ socket, onBack }: Props) {
               ))}
             </div>
             <div className="status-col">
-              <h3>Tanks</h3>
-              {(battle?.tanks || []).map((t: any) => (
-                <div key={t.id} className="status-item">
-                  <span className="status-dot" style={{ background: t.accent }} />
-                  <span>{t.name}</span>
-                  <span className={`status-tag ${t.status}`}>{t.status.toUpperCase()}</span>
-                  {t.rank && <span className="status-badge">#{t.rank}</span>}
+              <h3>Players ({players.length})</h3>
+              {players.length === 0 && <p className="text-muted">No players</p>}
+              {players.map((p: any) => (
+                <div key={p.id} className="status-item">
+                  <span className="status-dot" style={{ background: p.status === 'alive' ? '#10b981' : p.status === 'winner' ? '#ffd700' : '#ef4444' }} />
+                  <span>{p.username}</span>
+                  <span className={`status-tag ${p.status}`}>{p.status.toUpperCase()}</span>
                 </div>
               ))}
             </div>

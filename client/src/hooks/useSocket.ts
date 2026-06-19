@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { EventState, ServerToClientEvents, ClientToServerEvents, Tank, Team, CoinTransaction } from '../types';
+import { EventState, ServerToClientEvents, ClientToServerEvents, SquidPlayer, Team, CoinTransaction } from '../types';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || '';
 
@@ -11,9 +11,9 @@ export function useSocket() {
   const [timerDisplay, setTimerDisplay] = useState<string>('');
   const [timerRemaining, setTimerRemaining] = useState<number>(0);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [tankUnderAttack, setTankUnderAttack] = useState<string | null>(null);
-  const [lastElimination, setLastElimination] = useState<{ tankId: string; rank: number } | null>(null);
-  const [victoryData, setVictoryData] = useState<{ winner: Tank; rankings: Tank[] } | null>(null);
+  const [squidTargeted, setSquidTargeted] = useState<string | null>(null);
+  const [lastElimination, setLastElimination] = useState<{ player: SquidPlayer; rank: number | null } | null>(null);
+  const [victoryData, setVictoryData] = useState<{ winner: SquidPlayer | null; remaining: SquidPlayer[] } | null>(null);
   const [coinNotification, setCoinNotification] = useState<{ tx: CoinTransaction; balance: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,7 +29,7 @@ export function useSocket() {
       setTeams(state.teams);
       setVictoryData(null);
       setLastElimination(null);
-      setTankUnderAttack(null);
+      setSquidTargeted(null);
     });
 
     socket.on('timerTick', (remaining, display) => {
@@ -44,12 +44,12 @@ export function useSocket() {
       setTimeout(() => setCoinNotification(null), 4000);
     });
 
-    socket.on('tankUnderAttack', (id) => setTankUnderAttack(id));
-    socket.on('tankEliminated', (tankId, rank) => {
-      setLastElimination({ tankId, rank });
-      setTankUnderAttack(null);
+    socket.on('squidPlayerTargeted', (id) => setSquidTargeted(id));
+    socket.on('squidPlayerEliminated', (data) => {
+      setLastElimination(data);
+      setSquidTargeted(null);
     });
-    socket.on('battleVictory', (winner, rankings) => setVictoryData({ winner, rankings }));
+    socket.on('squidGameVictory', (data) => setVictoryData(data));
 
     socket.on('error', (msg) => {
       setError(msg);
@@ -70,15 +70,18 @@ export function useSocket() {
   const adminSwitchModule = useCallback((m: any) => socketRef.current?.emit('adminSwitchModule', m), []);
   const adminUpdateTeams = useCallback((t: Team[]) => socketRef.current?.emit('adminUpdateTeams', t), []);
   const adminAwardCoin = useCallback((d: any) => socketRef.current?.emit('adminAwardCoin', d), []);
-  const adminStartBattle = useCallback(() => socketRef.current?.emit('adminStartBattle'), []);
-  const adminEliminateTank = useCallback((id: string) => socketRef.current?.emit('adminEliminateTank', id), []);
-  const adminResetBattle = useCallback(() => socketRef.current?.emit('adminResetBattle'), []);
+  const adminStartSquidGame = useCallback(() => socketRef.current?.emit('adminStartSquidGame'), []);
+  const adminResetSquidGame = useCallback(() => socketRef.current?.emit('adminResetSquidGame'), []);
+  const adminAddSquidPlayer = useCallback((username: string, avatarUrl?: string) => socketRef.current?.emit('adminAddSquidPlayer', { username, avatarUrl }), []);
+  const adminRemoveSquidPlayer = useCallback((playerId: string) => socketRef.current?.emit('adminRemoveSquidPlayer', playerId), []);
+  const adminEliminateSquidPlayer = useCallback((playerId: string, adminName?: string) => socketRef.current?.emit('adminEliminateSquidPlayer', { playerId, adminName }), []);
 
   return {
     connected, gameState, teams, timerDisplay, timerRemaining,
-    tankUnderAttack, lastElimination, victoryData, coinNotification, error,
+    squidTargeted, lastElimination, victoryData, coinNotification, error,
     adminLogin, adminSetTimer, adminPauseTimer, adminResumeTimer,
     adminResetTimer, adminExtendTimer, adminSwitchModule, adminUpdateTeams,
-    adminAwardCoin, adminStartBattle, adminEliminateTank, adminResetBattle,
+    adminAwardCoin, adminStartSquidGame, adminResetSquidGame,
+    adminAddSquidPlayer, adminRemoveSquidPlayer, adminEliminateSquidPlayer,
   };
 }

@@ -827,34 +827,55 @@ io.on('connection', (socket) => {
     io.emit('coinAwarded', result.tx, result.newBalance);
   });
 
-  socket.on('adminStartBattle', () => {
-    eventBridge.startBattle();
-    io.emit('battleStarted', Date.now());
+  // ─── SQUID GAME ─────────────────────────────────────────────
+
+  socket.on('adminStartSquidGame', () => {
+    eventBridge.startSquidGame();
+    io.emit('squidGameStarted');
   });
 
-  socket.on('adminEliminateTank', (tankId) => {
-    const state = eventBridge.state;
-    if (state.tankBattle.phase !== 'battle') return socket.emit('error', 'Battle not started');
-    const now = Date.now();
-    if (state.tankBattle.lastEliminationAt && (now - state.tankBattle.lastEliminationAt) < state.tankBattle.eliminationCooldown) {
-      return socket.emit('error', `Cooldown: ${Math.ceil((state.tankBattle.eliminationCooldown - (now - state.tankBattle.lastEliminationAt)) / 1000)}s`);
+  socket.on('adminResetSquidGame', () => {
+    eventBridge.resetSquidGame();
+    io.emit('squidGameReset');
+  });
+
+  socket.on('adminAddSquidPlayer', (data) => {
+    const player = eventBridge.addSquidPlayer(data.username, data.avatarUrl || '');
+    if (player) {
+      io.emit('squidPlayerAdded', player);
     }
-    eventBridge.setTankUnderAttack(tankId);
-    io.emit('tankUnderAttack', tankId);
+  });
+
+  socket.on('adminRemoveSquidPlayer', (playerId) => {
+    eventBridge.removeSquidPlayer(playerId);
+    io.emit('squidPlayerRemoved', playerId);
+  });
+
+  socket.on('adminEliminateSquidPlayer', (data) => {
+    const g = eventBridge.state.squidGame;
+    if (g.phase !== 'active') return socket.emit('error', 'Game not started');
+
+    // Mark as targeted — triggers guard appearance on clients
+    eventBridge.setSquidTarget(data.playerId);
+    io.emit('squidPlayerTargeted', data.playerId);
+
+    // After 2.5s cinematic delay, perform elimination
     setTimeout(() => {
-      const eliminated = eventBridge.eliminateTank(tankId);
+      const eliminated = eventBridge.eliminateSquidPlayer(data.playerId, data.adminName || 'Guard');
       if (eliminated) {
-        io.emit('tankEliminated', tankId, eliminated.rank);
-        if (eventBridge.state.tankBattle.phase === 'victory') {
-          const winner = eventBridge.state.tankBattle.tanks.find(t => t.status === 'victorious');
-          const rankings = eventBridge.getTanksSortedByRank();
-          io.emit('battleVictory', winner, rankings);
+        io.emit('squidPlayerEliminated', { player: eliminated, rank: data.rank || null });
+
+        const gs = eventBridge.state.squidGame;
+        if (gs.phase === 'victory') {
+          const winner = eventBridge.getSquidWinner();
+          const alive = eventBridge.getAliveSquidPlayers();
+          io.emit('squidGameVictory', { winner, remaining: alive });
         }
       }
-    }, 2000);
+    }, 2500);
   });
 
-  socket.on('adminResetBattle', () => eventBridge.resetTankBattle());
+  // ─── END SQUID GAME ──────────────────────────────────────────
 
   // ─── END EVENT BRIDGE ───
 

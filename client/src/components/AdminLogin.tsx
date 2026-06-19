@@ -36,7 +36,7 @@ export default function AdminLogin({ onLogin }: Props) {
   return (
     <div className="login-page">
       <div className="login-panel">
-        <div className="login-emblem">⚔</div>
+        <div className="login-emblem">🎴</div>
         <h1 className="login-title">COMMAND ACCESS</h1>
         <p className="login-sub">Authorized Personnel Only</p>
         <form onSubmit={handleSubmit}>
