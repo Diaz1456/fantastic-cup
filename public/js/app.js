@@ -384,7 +384,7 @@
         : `<span style="font-size:1.5rem;">👤</span>`;
       return `
       <tr>
-        <td><strong>${p.username}</strong></td>
+        <td><strong class="player-stats-trigger" data-username="${p.username}">${p.username}</strong></td>
         <td>
           <div class="avatar-cell">
             ${avatarHtml}
@@ -655,7 +655,7 @@
           <div class="achievement-values">
             ${catAchs.map(a => `
               <div class="achievement-row">
-                <span class="player-name">${a.username}</span>
+                <span class="player-name player-stats-trigger" data-username="${a.username}">${a.username}</span>
                 <input type="range" min="0" max="100" value="${a.value}"
                   data-player="${a.username}" data-cat="${cat.id}"
                   oninput="window.__updateAchSlider(this)">
@@ -787,11 +787,11 @@
       return `
         <div class="lb-card ${topClass}${animate ? ' lb-animate' : ''}" style="${animate ? `animation-delay:${delay}s` : ''}">
           <div class="lb-rank ${rankClass}">${rank}</div>
-          <div class="lb-avatar">
+          <div class="lb-avatar player-stats-trigger" data-username="${entry.username}">
             ${avatarHtml}
           </div>
           <div class="lb-info">
-            <div class="lb-name">${entry.username}<span class="lb-badges-placeholder" data-username="${entry.username}"></span></div>
+            <div class="lb-name player-stats-trigger" data-username="${entry.username}">${entry.username}<span class="lb-badges-placeholder" data-username="${entry.username}"></span></div>
             <div class="lb-score-bar-wrapper">
               <div class="lb-score-bar">
                 <div class="lb-score-bar-fill" style="width:${pct}%"></div>
@@ -1103,6 +1103,146 @@
       });
     });
   }
+
+  /* ─── PLAYER STATS PANEL ─── */
+  let _statsPlayer = null;
+
+  function openPlayerStats(username) {
+    if (!username) return;
+    _statsPlayer = username;
+    const overlay = document.getElementById('stats-panel-overlay');
+    const panel = document.getElementById('stats-panel');
+    const content = document.getElementById('stats-panel-content');
+    if (!overlay || !panel || !content) return;
+    overlay.style.display = 'flex';
+    content.innerHTML = '<div class="stats-loading"><span class="stats-spinner"></span> Loading stats...</div>';
+    requestAnimationFrame(() => {
+      panel.classList.add('stats-panel-open');
+      overlay.classList.add('stats-overlay-visible');
+    });
+    fetchStats(username);
+  }
+
+  function closePlayerStats() {
+    const overlay = document.getElementById('stats-panel-overlay');
+    const panel = document.getElementById('stats-panel');
+    if (overlay) overlay.style.display = 'none';
+    if (panel) panel.classList.remove('stats-panel-open');
+    _statsPlayer = null;
+  }
+
+  async function fetchStats(username) {
+    const content = document.getElementById('stats-panel-content');
+    try {
+      const res = await fetch('/api/player/' + encodeURIComponent(username) + '/stats').then(r => r.json());
+      if (!res || !res.username) {
+        content.innerHTML = '<div class="stats-error">Failed to load stats.</div>';
+        return;
+      }
+      const isAdmin = authState && authState.role === 'admin';
+      const isSelf = authState && authState.username === username;
+      const showNote = isAdmin || isSelf;
+      const c = window.RARITY_COLORS || {};
+
+      let html = '<div class="stats-header">';
+      html += '<div class="stats-avatar-wrap">';
+      if (res.avatarUrl) {
+        html += `<img src="${res.avatarUrl}" class="stats-avatar-img" onerror="this.style.display='none'">`;
+        html += '<span class="stats-avatar-fallback" style="display:none;">👤</span>';
+      } else {
+        html += '<span class="stats-avatar-fallback">👤</span>';
+      }
+      html += '</div>';
+      html += `<div class="stats-name-row">`;
+      html += `<h2 class="stats-name">${res.username}</h2>`;
+      html += `<span class="stats-coin-badge"><span class="stats-coin-icon">🪙</span> ${res.coinBalance}</span>`;
+      html += `</div>`;
+      html += '</div>';
+
+      // Badges section
+      if (res.badges && res.badges.length > 0) {
+        html += '<div class="stats-section"><h3 class="stats-section-title">🏅 Badges</h3><div class="stats-badges-row">';
+        for (const b of res.badges) {
+          const bc = c[b.rarity] || c.common || { bg: 'rgba(180,180,190,0.15)', border: '#b4b4be', text: '#b4b4be' };
+          const legendaryClass = b.rarity === 'legendary' ? 'stats-badge-legendary' : '';
+          html += `<div class="stats-badge ${legendaryClass}" style="border-color:${bc.border};background:${bc.bg}" title="${b.description || ''}">`;
+          html += `<span class="stats-badge-icon">${b.icon}</span>`;
+          html += `<span class="stats-badge-name" style="color:${bc.text}">${b.name}</span>`;
+          html += `<span class="stats-badge-rarity" style="background:${bc.border}">${b.rarity.toUpperCase()}</span>`;
+          html += `</div>`;
+        }
+        html += '</div></div>';
+      } else {
+        html += '<div class="stats-section"><h3 class="stats-section-title">🏅 Badges</h3><p class="stats-empty">No badges earned yet</p></div>';
+      }
+
+      // Achievements section
+      html += '<div class="stats-section"><h3 class="stats-section-title">📊 Achievements</h3>';
+      const cats = res.categories || [];
+      const ach = res.achievements || {};
+      if (cats.length > 0) {
+        const allVals = cats.map(c => Number(ach[c.id]) || 0);
+        const maxVal = Math.max(...allVals, 1);
+        html += '<div class="stats-ach-grid">';
+        for (const cat of cats) {
+          const val = Number(ach[cat.id]) || 0;
+          const pct = (val / maxVal) * 100;
+          html += `<div class="stats-ach-item">`;
+          html += `<div class="stats-ach-title">${cat.title}</div>`;
+          html += `<div class="stats-ach-value">${val}</div>`;
+          html += `<div class="stats-ach-bar"><div class="stats-ach-bar-fill" style="width:${pct}%"></div></div>`;
+          html += `</div>`;
+        }
+        html += '</div>';
+      } else {
+        html += '<p class="stats-empty">No achievement categories configured.</p>';
+      }
+      html += '</div>';
+
+      // Daily streak
+      html += '<div class="stats-section"><h3 class="stats-section-title">🔥 Daily Streak</h3>';
+      const streak = res.dailyStreak || 0;
+      html += `<div class="stats-streak-display"><span class="stats-streak-count">${streak}</span><span class="stats-streak-label">day${streak !== 1 ? 's' : ''}</span></div>`;
+      html += '</div>';
+
+      // Admin note
+      if (showNote && res.adminNote && res.adminNote.trim()) {
+        html += '<div class="stats-section"><h3 class="stats-section-title">📋 Message from Admin</h3>';
+        html += `<div class="stats-note">${res.adminNote}</div>`;
+        html += '</div>';
+      }
+
+      content.innerHTML = html;
+    } catch {
+      content.innerHTML = '<div class="stats-error">Failed to load player stats.</div>';
+    }
+  }
+
+  // Delegated click handler for player stats triggers
+  document.addEventListener('click', function (e) {
+    const trigger = e.target.closest('.player-stats-trigger, .lb-name, .lb-avatar, .lb-avatar-emoji, .hof-card-name, .hof-card-avatar, .hof-card-avatar-fallback, .hof-card-avatar-img, .achievement-row .player-name');
+    if (trigger) {
+      const username = trigger.dataset.username || trigger.textContent.trim();
+      if (username && !e.target.closest('.lb-badges-placeholder, .badge-lb-icon, .badge-icon-sm')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openPlayerStats(username);
+      }
+    }
+  });
+
+  // Close button
+  document.getElementById('stats-panel-close')?.addEventListener('click', closePlayerStats);
+
+  // Click overlay to close
+  document.getElementById('stats-panel-overlay')?.addEventListener('click', function (e) {
+    if (e.target === this) closePlayerStats();
+  });
+
+  // Escape key to close
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closePlayerStats();
+  });
 
   /* ─── INIT ROUTER ─── */
   const router = new Router();

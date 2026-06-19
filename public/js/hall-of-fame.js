@@ -73,11 +73,11 @@
                 <div class="hof-card ${rankClass} ${isFirst ? 'hof-card-center' : ''}" data-index="${i}" style="--card-index:${i}">
                   <div class="hof-card-glow"></div>
                   <div class="hof-card-rank">#${i + 1}</div>
-                  <div class="hof-card-avatar">
+                  <div class="hof-card-avatar player-stats-trigger" data-username="${p.username}">
                     ${avatarHtml}
                     <span class="hof-card-avatar-fallback" ${avatarHtml ? 'style="display:none"' : ''}>${i === 0 ? '👑' : i === 1 ? '🥈' : '🥉'}</span>
                   </div>
-                  <div class="hof-card-name">${p.username}</div>
+                  <div class="hof-card-name player-stats-trigger" data-username="${p.username}">${p.username}</div>
                   ${badgeHtml}
                   <div class="hof-card-score">${p.total} pts</div>
                   <div class="hof-card-pedestal">

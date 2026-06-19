@@ -1706,6 +1706,344 @@ input, select, textarea {
   50% { box-shadow: 0 0 20px rgba(245,158,11,0.5), 0 0 40px rgba(245,158,11,0.2); }
 }
 
+/* ═══════════════════════════════════════════════
+   PLAYER STATS PANEL (slide-out overlay)
+   ═══════════════════════════════════════════════ */
+
+.stats-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 5, 16, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.3s ease;
+}
+
+.stats-panel {
+  position: relative;
+  width: 92%;
+  max-width: 480px;
+  max-height: 85vh;
+  background: linear-gradient(145deg, rgba(20, 20, 40, 0.95), rgba(10, 10, 30, 0.98));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 1.5rem;
+  overflow-y: auto;
+  box-shadow: 0 0 60px rgba(100, 80, 200, 0.15), 0 0 120px rgba(245, 158, 11, 0.05);
+  transform: scale(0.92) translateY(20px);
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+}
+
+.stats-panel.stats-panel-open {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.stats-panel-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-dark);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 2;
+}
+
+.stats-panel-close:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  transform: scale(1.1);
+}
+
+.stats-panel-content {
+  position: relative;
+  z-index: 1;
+}
+
+.stats-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.stats-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: statsSpin 0.7s linear infinite;
+}
+
+@keyframes statsSpin {
+  to { transform: rotate(360deg); }
+}
+
+.stats-error {
+  padding: 2rem;
+  text-align: center;
+  color: #ef4444;
+  font-size: 0.9rem;
+}
+
+/* ─── Header ─── */
+.stats-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0 1rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 1rem;
+}
+
+.stats-avatar-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 20px rgba(245,158,11,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  flex-shrink: 0;
+}
+
+.stats-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stats-avatar-fallback {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.stats-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.stats-name {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text-dark);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.stats-coin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.25);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.stats-coin-icon {
+  font-size: 1rem;
+}
+
+/* ─── Sections ─── */
+.stats-section {
+  margin-bottom: 1rem;
+}
+
+.stats-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  letter-spacing: 0.04em;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.stats-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.3rem 0;
+}
+
+/* ─── Badges ─── */
+.stats-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stats-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem 0.35rem 0.45rem;
+  border: 1.5px solid;
+  border-radius: 10px;
+  transition: transform 0.2s;
+  cursor: default;
+}
+
+.stats-badge:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.stats-badge-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.stats-badge-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.stats-badge-rarity {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.08rem 0.3rem;
+  border-radius: 4px;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.stats-badge.stats-badge-legendary {
+  animation: badgeLegendaryGlow 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(245,158,11,0.25);
+}
+
+/* ─── Achievements ─── */
+.stats-ach-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stats-ach-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stats-ach-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.stats-ach-value {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 30px;
+  text-align: right;
+}
+
+.stats-ach-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+.stats-ach-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  transition: width 0.8s ease;
+}
+
+/* ─── Daily Streak ─── */
+.stats-streak-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+
+.stats-streak-count {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: #f97316;
+  text-shadow: 0 0 20px rgba(249,115,22,0.3);
+  line-height: 1;
+}
+
+.stats-streak-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* ─── Admin Note ─── */
+.stats-note {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-dark);
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(99,102,241,0.08);
+  border-left: 3px solid rgba(99,102,241,0.3);
+  white-space: pre-wrap;
+}
+
+/* ─── Hover cursor for clickable elements ─── */
+.player-stats-trigger,
+.lb-name,
+.lb-avatar,
+.lb-avatar-emoji,
+.hof-card-name,
+.hof-card-avatar,
+.hof-card-avatar-fallback,
+.hof-card-avatar-img,
+.achievement-row .player-name {
+  cursor: pointer;
+}
+
+.player-stats-trigger:hover,
+.lb-name:hover,
+.lb-avatar:hover,
+.hof-card-name:hover,
+.hof-card-avatar:hover,
+.achievement-row .player-name:hover {
+  filter: brightness(1.25);
+}
+
 /* ─── HERO BADGES DISPLAY (Bold, large, beside player name) ─── */
 .hero-badges-display {
   margin-top: 0.75rem;

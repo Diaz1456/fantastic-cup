@@ -517,6 +517,90 @@ app.get('/leaderboard', async (req, res) => {
   } catch { res.json({ leaderboard: [], categories: [] }); }
 });
 
+// ─── Player Achievement Stats (for pop-up panel) ───
+function getPrevDateStr(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function getDailyStreak(username) {
+  try {
+    const completions = await DailyCompletion.find({ playerUsername: username })
+      .sort({ date: -1 }).lean();
+    if (!completions.length) return 0;
+    const taskDate = getTaskDate();
+    let streak = 0;
+    let expected = null;
+    for (let i = 0; i < completions.length; i++) {
+      const d = completions[i].date;
+      if (i === 0) {
+        if (d === taskDate || d === getPrevDateStr(taskDate)) {
+          streak = 1;
+          expected = getPrevDateStr(d);
+        } else break;
+      } else {
+        if (d === expected) { streak++; expected = getPrevDateStr(d); }
+        else break;
+      }
+    }
+    return streak;
+  } catch { return 0; }
+}
+
+app.get('/api/player/:username/stats', async (req, res) => {
+  const { username } = req.params;
+  try {
+    const [achievement, categories, coinBalance, badges, streak] = await Promise.all([
+      Achievement.findOne({ playerUsername: username }).lean().catch(() => null),
+      Category.find().lean().catch(() => []),
+      CoinTransaction.aggregate([
+        { $match: { playerUsername: username } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]).then(r => r.length > 0 ? r[0].total : 0).catch(() => 0),
+      Promise.resolve().then(() => {
+        const assigned = badgesData.playerBadges[username] || [];
+        return assigned.map(id => badgesData.badges.find(b => b.id === id)).filter(Boolean);
+      }),
+      getDailyStreak(username),
+    ]);
+
+    let avatarUrl = '';
+    const avatarPath = path.join(__dirname, 'uploads', username + '.jpg');
+    if (fs.existsSync(avatarPath)) avatarUrl = '/uploads/' + username + '.jpg';
+    else {
+      try {
+        const files = fs.readdirSync(path.join(__dirname, 'uploads'));
+        const match = files.find(f => f.startsWith(username + '.'));
+        if (match) avatarUrl = '/uploads/' + match;
+      } catch {}
+    }
+
+    let adminNote = '';
+    const noteUsername = [...playerNotesMemory.keys()].find(k => k.toLowerCase() === username.toLowerCase());
+    if (noteUsername) adminNote = playerNotesMemory.get(noteUsername) || '';
+    if (!adminNote && isMongoConnected()) {
+      try {
+        const noteDoc = await PlayerNote.findOne({ username: { $regex: new RegExp('^' + username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i') } }).lean();
+        if (noteDoc) adminNote = noteDoc.notes || '';
+      } catch {}
+    }
+
+    res.json({
+      username,
+      avatarUrl,
+      coinBalance,
+      badges,
+      achievements: achievement?.values || {},
+      categories,
+      dailyStreak: streak,
+      adminNote,
+    });
+  } catch {
+    res.json({ username, avatarUrl: '', coinBalance: 0, badges: [], achievements: {}, categories: [], dailyStreak: 0, adminNote: '' });
+  }
+});
+
 app.post('/feedback', async (req, res) => {
   const { player, message } = req.body;
   if (!player || !message) return res.json({ success: false, message: 'Missing fields.' });
