@@ -1515,6 +1515,9 @@
       if (playerCountdown) playerCountdown.style.display = show ? '' : 'none';
     }
 
+    // ── Socket Setup ──
+    const socket = io();
+
     socket.on('countdownStart', (remaining) => {
       countdownActive = true;
       showCountdownMode(true);
@@ -1577,9 +1580,6 @@
       const input = document.getElementById('admin-countdown-extend-input');
       if (input) socket.emit('adminExtendTimer', parseInt(input.value) || 30);
     });
-
-    // ── Socket Listeners ──
-    const socket = io();
 
     // Presence heartbeat
     let heartbeatInterval;
