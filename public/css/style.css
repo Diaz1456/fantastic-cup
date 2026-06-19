@@ -2518,6 +2518,23 @@ input, select, textarea {
   background: linear-gradient(135deg, var(--accent), #f97316) !important;
 }
 
+.coin-show-all-row {
+  margin-top: 0.5rem;
+}
+
+.coin-show-all-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.coin-show-all-label input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
 .coin-history-wrapper {
   margin-top: 1rem;
 }

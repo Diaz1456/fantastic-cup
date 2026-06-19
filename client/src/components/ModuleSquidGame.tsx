@@ -11,6 +11,8 @@ export default function ModuleSquidGame({ socket }: Props) {
   const { play } = useSound();
   const [eliminationAnim, setEliminationAnim] = useState<{ player: SquidPlayer } | null>(null);
   const [showWinner, setShowWinner] = useState(false);
+  const [heartbeatActive, setHeartbeatActive] = useState(false);
+  const [vignetteActive, setVignetteActive] = useState(false);
   const prevTargetedRef = useRef<string | null>(null);
   const prevVictoryRef = useRef<any>(null);
 
@@ -23,21 +25,26 @@ export default function ModuleSquidGame({ socket }: Props) {
   const lastElim = socket.lastElimination;
   const victory = socket.victoryData;
 
-  // Trigger elimination cinematic
+  // Heartbeat pulse when targeted
   useEffect(() => {
     if (targeted && targeted !== prevTargetedRef.current) {
       play('heartbeat');
+      setHeartbeatActive(true);
       prevTargetedRef.current = targeted;
+    } else if (!targeted) {
+      setHeartbeatActive(false);
     }
   }, [targeted, play]);
 
-  // Play elimination sequence
+  // Elimination sequence + vignette
   useEffect(() => {
     if (lastElim) {
       play('gunshot');
+      setVignetteActive(true);
       setEliminationAnim({ player: lastElim.player });
       const timer = setTimeout(() => {
         setEliminationAnim(null);
+        setVignetteActive(false);
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -106,6 +113,7 @@ export default function ModuleSquidGame({ socket }: Props) {
                   <div key={i} className="sg-confetti" style={{
                     left: `${Math.random() * 100}%`,
                     animationDelay: `${Math.random() * 2}s`,
+                    animationDuration: `${2 + Math.random() * 3}s`,
                     background: ['#ffd700', '#ff6b6b', '#48dbfb', '#a855f7', '#22d3ee', '#10b981'][Math.floor(Math.random() * 6)],
                     width: `${Math.random() * 8 + 4}px`,
                     height: `${Math.random() * 12 + 6}px`,
@@ -138,6 +146,12 @@ export default function ModuleSquidGame({ socket }: Props) {
 
   return (
     <div className="sg-module active">
+      {/* Heartbeat border overlay */}
+      <div className={`sg-heartbeat-overlay ${heartbeatActive ? 'active' : ''}`} />
+
+      {/* Red vignette */}
+      <div className={`sg-vignette ${vignetteActive ? 'active' : ''}`} />
+
       {/* Elimination cinematic overlay */}
       {eliminationAnim && (
         <div className="sg-elimination-cinematic">
@@ -163,9 +177,20 @@ export default function ModuleSquidGame({ socket }: Props) {
         </div>
 
         <div className="sg-dormitory">
-          <div className="sg-dormitory-bg">
-            <div className="sg-bunk-lights" />
+          <div className="sg-dormitory-bg" />
+          <div className="sg-dormitory-walls" />
+
+          {/* Fluorescent lights */}
+          <div className="sg-fluorescent-lights">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <div
+                key={i}
+                className="sg-fluo-bar"
+                style={{ '--flicker-duration': `${1.5 + Math.random() * 3}s` } as React.CSSProperties}
+              />
+            ))}
           </div>
+
           <div className="sg-player-grid">
             {players.map(p => {
               const targeted = isTargeted(p.id);

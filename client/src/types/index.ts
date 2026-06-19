@@ -27,7 +27,7 @@ export interface SquidPlayer {
 }
 
 export type GamePhase = 'countdown' | 'standby' | 'active';
-export type ActiveModule = 'team-arena' | 'squid-game' | null;
+export type ActiveModule = 'squid-game' | null;
 
 export interface TimerState {
   deadline: number | null;
@@ -59,7 +59,6 @@ export interface ServerToClientEvents {
   stateSync: (state: EventState) => void;
   timerTick: (remaining: number, display: string) => void;
   phaseChange: (phase: GamePhase) => void;
-  moduleChange: (module: ActiveModule) => void;
   teamsUpdate: (teams: Team[]) => void;
   coinAwarded: (transaction: CoinTransaction, newBalance: number) => void;
   squidGameStarted: () => void;
@@ -80,7 +79,6 @@ export interface ClientToServerEvents {
   adminResumeTimer: () => void;
   adminResetTimer: () => void;
   adminExtendTimer: (seconds: number) => void;
-  adminSwitchModule: (module: ActiveModule) => void;
   adminUpdateTeams: (teams: Team[]) => void;
   adminAwardCoin: (data: { playerId: string; playerName: string; amount: number; reason: string; emoji: string }) => void;
   adminStartSquidGame: () => void;

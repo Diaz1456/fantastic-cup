@@ -270,7 +270,9 @@
           <div class="admin-coin-section glass">
             <h4>🪙 Award Pocket Coins</h4>
             <div class="coin-form-row">
-              <input type="text" id="coin-player-input" placeholder="Player username">
+              <select id="coin-player-input">
+                <option value="">— Select player —</option>
+              </select>
               <input type="number" id="coin-amount-input" placeholder="Amount" min="1">
               <select id="coin-stamp-select">
                 <option value="⭐">⭐</option>
@@ -283,6 +285,11 @@
               <button class="btn btn-sm btn-primary quick-coin" data-amount="50">Clutch (+50)</button>
               <button class="btn btn-sm btn-primary quick-coin" data-amount="25">Sports (+25)</button>
               <button class="btn btn-primary" id="btn-award-coins">Award 🪙</button>
+            </div>
+            <div class="coin-show-all-row">
+              <label class="coin-show-all-label">
+                <input type="checkbox" id="coin-show-all"> Show all players (including zero balance)
+              </label>
             </div>
             <div class="coin-history-wrapper">
               <h5>Coin Leaderboard</h5>

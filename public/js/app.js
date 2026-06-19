@@ -230,6 +230,7 @@
 
       if (res.success) {
         authState = res.user;
+        if (typeof startHeartbeat === 'function') startHeartbeat();
         if (res.user.role === 'admin') {
           router.navigate('admin');
         } else {
@@ -1429,6 +1430,34 @@
       });
     }
 
+    // ── Populate coin player select ──
+    async function populateCoinPlayerSelect(showAll) {
+      const select = document.getElementById('coin-player-input');
+      if (!select) return;
+      select.innerHTML = '<option value="">— Select player —</option>';
+      try {
+        const [lbRes, playersRes] = await Promise.all([
+          fetch('/api/coins/leaderboard').then(r => r.json()),
+          showAll ? fetch('/players').then(r => r.json()) : Promise.resolve({ players: [] }),
+        ]);
+        const withCoins = new Set((lbRes.balances || []).map(b => b._id));
+        const allPlayers = showAll
+          ? (playersRes.players || []).filter(p => !withCoins.has(p.username))
+          : [];
+        const sorted = (lbRes.balances || []).slice().sort((a, b) => b.total - a.total);
+        const opts = [];
+        for (const b of sorted) {
+          opts.push(`<option value="${b._id}">${b._id} (${b.total} 🪙)</option>`);
+        }
+        if (showAll) {
+          for (const p of allPlayers) {
+            opts.push(`<option value="${p.username}">${p.username} (0 🪙)</option>`);
+          }
+        }
+        select.insertAdjacentHTML('beforeend', opts.join(''));
+      } catch { /* ignore */ }
+    }
+
     // Coin leaderboard refresh
     window.__loadCoinLeaderboard = async function () {
       const res = await fetch('/api/coins/leaderboard').then(r => r.json());
@@ -1443,13 +1472,21 @@
         '</tbody></table>';
     };
 
-    // Load coin leaderboard when achievements tab is shown
+    // Load coin leaderboard + populate select when achievements tab is shown
     const achievementsBtn = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
     if (achievementsBtn) {
       achievementsBtn.addEventListener('click', () => {
-        setTimeout(() => window.__loadCoinLeaderboard(), 500);
+        setTimeout(() => {
+          window.__loadCoinLeaderboard();
+          populateCoinPlayerSelect(false);
+        }, 500);
       });
     }
+
+    // "Show all players" toggle
+    document.getElementById('coin-show-all')?.addEventListener('change', function () {
+      populateCoinPlayerSelect(this.checked);
+    });
 
     // ── Reset Coin Leaderboard ──
     document.getElementById('btn-reset-coins')?.addEventListener('click', async () => {

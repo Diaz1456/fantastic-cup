@@ -43,7 +43,7 @@ export default function EventPage({ socket }: Props) {
               phase={phase}
             />
             <div className="countdown-subtitle">
-              <span>The arena is being prepared</span>
+              <span>The game is being prepared</span>
               <span>A deadly game awaits</span>
             </div>
           </div>

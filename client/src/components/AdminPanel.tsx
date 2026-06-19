@@ -11,8 +11,10 @@ export default function AdminPanel({ socket, onBack }: Props) {
   const [mysteryMode, setMysteryMode] = useState(false);
   const [confirmEliminate, setConfirmEliminate] = useState<string | null>(null);
   const [extendSeconds, setExtendSeconds] = useState(30);
-  const [teamEditMode, setTeamEditMode] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState('');
+  const [playerFilter, setPlayerFilter] = useState('');
+  const [showSquidControls, setShowSquidControls] = useState(true);
+  const [showRoster, setShowRoster] = useState(true);
 
   if (!state) return <div className="admin-panel"><h2>Loading...</h2></div>;
 
@@ -20,6 +22,10 @@ export default function AdminPanel({ socket, onBack }: Props) {
   const teams = socket.teams || state.teams || [];
   const squid = state.squidGame || {};
   const players = squid.players || [];
+
+  const filteredPlayers = players.filter((p: any) =>
+    p.username.toLowerCase().includes(playerFilter.toLowerCase())
+  );
 
   const handleSetTimer = () => {
     const deadline = new Date(dateStr).getTime();
@@ -81,7 +87,7 @@ export default function AdminPanel({ socket, onBack }: Props) {
           </div>
         </div>
 
-        {/* SQUID GAME ADMIN */}
+        {/* SQUID GAME ADMIN — reorganised with collapsible sections */}
         <div className="admin-card squid-admin-card">
           <h2>🎴 SQUID GAME</h2>
           <div className="phase-indicator">
@@ -89,78 +95,124 @@ export default function AdminPanel({ socket, onBack }: Props) {
             | PHASE: <span className={`phase-badge ${phase}`}>{phase.toUpperCase()}</span>
           </div>
 
-          <div className="admin-actions">
-            {squid.phase === 'idle' && (
-              <button onClick={socket.adminStartSquidGame} className="admin-btn start-game">START GAME</button>
+          {/* ─── Collapsible: Game Controls ─── */}
+          <div className="squid-collapsible">
+            <button
+              className="squid-collapse-header"
+              onClick={() => setShowSquidControls(!showSquidControls)}
+            >
+              <span>🎮 Game Controls</span>
+              <span className={`collapse-arrow ${showSquidControls ? 'open' : ''}`}>▼</span>
+            </button>
+            {showSquidControls && (
+              <div className="squid-collapse-body">
+                <div className="admin-actions">
+                  {squid.phase === 'idle' && (
+                    <button onClick={socket.adminStartSquidGame} className="admin-btn start-game">START GAME</button>
+                  )}
+                  {squid.phase === 'active' && (
+                    <button onClick={socket.adminStartSquidGame} className="admin-btn warning">RESTART GAME</button>
+                  )}
+                  <button onClick={socket.adminResetSquidGame} className="admin-btn danger">RESET GAME</button>
+                </div>
+
+                {/* Add player inline */}
+                <div className="admin-row" style={{ marginTop: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={newPlayerName}
+                    onChange={e => setNewPlayerName(e.target.value)}
+                    placeholder="Player username..."
+                    className="admin-input small"
+                    onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(); }}
+                  />
+                  <button onClick={handleAddPlayer} className="admin-btn small">ADD</button>
+                </div>
+              </div>
             )}
-            <button onClick={socket.adminResetSquidGame} className="admin-btn danger">RESET GAME</button>
           </div>
 
-          {/* Add player */}
-          <div className="admin-row">
-            <input
-              type="text"
-              value={newPlayerName}
-              onChange={e => setNewPlayerName(e.target.value)}
-              placeholder="Player username..."
-              className="admin-input small"
-              onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(); }}
-            />
-            <button onClick={handleAddPlayer} className="admin-btn small">ADD</button>
-          </div>
+          {/* ─── Collapsible: Player Roster ─── */}
+          <div className="squid-collapsible">
+            <button
+              className="squid-collapse-header"
+              onClick={() => setShowRoster(!showRoster)}
+            >
+              <span>👥 Player Roster ({players.length})</span>
+              <span className={`collapse-arrow ${showRoster ? 'open' : ''}`}>▼</span>
+            </button>
+            {showRoster && (
+              <div className="squid-collapse-body">
+                {players.length === 0 && <p className="text-muted">No players added yet.</p>}
 
-          {/* Player roster */}
-          <div className="squid-roster">
-            <h3>PLAYER ROSTER ({players.length})</h3>
-            {players.length === 0 && <p className="text-muted">No players added yet.</p>}
-            <div className="squid-roster-grid">
-              {players.map((p: any) => {
-                const isEliminated = p.status === 'eliminated';
-                return (
-                  <div key={p.id} className={`squid-roster-card ${isEliminated ? 'eliminated' : ''}`}>
-                    <div className="squid-roster-avatar">
-                      {p.avatarUrl
-                        ? <img src={p.avatarUrl} alt="" className="squid-roster-img" />
-                        : <span className="squid-roster-fallback">🎭</span>
-                      }
-                    </div>
-                    <div className="squid-roster-info">
-                      <span className="squid-roster-name">{p.username}</span>
-                      <span className={`squid-roster-status ${p.status}`}>{p.status.toUpperCase()}</span>
-                    </div>
-                    <div className="squid-roster-actions">
-                      {!isEliminated && squid.phase === 'active' && (
-                        <>
-                          {confirmEliminate === p.id ? (
-                            <div className="confirm-group">
-                              <button
-                                onClick={() => { socket.adminEliminateSquidPlayer(p.id); setConfirmEliminate(null); }}
-                                className="admin-btn danger small"
-                              >✕ CONFIRM</button>
-                              <button onClick={() => setConfirmEliminate(null)} className="admin-btn small">CANCEL</button>
+                {players.length > 0 && (
+                  <>
+                    {/* Search / filter */}
+                    <input
+                      type="text"
+                      value={playerFilter}
+                      onChange={e => setPlayerFilter(e.target.value)}
+                      placeholder="🔍 Filter players..."
+                      className="admin-input small"
+                      style={{ width: '100%', marginBottom: '0.5rem' }}
+                    />
+
+                    <div className="squid-roster-grid">
+                      {filteredPlayers.map((p: any) => {
+                        const isEliminated = p.status === 'eliminated';
+                        return (
+                          <div key={p.id} className={`squid-roster-card ${isEliminated ? 'eliminated' : ''}`}>
+                            <div className="squid-roster-avatar">
+                              {p.avatarUrl
+                                ? <img src={p.avatarUrl} alt="" className="squid-roster-img" />
+                                : <span className="squid-roster-fallback">🎭</span>
+                              }
                             </div>
-                          ) : (
-                            <button onClick={() => setConfirmEliminate(p.id)} className="admin-btn eliminate-btn">ELIMINATE</button>
-                          )}
-                        </>
+                            <div className="squid-roster-info">
+                              <span className="squid-roster-name">{p.username}</span>
+                              <span className={`squid-roster-status ${p.status}`}>{p.status.toUpperCase()}</span>
+                            </div>
+                            <div className="squid-roster-actions">
+                              {!isEliminated && squid.phase === 'active' && (
+                                <>
+                                  {confirmEliminate === p.id ? (
+                                    <div className="confirm-group">
+                                      <button
+                                        onClick={() => { socket.adminEliminateSquidPlayer(p.id); setConfirmEliminate(null); }}
+                                        className="admin-btn danger small"
+                                      >✕ CONFIRM</button>
+                                      <button onClick={() => setConfirmEliminate(null)} className="admin-btn small">CANCEL</button>
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => setConfirmEliminate(p.id)} className="admin-btn eliminate-btn">ELIMINATE</button>
+                                  )}
+                                </>
+                              )}
+                              <button
+                                onClick={() => socket.adminRemoveSquidPlayer(p.id)}
+                                className="admin-btn small danger"
+                                title="Remove player"
+                              >✕</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {filteredPlayers.length === 0 && (
+                        <p className="text-muted">No players match filter.</p>
                       )}
-                      <button
-                        onClick={() => socket.adminRemoveSquidPlayer(p.id)}
-                        className="admin-btn small danger"
-                        title="Remove player"
-                      >✕</button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* TEAM ARENA (simplified - no edit) */}
+        {/* TEAMS (read-only) */}
         <div className="admin-card team-admin-card">
           <h2>🏟 TEAMS</h2>
           <div className="team-edit-list">
+            {teams.length === 0 && <p className="text-muted">No teams configured.</p>}
             {teams.map((team: any) => (
               <div key={team.id} className="team-edit-row">
                 <span className="team-edit-logo">{team.logo}</span>
@@ -178,6 +230,7 @@ export default function AdminPanel({ socket, onBack }: Props) {
           <div className="status-grid">
             <div className="status-col">
               <h3>Teams</h3>
+              {teams.length === 0 && <p className="text-muted">No teams</p>}
               {teams.map((t: any) => (
                 <div key={t.id} className="status-item">
                   <span className="status-dot" style={{ background: t.color }} />

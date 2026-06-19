@@ -67,7 +67,6 @@ export function useSocket() {
   const adminResumeTimer = useCallback(() => socketRef.current?.emit('adminResumeTimer'), []);
   const adminResetTimer = useCallback(() => socketRef.current?.emit('adminResetTimer'), []);
   const adminExtendTimer = useCallback((s: number) => socketRef.current?.emit('adminExtendTimer', s), []);
-  const adminSwitchModule = useCallback((m: any) => socketRef.current?.emit('adminSwitchModule', m), []);
   const adminUpdateTeams = useCallback((t: Team[]) => socketRef.current?.emit('adminUpdateTeams', t), []);
   const adminAwardCoin = useCallback((d: any) => socketRef.current?.emit('adminAwardCoin', d), []);
   const adminStartSquidGame = useCallback(() => socketRef.current?.emit('adminStartSquidGame'), []);
@@ -80,7 +79,7 @@ export function useSocket() {
     connected, gameState, teams, timerDisplay, timerRemaining,
     squidTargeted, lastElimination, victoryData, coinNotification, error,
     adminLogin, adminSetTimer, adminPauseTimer, adminResumeTimer,
-    adminResetTimer, adminExtendTimer, adminSwitchModule, adminUpdateTeams,
+    adminResetTimer, adminExtendTimer, adminUpdateTeams,
     adminAwardCoin, adminStartSquidGame, adminResetSquidGame,
     adminAddSquidPlayer, adminRemoveSquidPlayer, adminEliminateSquidPlayer,
   };
