@@ -880,56 +880,15 @@ io.on('connection', (socket) => {
   });
 
   // ─── END SQUID GAME ──────────────────────────────────────────
-
-  // ─── PRESENCE / HEARTBEAT ─────────────────────────────────────
-
-  const ONLINE_TIMEOUT = 30000; // 30s without heartbeat = offline
-  const userPresence = new Map(); // username -> { username, onlineAt, lastSeen }
-
-  socket.on('heartbeat', (data) => {
-    const username = data?.username;
-    if (!username) return;
-    const now = Date.now();
-    userPresence.set(username, { username, onlineAt: userPresence.has(username) ? userPresence.get(username).onlineAt : now, lastSeen: now });
-    // Broadcast presence to admin sockets
-    io.emit('presenceUpdate', {
-      online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
-      recent: Array.from(userPresence.values())
-        .sort((a, b) => b.lastSeen - a.lastSeen)
-        .slice(0, 20)
-        .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
-    });
-  });
-
-  socket.on('userOnline', (data) => {
-    const username = data?.username;
-    if (!username) return;
-    const now = Date.now();
-    userPresence.set(username, { username, onlineAt: now, lastSeen: now });
-    io.emit('presenceUpdate', {
-      online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
-      recent: Array.from(userPresence.values())
-        .sort((a, b) => b.lastSeen - a.lastSeen)
-        .slice(0, 20)
-        .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
-    });
-  });
-
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected:', socket.id);
-    const now = Date.now();
-    io.emit('presenceUpdate', {
-      online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
-      recent: Array.from(userPresence.values())
-        .sort((a, b) => b.lastSeen - a.lastSeen)
-        .slice(0, 20)
-        .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
-    });
-  });
+  // ─── END EVENT BRIDGE ───
 });
 
-// Cleanup stale presence every 15s
-setInterval(() => {
+// ─── PRESENCE / HEARTBEAT ─────────────────────────────────────
+
+const ONLINE_TIMEOUT = 30000;
+const userPresence = new Map();
+
+function broadcastPresence() {
   const now = Date.now();
   io.emit('presenceUpdate', {
     online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
@@ -938,9 +897,33 @@ setInterval(() => {
       .slice(0, 20)
       .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
   });
-}, 15000);
+}
 
-// ─── END EVENT BRIDGE ───
+io.on('connection', (socket) => {
+  socket.on('heartbeat', (data) => {
+    const username = data?.username;
+    if (!username) return;
+    const now = Date.now();
+    userPresence.set(username, { username, onlineAt: userPresence.has(username) ? userPresence.get(username).onlineAt : now, lastSeen: now });
+    broadcastPresence();
+  });
+
+  socket.on('userOnline', (data) => {
+    const username = data?.username;
+    if (!username) return;
+    const now = Date.now();
+    userPresence.set(username, { username, onlineAt: now, lastSeen: now });
+    broadcastPresence();
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+    broadcastPresence();
+  });
+});
+
+// Cleanup stale presence every 15s
+setInterval(broadcastPresence, 15000);
 
 // ═══════════════════════════════════════════════
 
