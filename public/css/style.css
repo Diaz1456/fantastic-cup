@@ -115,20 +115,436 @@ body::after {
 
 body.light-theme {
   --dark-bg: #f0f2f5;
+  --dark-bg2: #e8ecf0;
   --dark-card: #ffffff;
-  --dark-surface: rgba(255, 255, 255, 0.8);
+  --dark-surface: rgba(255, 255, 255, 0.85);
   --text-dark: #1a202c;
   --text-muted: #64748b;
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.3);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-hover: rgba(0, 0, 0, 0.15);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+  --glass-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.1);
+  --neon-glow: 0 0 20px rgba(102, 126, 234, 0.08);
+  --neon-glow-strong: 0 0 30px rgba(102, 126, 234, 0.15);
+  --accent-glow: 0 0 20px rgba(245, 158, 11, 0.12);
 }
 
-body.light-theme .navbar { background: rgba(255, 255, 255, 0.85); }
-body.light-theme .stat-card { background: rgba(255, 255, 255, 0.85); }
-body.light-theme .table-wrapper { background: rgba(255, 255, 255, 0.85); }
-body.light-theme .data-table th { color: var(--primary); }
-body.light-theme .data-table td { border-color: rgba(0,0,0,0.08); }
+/* ─── Light Theme: Scrollbar ─── */
+body.light-theme ::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.2);
+}
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.35);
+}
+
+/* ─── Light Theme: Navbar ─── */
+body.light-theme .navbar {
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+body.light-theme .nav-links .nav-btn {
+  color: #1a202c;
+}
+body.light-theme .nav-links .nav-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--primary);
+}
+body.light-theme .nav-links .nav-btn.active {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  color: #fff;
+}
+body.light-theme .clock-display {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .clock-display.countdown-mode {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+/* ─── Light Theme: Icons & Icon Buttons ─── */
+body.light-theme .icon-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+  color: #1a202c;
+}
+body.light-theme .icon-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Light Theme: Glass cards ─── */
+body.light-theme .glass {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+body.light-theme .glass:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+/* ─── Light Theme: Stat cards ─── */
+body.light-theme .stat-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+body.light-theme .stat-card .stat-label {
+  color: #4a5568;
+}
+body.light-theme .stat-card .stat-value {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Inputs / Selects / Textareas (generic) ─── */
+body.light-theme input,
+body.light-theme select,
+body.light-theme textarea,
+body.light-theme .admin-input {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #1a202c;
+}
+body.light-theme input:focus,
+body.light-theme select:focus,
+body.light-theme textarea:focus,
+body.light-theme .admin-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+body.light-theme input::placeholder,
+body.light-theme textarea::placeholder {
+  color: #94a3b8;
+}
+body.light-theme select option {
+  background: #fff;
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Input wrappers (login) ─── */
+body.light-theme .input-wrapper {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+body.light-theme .input-wrapper:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  background: #fff;
+}
+
+/* ─── Light Theme: Timer inputs ─── */
+body.light-theme .timer-input {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a202c;
+}
+body.light-theme .timer-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.1);
+}
+
+/* ─── Light Theme: Buttons ─── */
+body.light-theme .btn-secondary {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1a202c;
+}
+body.light-theme .btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.15);
+}
+body.light-theme .btn-primary {
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+/* ─── Light Theme: Tables ─── */
+body.light-theme .table-wrapper {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.06);
+}
+body.light-theme .data-table th {
+  color: var(--primary);
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .data-table td {
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+  color: #1a202c;
+}
+body.light-theme .data-table tr:hover td {
+  background: rgba(102, 126, 234, 0.03);
+}
+body.light-theme .data-table.compact td {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Admin sections ─── */
+body.light-theme .section-title {
+  color: #1a202c;
+}
+body.light-theme .section-subtitle {
+  color: #4a5568;
+}
+body.light-theme .admin-coin-section,
+body.light-theme .admin-daily-task-section,
+body.light-theme .admin-timer-section {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+
+body.light-theme .admin-coin-section h4,
+body.light-theme .admin-daily-task-section h4 {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Leaderboard ─── */
+body.light-theme .lb-card {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+body.light-theme .lb-card:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+body.light-theme .lb-name {
+  color: #1a202c;
+}
+body.light-theme .lb-score {
+  color: var(--primary);
+}
+body.light-theme .lb-card.lb-top1 {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), #fff);
+}
+body.light-theme .lb-card.lb-top2 {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+body.light-theme .lb-card.lb-top3 {
+  border-color: rgba(180, 83, 9, 0.15);
+}
+body.light-theme .lb-rank-other {
+  background: rgba(0, 0, 0, 0.04);
+  color: #4a5568;
+}
+body.light-theme .lb-score-bar {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Light Theme: Player Hero ─── */
+body.light-theme .hero-name {
+  color: #ffd700;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+body.light-theme .hero-badge {
+  color: var(--primary);
+}
+body.light-theme .hero-score-label {
+  color: #4a5568;
+}
+body.light-theme .hero-score {
+  color: #1a202c;
+}
+body.light-theme .hero-rank-info {
+  color: #4a5568;
+}
+
+/* ─── Light Theme: Player sections ─── */
+body.light-theme .player-section-title {
+  color: #1a202c;
+}
+body.light-theme .player-ach-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+body.light-theme .player-ach-title {
+  color: #1a202c;
+}
+body.light-theme .player-ach-value {
+  color: var(--primary);
+}
+body.light-theme .player-ach-bar-wrapper {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Light Theme: Achievements (admin) ─── */
+body.light-theme .achievement-card {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .achievement-title-input {
+  color: #1a202c;
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .achievement-row .player-name {
+  color: #1a202c;
+}
+body.light-theme .achievement-value-display {
+  color: var(--primary);
+}
+
+/* ─── Light Theme: Daily Task ─── */
+body.light-theme .daily-task-card {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+}
+body.light-theme .daily-task-text {
+  color: #1a202c;
+}
+body.light-theme .daily-task-hint {
+  color: #64748b;
+}
+
+/* ─── Light Theme: Badges admin ─── */
+body.light-theme .badge-admin-card {
+  background: #fff;
+}
+body.light-theme .badge-assign-select {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Coin section ─── */
+body.light-theme .coin-form-row input,
+body.light-theme .coin-form-row select {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a202c;
+}
+body.light-theme .coin-dropdown {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+body.light-theme .coin-dropdown-item {
+  color: #1a202c;
+  border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+body.light-theme .coin-dropdown-item:hover {
+  background: rgba(102, 126, 234, 0.06);
+}
+body.light-theme .coin-dropdown-item .coin-balance {
+  color: var(--primary);
+}
+body.light-theme .coin-history-wrapper h5 {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Player coin section ─── */
+body.light-theme .coin-balance-display .coin-amount {
+  color: #1a202c;
+}
+body.light-theme .coin-balance-display .coin-label {
+  color: #4a5568;
+}
+body.light-theme .coin-history-item {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Light Theme: Presence ─── */
+body.light-theme .presence-card h3 {
+  color: #1a202c;
+}
+body.light-theme .presence-list li {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Player Notes ─── */
+body.light-theme .player-notes-header {
+  color: #1a202c;
+}
+body.light-theme .player-notes-text {
+  color: #1a202c;
+}
+body.light-theme .player-notes-textarea-wrapper textarea {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Stats Panel ─── */
+body.light-theme .stats-panel {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(245, 247, 250, 0.98));
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.1), 0 0 120px rgba(100, 80, 200, 0.05);
+}
+body.light-theme .stats-panel-overlay {
+  background: rgba(240, 242, 245, 0.7);
+}
+body.light-theme .stats-name {
+  color: #1a202c;
+}
+body.light-theme .stats-section-title {
+  color: #1a202c;
+  border-bottom-color: rgba(0, 0, 0, 0.06);
+}
+body.light-theme .stats-ach-title {
+  color: #1a202c;
+}
+body.light-theme .stats-streak-label {
+  color: #1a202c;
+}
+body.light-theme .stats-note {
+  background: rgba(99, 102, 241, 0.06);
+  border-left-color: rgba(99, 102, 241, 0.2);
+  color: #1a202c;
+}
+body.light-theme .stats-panel-close {
+  border-color: rgba(0, 0, 0, 0.1);
+  background: rgba(0, 0, 0, 0.03);
+  color: #1a202c;
+}
+body.light-theme .stats-panel-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* ─── Light Theme: Hall of Fame ─── */
+body.light-theme .hof-overlay {
+  background: rgba(240, 242, 245, 0.92);
+}
+body.light-theme .hof-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+body.light-theme .hof-card-name {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Feedback ─── */
+body.light-theme .feedback-text {
+  color: #1a202c;
+}
+body.light-theme .feedback-item {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Light Theme: Toast ─── */
+body.light-theme .toast {
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Player badge (in list) ─── */
+body.light-theme .player-badge {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* ─── Light Theme: War / Event section ─── */
+/* Event section is intentionally immersive dark, not overridden */
+
+/* ─── Light Theme: Coin search combo ─── */
+body.light-theme #coin-player-search {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #1a202c;
+}
+
+/* ─── Light Theme: Champion leaderboard scroll ─── */
+body.light-theme .leaderboard-container::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.2);
+}
+body.light-theme .leaderboard-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.35);
+}
 
 a { text-decoration: none; color: inherit; }
 button { cursor: pointer; font-family: var(--font); border: none; outline: none; }

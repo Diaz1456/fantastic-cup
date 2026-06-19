@@ -167,9 +167,24 @@
   /* ─── THEME TOGGLE ─── */
   function toggleTheme() {
     isDark = !isDark;
+    applyTheme();
+    localStorage.setItem('fc_theme', isDark ? 'dark' : 'light');
+  }
+
+  function applyTheme() {
     document.body.classList.toggle('light-theme', !isDark);
     const btns = $$('#theme-toggle, #theme-toggle-player');
     btns.forEach(b => { b.textContent = isDark ? '🌙' : '☀️'; });
+  }
+
+  // Restore saved theme on load
+  const savedTheme = localStorage.getItem('fc_theme');
+  if (savedTheme === 'light') {
+    isDark = false;
+  }
+  // Apply after DOM ready so elements exist
+  if (typeof document !== 'undefined' && document.body) {
+    applyTheme();
   }
 
   /* ─── LANDING PAGE SEQUENCE ─── */
