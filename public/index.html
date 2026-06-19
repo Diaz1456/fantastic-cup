@@ -149,6 +149,7 @@
           <button class="nav-btn active" data-section="dashboard">Dashboard</button>
           <button class="nav-btn" data-section="players">Players</button>
           <button class="nav-btn" data-section="achievements">Achievements</button>
+          <button class="nav-btn" data-section="badges">Badges</button>
           <button class="nav-btn" data-section="leaderboard">Leaderboard</button>
           <button class="nav-btn" data-section="feedback">Feedback</button>
           <button class="nav-btn" data-section="presence">Presence</button>
@@ -315,6 +316,14 @@
           </div>
         </section>
 
+        <!-- Section: Badges -->
+        <section id="section-badges" class="dashboard-section">
+          <div class="section-header">
+            <h2 class="section-title">🏅 Badges System</h2>
+          </div>
+          <div id="badges-admin-container"></div>
+        </section>
+
         <!-- Section: Leaderboard -->
         <section id="section-leaderboard" class="dashboard-section">
           <div class="section-header">
@@ -417,7 +426,7 @@
 
         <div class="player-section">
           <div class="player-notes-card glass" id="player-notes-card" style="display:none;">
-            <div class="player-notes-header">📋 Coach Notes</div>
+            <div class="player-notes-header">📋 Message from Admin</div>
             <div class="player-notes-text" id="player-notes-text"></div>
           </div>
         </div>
@@ -428,6 +437,11 @@
             <button class="btn btn-golden btn-sm" id="btn-hof-player">🌟 Hall of Fame</button>
           </div>
           <div id="player-leaderboard" class="leaderboard-container"></div>
+        </div>
+
+        <div class="player-section">
+          <h3 class="player-section-title">🏅 My Badges</h3>
+          <div id="player-badges-display" class="player-badges-container"></div>
         </div>
 
         <div class="player-section">

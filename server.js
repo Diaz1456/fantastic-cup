@@ -257,26 +257,162 @@ app.post('/toggle-player', async (req, res) => {
   res.json({ success: true, enabled: user.enabled });
 });
 
+// ─── PLAYER NOTES (with in-memory fallback) ───
+
+const playerNotesMemory = new Map(); // username -> note text
+
 app.get('/player-notes', async (req, res) => {
-  if (!isMongoConnected()) return res.json({ notes: {} });
-  try {
-    const notes = await PlayerNote.find().lean();
-    const result = {};
-    notes.forEach(n => { result[n.username] = n.notes; });
-    res.json({ notes: result });
-  } catch { res.json({ notes: {} }); }
+  if (isMongoConnected()) {
+    try {
+      const notes = await PlayerNote.find().lean();
+      const result = {};
+      notes.forEach(n => { result[n.username] = n.notes; });
+      // Merge in-memory overrides
+      for (const [u, t] of playerNotesMemory) result[u] = t;
+      return res.json({ notes: result });
+    } catch {}
+  }
+  // Fallback: in-memory only
+  const result = {};
+  for (const [u, t] of playerNotesMemory) result[u] = t;
+  res.json({ notes: result });
 });
 
 app.post('/player-notes', async (req, res) => {
   const { username, notes } = req.body;
   if (!username) return res.json({ success: false, message: 'Username required.' });
-
-  await PlayerNote.findOneAndUpdate(
-    { username },
-    { username, notes: notes || '' },
-    { upsert: true }
-  );
+  // Save to in-memory always
+  playerNotesMemory.set(username, notes || '');
+  // Try MongoDB if available
+  if (isMongoConnected()) {
+    try {
+      await PlayerNote.findOneAndUpdate(
+        { username },
+        { username, notes: notes || '' },
+        { upsert: true }
+      );
+    } catch {}
+  }
+  // Broadcast note update to all clients via socket
+  io.emit('noteUpdated', { username, notes: notes || '' });
   res.json({ success: true });
+});
+
+// ─── BADGES SYSTEM (in-memory) ───
+
+let badgesData = {
+  badges: [],          // { id, name, rarity, description, icon }
+  playerBadges: {},    // username -> badgeId[]
+};
+
+// Seed default badges if empty
+function seedBadges() {
+  if (badgesData.badges.length > 0) return;
+  badgesData.badges = [
+    { id: 'bdg-1', name: 'Rising Star',  rarity: 'common',    description: 'Showed great potential',           icon: '⭐' },
+    { id: 'bdg-2', name: 'Sharpshooter',  rarity: 'rare',      description: 'Deadly accuracy',                  icon: '🎯' },
+    { id: 'bdg-3', name: 'Night Owl',     rarity: 'epic',      description: 'Active during the darkest hours',  icon: '🦉' },
+    { id: 'bdg-4', name: 'Shadow',        rarity: 'legendary', description: 'The unseen hand of fate',          icon: '🌑' },
+    { id: 'bdg-5', name: 'Iron Will',     rarity: 'rare',      description: 'Never gives up',                   icon: '⚔️' },
+    { id: 'bdg-6', name: 'Tactician',     rarity: 'epic',      description: 'Outsmarts everyone',               icon: '🧠' },
+    { id: 'bdg-7', name: 'Phoenix',       rarity: 'legendary', description: 'Rose from the ashes',              icon: '🔥' },
+    { id: 'bdg-8', name: 'Lucky Charm',   rarity: 'common',    description: 'Fortune favours the bold',         icon: '🍀' },
+  ];
+}
+seedBadges();
+
+// GET all badges
+app.get('/api/badges', (req, res) => {
+  res.json({ badges: badgesData.badges });
+});
+
+// GET player badges
+app.get('/api/badges/player/:username', (req, res) => {
+  const assigned = badgesData.playerBadges[req.params.username] || [];
+  const playerBadges = assigned.map(id => badgesData.badges.find(b => b.id === id)).filter(Boolean);
+  res.json({ badges: playerBadges });
+});
+
+// GET all badge assignments (for leaderboard)
+app.get('/api/badges/assignments', (req, res) => {
+  const result = {};
+  for (const [username, badgeIds] of Object.entries(badgesData.playerBadges)) {
+    result[username] = badgeIds.map(id => badgesData.badges.find(b => b.id === id)).filter(Boolean);
+  }
+  res.json({ assignments: result });
+});
+
+// Create badge
+app.post('/api/badges/create', (req, res) => {
+  const { name, rarity, description, icon } = req.body;
+  if (!name || !rarity) return res.json({ success: false, message: 'Name and rarity required.' });
+  const id = 'bdg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  const badge = { id, name, rarity: rarity || 'common', description: description || '', icon: icon || '🏅' };
+  badgesData.badges.push(badge);
+  io.emit('badgesUpdated');
+  res.json({ success: true, badge });
+});
+
+// Update badge
+app.post('/api/badges/update', (req, res) => {
+  const { id, name, rarity, description, icon } = req.body;
+  const badge = badgesData.badges.find(b => b.id === id);
+  if (!badge) return res.json({ success: false, message: 'Badge not found.' });
+  if (name !== undefined) badge.name = name;
+  if (rarity !== undefined) badge.rarity = rarity;
+  if (description !== undefined) badge.description = description;
+  if (icon !== undefined) badge.icon = icon;
+  io.emit('badgesUpdated');
+  res.json({ success: true, badge });
+});
+
+// Delete badge
+app.post('/api/badges/delete', (req, res) => {
+  const { id } = req.body;
+  badgesData.badges = badgesData.badges.filter(b => b.id !== id);
+  // Remove from all players
+  for (const username of Object.keys(badgesData.playerBadges)) {
+    badgesData.playerBadges[username] = badgesData.playerBadges[username].filter(bId => bId !== id);
+  }
+  io.emit('badgesUpdated');
+  res.json({ success: true });
+});
+
+// Assign badge to player
+app.post('/api/badges/assign', (req, res) => {
+  const { username, badgeId } = req.body;
+  if (!username || !badgeId) return res.json({ success: false, message: 'Username and badgeId required.' });
+  if (!badgesData.playerBadges[username]) badgesData.playerBadges[username] = [];
+  if (!badgesData.playerBadges[username].includes(badgeId)) {
+    badgesData.playerBadges[username].push(badgeId);
+  }
+  io.emit('badgesUpdated');
+  res.json({ success: true });
+});
+
+// Remove badge from player
+app.post('/api/badges/remove', (req, res) => {
+  const { username, badgeId } = req.body;
+  if (!username || !badgeId) return res.json({ success: false, message: 'Username and badgeId required.' });
+  if (badgesData.playerBadges[username]) {
+    badgesData.playerBadges[username] = badgesData.playerBadges[username].filter(id => id !== badgeId);
+  }
+  io.emit('badgesUpdated');
+  res.json({ success: true });
+});
+
+// GET all players with their badges (for admin assignment UI)
+app.get('/api/badges/players', (req, res) => {
+  const result = [];
+  // Get all known players from in-memory or player notes keys
+  const allUsernames = new Set([...playerNotesMemory.keys()]);
+  // If MongoDB available, also fetch from there
+  // (fallback to empty if not)
+  for (const username of allUsernames) {
+    const assigned = badgesData.playerBadges[username] || [];
+    result.push({ username, badges: assigned.map(id => badgesData.badges.find(b => b.id === id)).filter(Boolean) });
+  }
+  res.json({ players: result });
 });
 
 app.get('/achievement-categories', async (req, res) => {

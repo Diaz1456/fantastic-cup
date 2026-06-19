@@ -1494,6 +1494,219 @@ input, select, textarea {
 }
 
 /* ═══════════════════════════════════════════════
+   BADGES SYSTEM
+   ═══════════════════════════════════════════════ */
+
+.badges-admin-toolbar {
+  margin-bottom: 1rem;
+}
+
+.badges-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.badge-admin-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.badge-admin-icon {
+  font-size: 1.8rem;
+  width: 40px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.badge-admin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge-admin-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.badge-admin-rarity {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badge-admin-desc {
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.15rem;
+}
+
+.badge-admin-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.badge-assign-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: -0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.badge-assign-select {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  background: var(--dark-surface);
+  color: var(--text-dark);
+  border: 1px solid var(--glass-border);
+}
+
+/* ─── Badge Icon Sm (for leaderboard) ─── */
+.badge-icon-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  margin-left: 0.15rem;
+  vertical-align: middle;
+  cursor: help;
+  border: 1px solid transparent;
+  transition: transform 0.2s;
+}
+
+.badge-icon-sm:hover {
+  transform: scale(1.3);
+  z-index: 2;
+}
+
+.badge-common {
+  background: rgba(180,180,190,0.2);
+  border-color: #b4b4be;
+}
+
+.badge-rare {
+  background: rgba(59,130,246,0.2);
+  border-color: #3b82f6;
+}
+
+.badge-epic {
+  background: rgba(168,85,247,0.2);
+  border-color: #a855f7;
+}
+
+.badge-legendary {
+  background: rgba(245,158,11,0.2);
+  border-color: #f59e0b;
+  animation: badgeLegendaryGlow 2s ease-in-out infinite;
+}
+
+.badge-more {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-left: 0.1rem;
+}
+
+.lb-name .lb-badges-placeholder {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
+
+/* ─── Player Badges Display ─── */
+.player-badges-container {
+  margin-top: 0.5rem;
+}
+
+.player-badges-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.player-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid;
+  border-radius: 10px;
+  min-width: 160px;
+  transition: transform 0.2s;
+}
+
+.player-badge:hover {
+  transform: translateY(-2px);
+}
+
+.player-badge-icon {
+  font-size: 1.5rem;
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.player-badge-info {
+  flex: 1;
+}
+
+.player-badge-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.player-badge-rarity {
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.player-badge-desc {
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.35);
+  margin-top: 0.1rem;
+}
+
+.badge-legendary-glow {
+  animation: badgeLegendaryGlow 2s ease-in-out infinite;
+}
+
+.badges-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.badge-locked {
+  font-size: 1.5rem;
+  opacity: 0.4;
+}
+
+.badges-empty-text {
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+@keyframes badgeLegendaryGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(245,158,11,0.2); }
+  50% { box-shadow: 0 0 20px rgba(245,158,11,0.5), 0 0 40px rgba(245,158,11,0.2); }
+}
+
+/* ═══════════════════════════════════════════════
    LEADERBOARD
    ═══════════════════════════════════════════════ */
 

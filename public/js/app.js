@@ -785,7 +785,7 @@
             ${avatarHtml}
           </div>
           <div class="lb-info">
-            <div class="lb-name">${entry.username}</div>
+            <div class="lb-name">${entry.username}<span class="lb-badges-placeholder" data-username="${entry.username}"></span></div>
             <div class="lb-score-bar-wrapper">
               <div class="lb-score-bar">
                 <div class="lb-score-bar-fill" style="width:${pct}%"></div>
@@ -835,6 +835,8 @@
     _lbRendered = false;
     await refreshPlayerData();
     await refreshPlayerMeta();
+    loadPlayerBadges();
+    loadLeaderboardBadges();
     startPlayerPolling();
   }
 
@@ -1230,6 +1232,205 @@
       SoundManager.check();
     }
   });
+
+  /* ─── BADGES FUNCTIONS ─── */
+
+  const RARITY_COLORS = {
+    common: { bg: 'rgba(180,180,190,0.15)', border: '#b4b4be', text: '#b4b4be', glow: 'rgba(180,180,190,0.3)' },
+    rare: { bg: 'rgba(59,130,246,0.15)', border: '#3b82f6', text: '#60a5fa', glow: 'rgba(59,130,246,0.3)' },
+    epic: { bg: 'rgba(168,85,247,0.15)', border: '#a855f7', text: '#c084fc', glow: 'rgba(168,85,247,0.3)' },
+    legendary: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#fbbf24', glow: 'rgba(245,158,11,0.5)' },
+  };
+
+  // Admin: Load badges management UI
+  async function loadBadgesAdmin() {
+    const container = document.getElementById('badges-admin-container');
+    if (!container) return;
+    try {
+      const [badgesRes, playersRes] = await Promise.all([
+        fetch('/api/badges').then(r => r.json()),
+        fetch('/players').then(r => r.json()),
+      ]);
+      const badges = badgesRes.badges || [];
+      const players = playersRes.players || [];
+      // Also get assignments
+      const assRes = await fetch('/api/badges/assignments').then(r => r.json());
+      const assignments = assRes.assignments || {};
+
+      let html = '<div class="badges-admin-toolbar">';
+      html += '<button class="btn btn-primary btn-sm" onclick="window.__showCreateBadge()">+ Create Badge</button>';
+      html += '</div>';
+      html += '<div id="badge-create-form" style="display:none;margin-bottom:1rem;"></div>';
+      html += '<div class="badges-grid">';
+      for (const b of badges) {
+        const c = RARITY_COLORS[b.rarity] || RARITY_COLORS.common;
+        html += `<div class="badge-admin-card" style="border-color:${c.border};background:${c.bg}">`;
+        html += `<div class="badge-admin-icon">${b.icon}</div>`;
+        html += `<div class="badge-admin-info">`;
+        html += `<div class="badge-admin-name" style="color:${c.text}">${b.name}</div>`;
+        html += `<div class="badge-admin-rarity" style="color:${c.text}">${b.rarity.toUpperCase()}</div>`;
+        html += `<div class="badge-admin-desc">${b.description || ''}</div>`;
+        html += `</div>`;
+        html += `<div class="badge-admin-actions">`;
+        html += `<button class="btn btn-sm" onclick="window.__editBadge('${b.id}')">✏️</button>`;
+        html += `<button class="btn btn-sm btn-danger" onclick="window.__deleteBadge('${b.id}')">✕</button>`;
+        html += `</div>`;
+        html += `</div>`;
+        // Assign section
+        html += `<div class="badge-assign-row" style="padding:0.25rem 0.5rem 0.5rem 0.5rem;border-left:2px solid ${c.border}">`;
+        html += `<select class="badge-assign-select" id="badge-assign-${b.id}" style="margin-right:0.25rem;">`;
+        html += `<option value="">Assign to...</option>`;
+        for (const p of players) {
+          const has = (assignments[p.username] || []).some(ab => ab.id === b.id);
+          html += `<option value="${p.username}" ${has ? 'disabled' : ''}>${p.username} ${has ? '(has)' : ''}</option>`;
+        }
+        html += `</select>`;
+        html += `<button class="btn btn-sm btn-primary" onclick="window.__assignBadge('${b.id}')">+</button>`;
+        // Show players who have this badge
+        const holders = Object.entries(assignments).filter(([, list]) => list.some(ab => ab.id === b.id)).map(([u]) => u);
+        if (holders.length > 0) {
+          html += `<span style="margin-left:0.5rem;font-size:0.75rem;color:${c.text}">${holders.join(', ')}</span>`;
+        }
+        html += `</div>`;
+      }
+      html += '</div>';
+      container.innerHTML = html;
+    } catch { container.innerHTML = '<p class="text-muted">Failed to load badges.</p>'; }
+  }
+
+  window.__showCreateBadge = function () {
+    const form = document.getElementById('badge-create-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+      form.innerHTML = `
+        <div class="badge-create-form glass" style="padding:1rem;">
+          <h4 style="margin-bottom:0.5rem;color:var(--accent)">Create New Badge</h4>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+            <input type="text" id="badge-new-name" placeholder="Badge name" class="admin-input" style="flex:1;min-width:120px;">
+            <select id="badge-new-rarity" class="admin-input" style="width:120px;">
+              <option value="common">Common</option>
+              <option value="rare">Rare</option>
+              <option value="epic">Epic</option>
+              <option value="legendary">Legendary</option>
+            </select>
+            <input type="text" id="badge-new-icon" placeholder="Icon emoji" class="admin-input" style="width:60px;" value="🏅">
+          </div>
+          <input type="text" id="badge-new-desc" placeholder="Description" class="admin-input" style="width:100%;margin-bottom:0.5rem;">
+          <div style="display:flex;gap:0.5rem;">
+            <button class="btn btn-primary btn-sm" onclick="window.__createBadge()">Create</button>
+            <button class="btn btn-sm" onclick="document.getElementById('badge-create-form').style.display='none'">Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+  };
+
+  window.__createBadge = async function () {
+    const name = document.getElementById('badge-new-name').value.trim();
+    const rarity = document.getElementById('badge-new-rarity').value;
+    const icon = document.getElementById('badge-new-icon').value.trim() || '🏅';
+    const description = document.getElementById('badge-new-desc').value.trim();
+    if (!name) return toast('Enter a badge name.', 'error');
+    const res = await fetch('/api/badges/create', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, rarity, icon, description }),
+    }).then(r => r.json());
+    if (res.success) {
+      toast('Badge created!');
+      document.getElementById('badge-create-form').style.display = 'none';
+      loadBadgesAdmin();
+    } else {
+      toast(res.message || 'Failed', 'error');
+    }
+  };
+
+  window.__editBadge = async function (id) {
+    const name = prompt('Badge name:');
+    if (!name) return;
+    const rarity = prompt('Rarity (common/rare/epic/legendary):');
+    if (!rarity) return;
+    const icon = prompt('Icon emoji:');
+    const description = prompt('Description:');
+    const res = await fetch('/api/badges/update', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name, rarity, icon, description }),
+    }).then(r => r.json());
+    if (res.success) { toast('Badge updated!'); loadBadgesAdmin(); }
+    else toast(res.message || 'Failed', 'error');
+  };
+
+  window.__deleteBadge = async function (id) {
+    if (!confirm('Delete this badge? It will be removed from all players.')) return;
+    const res = await fetch('/api/badges/delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).then(r => r.json());
+    if (res.success) { toast('Badge deleted.'); loadBadgesAdmin(); }
+    else toast(res.message || 'Failed', 'error');
+  };
+
+  window.__assignBadge = async function (badgeId) {
+    const select = document.getElementById('badge-assign-' + badgeId);
+    const username = select.value;
+    if (!username) return toast('Select a player.', 'error');
+    const res = await fetch('/api/badges/assign', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, badgeId }),
+    }).then(r => r.json());
+    if (res.success) { toast(`Assigned to ${username}!`); loadBadgesAdmin(); }
+    else toast(res.message || 'Failed', 'error');
+  };
+
+  // Leaderboard badges helper
+  async function loadLeaderboardBadges() {
+    try {
+      const assRes = await fetch('/api/badges/assignments').then(r => r.json());
+      const assignments = assRes.assignments || {};
+      document.querySelectorAll('.lb-badges-placeholder').forEach(placeholder => {
+        const username = placeholder.dataset.username;
+        const userBadges = assignments[username] || [];
+        if (userBadges.length > 0) {
+          let badgeHtml = '';
+          for (const b of userBadges.slice(0, 3)) {
+            const rarClass = b.rarity || 'common';
+            badgeHtml += `<span class="badge-icon-sm badge-${rarClass}" title="${b.name}: ${b.description || ''}">${b.icon}</span>`;
+          }
+          if (userBadges.length > 3) badgeHtml += `<span class="badge-more">+${userBadges.length - 3}</span>`;
+          placeholder.innerHTML = badgeHtml;
+        }
+      });
+    } catch {}
+  }
+
+  // Player: Load badges display
+  async function loadPlayerBadges() {
+    if (!authState) return;
+    const container = document.getElementById('player-badges-display');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/badges/player/' + encodeURIComponent(authState.username)).then(r => r.json());
+      const badges = res.badges || [];
+      if (badges.length === 0) {
+        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">🔒</span><span class="badges-empty-text">No badges earned yet</span></div>';
+        return;
+      }
+      let html = '<div class="player-badges-grid">';
+      for (const b of badges) {
+        const c = RARITY_COLORS[b.rarity] || RARITY_COLORS.common;
+        const legendaryClass = b.rarity === 'legendary' ? 'badge-legendary-glow' : '';
+        html += `<div class="player-badge ${legendaryClass}" style="border-color:${c.border};background:${c.bg}">`;
+        html += `<div class="player-badge-icon">${b.icon}</div>`;
+        html += `<div class="player-badge-info">`;
+        html += `<div class="player-badge-name" style="color:${c.text}">${b.name}</div>`;
+        html += `<div class="player-badge-rarity" style="color:${c.text}">${b.rarity.toUpperCase()}</div>`;
+        html += `<div class="player-badge-desc">${b.description || ''}</div>`;
+        html += `</div>`;
+        html += `</div>`;
+      }
+      html += '</div>';
+      container.innerHTML = html;
+    } catch { container.innerHTML = ''; }
+  }
 
   /* ─── STARTUP ─── */
   document.addEventListener('DOMContentLoaded', () => {
@@ -1828,6 +2029,39 @@
         }
       });
     });
+
+    // ── Socket: Note Updated (real-time player display) ──
+    socket.on('noteUpdated', (data) => {
+      if (authState && data.username === authState.username) {
+        const notesCard = document.getElementById('player-notes-card');
+        const notesText = document.getElementById('player-notes-text');
+        if (data.notes && data.notes.trim()) {
+          notesCard.style.display = 'block';
+          notesText.textContent = data.notes;
+        } else {
+          notesCard.style.display = 'none';
+        }
+      }
+    });
+
+    // ── Socket: Badges Updated ──
+    socket.on('badgesUpdated', () => {
+      if (authState && authState.role === 'admin') {
+        loadBadgesAdmin();
+      }
+      if (authState && authState.role === 'player') {
+        loadPlayerBadges();
+        loadLeaderboardBadges();
+      }
+    });
+
+    // Load badges on admin/player nav
+    const adminBadgesNav = document.querySelector('#view-admin .nav-btn[data-section="badges"]');
+    if (adminBadgesNav) {
+      adminBadgesNav.addEventListener('click', () => {
+        setTimeout(loadBadgesAdmin, 300);
+      });
+    }
 
     // Start router
     router.start();
