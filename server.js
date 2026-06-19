@@ -29,12 +29,21 @@ function isMongoConnected() {
 eventBridge.on((state) => {
   const { _timerRemaining, _timerDisplay, ...clean } = state;
   io.emit('stateSync', clean);
+  // Emit countdown events for legacy app
+  const remaining = _timerRemaining !== undefined ? _timerRemaining : 0;
+  if (state.timer.deadline && remaining > 0) {
+    io.emit('countdownStart', remaining);
+    io.emit('countdownTick', remaining);
+  } else if (!state.timer.deadline) {
+    io.emit('countdownCancel');
+  }
 });
 
 // Emit timer ticks separately
 eventBridge.on((state) => {
   if (state._timerRemaining !== undefined) {
     io.emit('timerTick', state._timerRemaining, state._timerDisplay || '');
+    io.emit('countdownTick', state._timerRemaining);
   }
 });
 
@@ -808,15 +817,10 @@ io.on('connection', (socket) => {
   socket.on('adminResetTimer', () => eventBridge.resetTimer());
   socket.on('adminExtendTimer', (s) => eventBridge.extendTimer(s));
 
-  socket.on('adminSwitchModule', (mod) => {
-    eventBridge.setActiveModule(mod);
-    io.emit('moduleChange', mod);
-    if (eventBridge.state.phase === 'standby') {
-      eventBridge.setPhase('active');
-      io.emit('phaseChange', 'active');
-    }
-  });
+  // Force Squid Game as active module when timer transitions to standby
+  eventBridge.setActiveModule('squid-game');
 
+  // Teams
   socket.on('adminUpdateTeams', (teams) => {
     eventBridge.updateTeams(teams);
     io.emit('teamsUpdate', eventBridge.getState().teams);
@@ -877,28 +881,66 @@ io.on('connection', (socket) => {
 
   // ─── END SQUID GAME ──────────────────────────────────────────
 
-  // ─── END EVENT BRIDGE ───
+  // ─── PRESENCE / HEARTBEAT ─────────────────────────────────────
+
+  const ONLINE_TIMEOUT = 30000; // 30s without heartbeat = offline
+  const userPresence = new Map(); // username -> { username, onlineAt, lastSeen }
+
+  socket.on('heartbeat', (data) => {
+    const username = data?.username;
+    if (!username) return;
+    const now = Date.now();
+    userPresence.set(username, { username, onlineAt: userPresence.has(username) ? userPresence.get(username).onlineAt : now, lastSeen: now });
+    // Broadcast presence to admin sockets
+    io.emit('presenceUpdate', {
+      online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
+      recent: Array.from(userPresence.values())
+        .sort((a, b) => b.lastSeen - a.lastSeen)
+        .slice(0, 20)
+        .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
+    });
+  });
+
+  socket.on('userOnline', (data) => {
+    const username = data?.username;
+    if (!username) return;
+    const now = Date.now();
+    userPresence.set(username, { username, onlineAt: now, lastSeen: now });
+    io.emit('presenceUpdate', {
+      online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
+      recent: Array.from(userPresence.values())
+        .sort((a, b) => b.lastSeen - a.lastSeen)
+        .slice(0, 20)
+        .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
+    });
+  });
 
   socket.on('disconnect', () => {
     console.log('Socket disconnected:', socket.id);
+    const now = Date.now();
+    io.emit('presenceUpdate', {
+      online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
+      recent: Array.from(userPresence.values())
+        .sort((a, b) => b.lastSeen - a.lastSeen)
+        .slice(0, 20)
+        .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
+    });
   });
 });
 
-// Periodically sync timer state for active events (MongoDB only)
-const timerSyncInterval = setInterval(async () => {
-  try {
-    if (typeof Event === 'undefined') return;
-    const activeEvents = await Event.find({ active: true }).lean();
-    activeEvents.forEach(ev => {
-      io.emit('timer:sync', {
-        eventId: ev._id.toString(),
-        deadline: ev.deadline?.getTime() || null,
-        timerPaused: ev.timerPaused,
-        surpriseMode: ev.surpriseMode,
-      });
-    });
-  } catch {}
-}, 1000);
+// Cleanup stale presence every 15s
+setInterval(() => {
+  const now = Date.now();
+  io.emit('presenceUpdate', {
+    online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
+    recent: Array.from(userPresence.values())
+      .sort((a, b) => b.lastSeen - a.lastSeen)
+      .slice(0, 20)
+      .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
+  });
+}, 15000);
+
+// ─── END EVENT BRIDGE ───
 
 // ═══════════════════════════════════════════════
 

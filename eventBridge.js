@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 function defaultState() {
   return {
     phase: 'countdown',
-    activeModule: null,
+    activeModule: 'squid-game',
     timer: { deadline: null, paused: false, mysteryMode: false, pausedRemaining: null },
     teams: [
       { id: uuidv4(), name: 'Elite Division', logo: '🦅', color: '#ffd700', points: 0, rank: 1 },
@@ -109,7 +109,8 @@ class EventBridge {
       this.listeners.forEach(fn => fn({ ...this.state, _timerRemaining: remaining, _timerDisplay: display }));
 
       if (remaining <= 0 && state.phase === 'countdown') {
-        this.setPhase('standby');
+        this.setPhase('active');
+        this.setActiveModule('squid-game');
         this._stopTimer();
       }
     }, 1000);

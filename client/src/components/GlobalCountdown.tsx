@@ -10,45 +10,50 @@ interface Props {
 
 export default function GlobalCountdown({ display, remaining, mysteryMode, phase }: Props) {
   const { play } = useSound();
-  const prevSec = useRef(-1);
-  const isRevealed = !mysteryMode || remaining <= 10000;
-  const showDigits = phase === 'countdown';
+  const lastSec = useRef<number>(-1);
 
   useEffect(() => {
     const sec = Math.floor(remaining / 1000);
-    if (sec !== prevSec.current && sec > 0 && sec <= 10) {
+    if (sec !== lastSec.current && sec <= 10 && sec > 0) {
       play('tick');
     }
-    if (remaining <= 0 && phase === 'countdown') {
+    if (sec === 0 && lastSec.current !== 0 && remaining === 0) {
       play('siren');
     }
-    prevSec.current = sec;
-  }, [remaining, mysteryMode, phase]);
+    lastSec.current = sec;
+  }, [remaining, play]);
 
-  if (!showDigits) return null;
+  const isMystery = mysteryMode && remaining > 10000;
+  const isFrantic = remaining <= 10000 && remaining > 0;
+  const showDigits = !isMystery;
+
+  // Parse display string
+  let parts: string[] = [];
+  if (showDigits && display) {
+    parts = display.split(' : ');
+  }
 
   return (
-    <div className={`global-countdown ${!isRevealed ? 'mystery' : 'revealed'} ${remaining <= 10000 && isRevealed ? 'urgent' : ''}`}>
+    <div className={`global-countdown ${isMystery ? 'mystery' : ''} ${isFrantic ? 'frantic' : ''}`}>
       <div className="countdown-label">EVENT COUNTDOWN</div>
       <div className="clock-face">
-        <div className="clock-digits">
-          {!isRevealed ? (
-            <span className="mystery-digits">
-              <span className="mystery-pulse">?</span>
-            </span>
-          ) : (
-            <span className={`digit-text ${remaining <= 10000 ? 'frantic' : ''}`}>{display}</span>
-          )}
-        </div>
-        <div className="clock-rivets">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rivet" style={{ transform: `rotate(${i * 45}deg) translateY(-38px)` }} />
-          ))}
-        </div>
+        {isMystery ? (
+          <div className="clock-digits mystery">? ? : ? ? : ? ? : ? ?</div>
+        ) : parts.length === 4 ? (
+          <div className="clock-digits">
+            <span className="cd-segment">{parts[0]}</span>
+            <span className="cd-sep">:</span>
+            <span className="cd-segment">{parts[1]}</span>
+            <span className="cd-sep">:</span>
+            <span className="cd-segment">{parts[2]}</span>
+            <span className="cd-sep">:</span>
+            <span className="cd-segment">{parts[3]}</span>
+          </div>
+        ) : (
+          <div className="clock-digits">{display || '-- : -- : -- : --'}</div>
+        )}
+        {isFrantic && <div className="tick-accelerate-bar"><div className="tick-fill" style={{ width: `${(remaining / 10000) * 100}%` }} /></div>}
       </div>
-      {remaining <= 10000 && remaining > 0 && isRevealed && (
-        <div className="tick-accelerate-bar" style={{ width: `${(remaining / 10000) * 100}%` }} />
-      )}
     </div>
   );
 }

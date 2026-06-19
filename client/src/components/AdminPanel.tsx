@@ -17,11 +17,9 @@ export default function AdminPanel({ socket, onBack }: Props) {
   if (!state) return <div className="admin-panel"><h2>Loading...</h2></div>;
 
   const phase = state.phase;
-  const activeModule = state.activeModule;
   const teams = socket.teams || state.teams || [];
   const squid = state.squidGame || {};
   const players = squid.players || [];
-  const alivePlayers = players.filter((p: any) => p.status === 'alive');
 
   const handleSetTimer = () => {
     const deadline = new Date(dateStr).getTime();
@@ -83,98 +81,12 @@ export default function AdminPanel({ socket, onBack }: Props) {
           </div>
         </div>
 
-        {/* MODULE CONTROL CARD */}
-        <div className="admin-card module-card">
-          <h2>🎯 EVENT MODULES</h2>
-          <div className="phase-indicator">PHASE: <span className={`phase-badge ${phase}`}>{phase.toUpperCase()}</span></div>
-
-          <div className="module-switch-section">
-            <h3>ACTIVE MODULE</h3>
-            <div className="module-buttons">
-              <button
-                className={`module-btn ${activeModule === 'team-arena' ? 'active' : ''}`}
-                onClick={() => {
-                  socket.adminSwitchModule('team-arena');
-                }}
-              >
-                🏟 TEAM ARENA
-              </button>
-              <button
-                className={`module-btn ${activeModule === 'squid-game' ? 'active' : ''}`}
-                onClick={() => {
-                  socket.adminSwitchModule('squid-game');
-                }}
-              >
-                🎴 SQUID GAME
-              </button>
-            </div>
-
-            {(phase === 'standby' || phase === 'countdown') && (
-              <p className="module-hint">Activate a module above to begin the event</p>
-            )}
-
-            {phase === 'countdown' && (
-              <div className="admin-row">
-                <label>Force Start:</label>
-                <button onClick={() => {
-                  const fake = Date.now() - 1000;
-                  socket.adminSetTimer(fake, false);
-                }} className="admin-btn danger small">OVERRIDE TIMER</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* TEAM ARENA ADMIN */}
-        <div className="admin-card team-admin-card">
-          <h2>🏟 TEAM ARENA</h2>
-          <div className="admin-actions">
-            <button onClick={() => setTeamEditMode(!teamEditMode)} className="admin-btn">
-              {teamEditMode ? 'DONE EDITING' : 'EDIT TEAMS'}
-            </button>
-          </div>
-
-          {teamEditMode && (
-            <div className="team-edit-list">
-              {teams.map((team: any) => (
-                <div key={team.id} className="team-edit-row">
-                  <span className="team-edit-logo">{team.logo}</span>
-                  <input
-                    value={team.name}
-                    onChange={e => {
-                      const updated = teams.map((t: any) => t.id === team.id ? { ...t, name: e.target.value } : t);
-                      socket.adminUpdateTeams(updated);
-                    }}
-                    className="admin-input small"
-                  />
-                  <input
-                    type="number"
-                    value={team.points}
-                    onChange={e => {
-                      const updated = teams.map((t: any) => t.id === team.id ? { ...t, points: parseInt(e.target.value) || 0 } : t);
-                      socket.adminUpdateTeams(updated);
-                    }}
-                    className="admin-input small"
-                    style={{ width: 80 }}
-                  />
-                  <button
-                    onClick={() => {
-                      const updated = teams.map((t: any) => t.id === team.id ? { ...t, points: t.points + 10 } : t);
-                      socket.adminUpdateTeams(updated);
-                    }}
-                    className="admin-btn small"
-                  >+10</button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* SQUID GAME ADMIN */}
         <div className="admin-card squid-admin-card">
           <h2>🎴 SQUID GAME</h2>
           <div className="phase-indicator">
             GAME: <span className={`phase-badge ${squid.phase}`}>{(squid.phase || 'idle').toUpperCase()}</span>
+            | PHASE: <span className={`phase-badge ${phase}`}>{phase.toUpperCase()}</span>
           </div>
 
           <div className="admin-actions">
@@ -242,6 +154,21 @@ export default function AdminPanel({ socket, onBack }: Props) {
                 );
               })}
             </div>
+          </div>
+        </div>
+
+        {/* TEAM ARENA (simplified - no edit) */}
+        <div className="admin-card team-admin-card">
+          <h2>🏟 TEAMS</h2>
+          <div className="team-edit-list">
+            {teams.map((team: any) => (
+              <div key={team.id} className="team-edit-row">
+                <span className="team-edit-logo">{team.logo}</span>
+                <span className="team-edit-name">{team.name}</span>
+                <span className="status-value">{team.points} pts</span>
+                <span className="status-badge">#{team.rank}</span>
+              </div>
+            ))}
           </div>
         </div>
 

@@ -110,12 +110,6 @@ io.on('connection', (socket) => {
     broadcastTimerTick();
   });
 
-  socket.on('adminSwitchModule', (mod) => {
-    eventManager.setActiveModule(mod);
-    io.emit('moduleChange', mod);
-    broadcastState();
-  });
-
   socket.on('adminUpdateTeams', (teams) => {
     eventManager.updateTeams(teams);
     io.emit('teamsUpdate', eventManager.getState().teams);

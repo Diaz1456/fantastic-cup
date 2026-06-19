@@ -1472,8 +1472,150 @@
       btn.disabled = false;
     });
 
+    // ── Local Clock ──
+    function updateClock() {
+      const now = new Date();
+      const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const adminEl = document.getElementById('admin-clock-time');
+      const playerEl = document.getElementById('player-clock-time');
+      if (adminEl) adminEl.textContent = time;
+      if (playerEl) playerEl.textContent = time;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ── Admin Countdown Timer ──
+    let countdownActive = false;
+    let countdownInterval = null;
+
+    function updateCountdownDisplay(remaining) {
+      if (remaining <= 0) {
+        [document.getElementById('admin-countdown-time'), document.getElementById('player-countdown-time')].forEach(el => {
+          if (el) el.textContent = '00:00:00';
+        });
+        return;
+      }
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
+      const s = Math.floor((remaining % 60000) / 1000);
+      const str = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      [document.getElementById('admin-countdown-time'), document.getElementById('player-countdown-time')].forEach(el => {
+        if (el) el.textContent = str;
+      });
+    }
+
+    function showCountdownMode(show) {
+      const adminClock = document.getElementById('admin-clock');
+      const adminCountdown = document.getElementById('admin-countdown');
+      const playerClock = document.getElementById('player-clock');
+      const playerCountdown = document.getElementById('player-countdown');
+      if (adminClock) adminClock.style.display = show ? 'none' : '';
+      if (adminCountdown) adminCountdown.style.display = show ? '' : 'none';
+      if (playerClock) playerClock.style.display = show ? 'none' : '';
+      if (playerCountdown) playerCountdown.style.display = show ? '' : 'none';
+    }
+
+    socket.on('countdownStart', (remaining) => {
+      countdownActive = true;
+      showCountdownMode(true);
+      updateCountdownDisplay(remaining);
+      if (countdownInterval) clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        if (document.getElementById('admin-countdown') && document.getElementById('admin-countdown').style.display !== 'none') {
+          const el = document.getElementById('admin-countdown-time');
+          if (el && el.textContent !== '00:00:00') {
+            const parts = el.textContent.split(':');
+            let totalSec = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+            if (totalSec > 0) {
+              totalSec--;
+              updateCountdownDisplay(totalSec * 1000);
+            }
+          }
+        }
+      }, 1000);
+    });
+
+    socket.on('countdownTick', (remaining) => {
+      updateCountdownDisplay(remaining);
+    });
+
+    socket.on('countdownStop', () => {
+      countdownActive = false;
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      showCountdownMode(false);
+    });
+
+    socket.on('countdownCancel', () => {
+      countdownActive = false;
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      showCountdownMode(false);
+    });
+
+    // Admin countdown controls
+    document.getElementById('admin-countdown-start')?.addEventListener('click', () => {
+      const dtInput = document.getElementById('admin-countdown-datetime');
+      const mysteryCheck = document.getElementById('admin-countdown-mystery');
+      if (!dtInput || !dtInput.value) return;
+      const deadline = new Date(dtInput.value).getTime();
+      if (isNaN(deadline)) return;
+      socket.emit('adminSetTimer', { deadline, mysteryMode: mysteryCheck?.checked || false });
+    });
+
+    document.getElementById('admin-countdown-pause')?.addEventListener('click', () => {
+      socket.emit('adminPauseTimer');
+    });
+
+    document.getElementById('admin-countdown-resume')?.addEventListener('click', () => {
+      socket.emit('adminResumeTimer');
+    });
+
+    document.getElementById('admin-countdown-cancel')?.addEventListener('click', () => {
+      socket.emit('adminResetTimer');
+    });
+
+    document.getElementById('admin-countdown-extend')?.addEventListener('click', () => {
+      const input = document.getElementById('admin-countdown-extend-input');
+      if (input) socket.emit('adminExtendTimer', parseInt(input.value) || 30);
+    });
+
     // ── Socket Listeners ──
     const socket = io();
+
+    // Presence heartbeat
+    let heartbeatInterval;
+    function startHeartbeat() {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (!authState?.username) return;
+      socket.emit('userOnline', { username: authState.username });
+      heartbeatInterval = setInterval(() => {
+        socket.emit('heartbeat', { username: authState.username });
+      }, 15000);
+    }
+    if (authState?.username) {
+      setTimeout(startHeartbeat, 1000);
+    }
+
+    socket.on('presenceUpdate', (data) => {
+      const online = document.getElementById('presence-online-count');
+      const onlineList = document.getElementById('presence-online-list');
+      const recentList = document.getElementById('presence-recent-list');
+      if (online) online.textContent = data.online.length;
+      if (onlineList) {
+        onlineList.innerHTML = data.online.length === 0
+          ? '<li class="text-muted">No players online</li>'
+          : data.online.map(u => `<li><span class="presence-dot online"></span>${u.username}</li>`).join('');
+      }
+      if (recentList) {
+        recentList.innerHTML = data.recent.length === 0
+          ? '<li class="text-muted">No recent activity</li>'
+          : data.recent.map(u => {
+              const ago = Math.floor((Date.now() - u.lastSeen) / 1000);
+              const timeStr = ago < 60 ? `${ago}s ago` : ago < 3600 ? `${Math.floor(ago / 60)}m ago` : ago < 86400 ? `${Math.floor(ago / 3600)}h ago` : `${Math.floor(ago / 86400)}d ago`;
+              const dotClass = u.isOnline ? 'online' : 'offline';
+              return `<li><span class="presence-dot ${dotClass}"></span>${u.username} <span class="presence-time">${timeStr}</span></li>`;
+            }).join('');
+      }
+    });
 
     socket.on('dailyTask:completed', (data) => {
       if (!data) return;

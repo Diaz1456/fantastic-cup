@@ -1,5 +1,4 @@
 import GlobalCountdown from './GlobalCountdown';
-import ModuleTeamArena from './ModuleTeamArena';
 import ModuleSquidGame from './ModuleSquidGame';
 
 interface Props {
@@ -21,7 +20,7 @@ export default function EventPage({ socket }: Props) {
     );
   }
 
-  const { phase, activeModule, timer } = state;
+  const { phase, timer } = state;
 
   return (
     <div className={`event-page phase-${phase}`}>
@@ -54,32 +53,14 @@ export default function EventPage({ socket }: Props) {
           <div className="standby-section">
             <div className="standby-message">
               <div className="standby-icon">🎴</div>
-              <h2>EVENT PRIMED</h2>
+              <h2>SQUID GAME</h2>
               <p>Waiting for the commander's signal...</p>
             </div>
-            {activeModule && (
-              <div className="active-module-indicator">
-                Active Module: <strong>{activeModule === 'team-arena' ? 'Team Arena' : 'Squid Game'}</strong>
-              </div>
-            )}
           </div>
         )}
 
-        {phase === 'active' && activeModule === 'team-arena' && (
-          <ModuleTeamArena socket={socket} />
-        )}
-
-        {phase === 'active' && activeModule === 'squid-game' && (
+        {phase === 'active' && (
           <ModuleSquidGame socket={socket} />
-        )}
-
-        {phase === 'active' && !activeModule && (
-          <div className="standby-section">
-            <div className="standby-message">
-              <h2>SELECT A MODULE</h2>
-              <p>Admin will choose the event module</p>
-            </div>
-          </div>
         )}
       </div>
 
