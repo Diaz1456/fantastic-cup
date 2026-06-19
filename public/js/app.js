@@ -288,7 +288,7 @@
     const container = document.getElementById('admin-lb-preview');
     const top15 = (adminDataCache.leaderboard || []).slice(0, 15);
     fetchLeaderboardAvatars(top15).then(avatarMap => {
-      container.innerHTML = renderLeaderboardHTML(top15, adminDataCache.categories, avatarMap);
+      container.innerHTML = renderLeaderboardHTML(top15, adminDataCache.categories, avatarMap, true);
     });
   }
 
@@ -373,7 +373,7 @@
       const notesId = 'notes-' + p.username.replace(/[^a-zA-Z0-9]/g, '_');
       const avatarUrl = avatarMap[p.username] || '';
       const avatarHtml = avatarUrl
-        ? `<img src="${avatarUrl}" class="player-avatar-thumb" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);">`
+        ? `<span class="avatar-loading" style="display:inline-flex;width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--accent);"><img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
         : `<span style="font-size:1.5rem;">👤</span>`;
       return `
       <tr>
@@ -737,7 +737,7 @@
       return;
     }
     const avatarMap = await fetchLeaderboardAvatars(data);
-    container.innerHTML = renderLeaderboardHTML(data, adminDataCache.categories, avatarMap);
+    container.innerHTML = renderLeaderboardHTML(data, adminDataCache.categories, avatarMap, true);
   }
 
   /* ─── ADMIN: Feedback List ─── */
@@ -761,7 +761,7 @@
   }
 
   /* ─── LEADERBOARD RENDERER ─── */
-  function renderLeaderboardHTML(leaderboard, categories, avatarMap) {
+  function renderLeaderboardHTML(leaderboard, categories, avatarMap, animate) {
     if (!leaderboard || leaderboard.length === 0) {
       return '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No data yet.</p>';
     }
@@ -775,10 +775,10 @@
       const medal = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '👤';
       const avatarUrl = avatarMap ? (avatarMap[entry.username] || '') : '';
       const avatarHtml = avatarUrl
-        ? `<img src="${avatarUrl}" class="lb-avatar-img" onerror="this.style.display='none'">`
+        ? `<span class="avatar-loading" style="display:inline-flex;width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;"><img src="${avatarUrl}" class="lb-avatar-img" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
         : `<span class="lb-avatar-emoji">${medal}</span>`;
       return `
-        <div class="lb-card ${topClass}" style="animation-delay:${delay}s">
+        <div class="lb-card ${topClass}${animate ? ' lb-animate' : ''}" style="${animate ? `animation-delay:${delay}s` : ''}">
           <div class="lb-rank ${rankClass}">${rank}</div>
           <div class="lb-avatar">
             ${avatarHtml}
@@ -828,35 +828,28 @@
     document.querySelector('.player-greeting').innerHTML =
       `Welcome, <strong>${authState.username}</strong>`;
 
-    // Set random quote
     document.getElementById('motivational-quote').textContent = randomQuote();
 
+    _lastLbHash = '';
+    _lbRendered = false;
     await refreshPlayerData();
+    await refreshPlayerMeta();
     startPlayerPolling();
   }
 
   async function refreshPlayerData() {
+    // Full refresh on initial load (avatar, coins, daily task, etc.)
+    // Leaderboard is handled by refreshPlayerMeta on poll
     try {
       const [lbRes, achRes, notesRes] = await Promise.all([
         API.getLeaderboard(),
         API.getPlayerAchievements(authState.username),
         API.getPlayerNotes(),
       ]);
-
       const leaderboard = lbRes.leaderboard || [];
-      const categories = lbRes.categories || [];
       const playerAch = achRes.achievements || {};
-      const playerCats = achRes.categories || [];
 
-      // Player Hero (shows the logged-in player - biggest name on the page)
-      const myEntry = leaderboard.find(e => e.username === authState.username);
-      const myTotal = myEntry ? myEntry.total : 0;
-      const myRank = leaderboard.findIndex(e => e.username === authState.username) + 1;
-
-      document.getElementById('hero-name').textContent = authState.username;
-      document.getElementById('hero-score').textContent = myTotal;
-
-      // Load avatar
+      // Avatar
       try {
         const avatarRes = await fetch('/api/avatar/' + encodeURIComponent(authState.username) + '?t=' + Date.now()).then(r => r.json());
         const avatarImg = document.getElementById('hero-avatar-img');
@@ -865,64 +858,30 @@
         if (avatarRes.avatar && avatarRes.avatar.trim()) {
           avatarImg.src = avatarRes.avatar + '?t=' + Date.now();
           avatarImg.style.display = '';
+          avatarImg.onload = function () {
+            const wrapper = this.closest('.hero-avatar-img-wrap');
+            if (wrapper) wrapper.classList.remove('avatar-loading');
+          };
+          avatarImg.onerror = function () {
+            const wrapper = this.closest('.hero-avatar-img-wrap');
+            if (wrapper) wrapper.classList.remove('avatar-loading');
+            this.style.display = 'none';
+            if (avatarFallback) avatarFallback.style.display = '';
+          };
+          const wrapper = avatarImg.closest('.hero-avatar-img-wrap');
+          if (wrapper) wrapper.classList.add('avatar-loading');
           avatarFallback.style.display = 'none';
           if (removeBtn) removeBtn.style.display = '';
         } else {
           avatarImg.style.display = 'none';
+          const wrapper = avatarImg.closest('.hero-avatar-img-wrap');
+          if (wrapper) wrapper.classList.remove('avatar-loading');
           avatarFallback.style.display = '';
           if (removeBtn) removeBtn.style.display = 'none';
         }
       } catch {};
 
-      document.getElementById('hero-badge').textContent = '🏅 YOUR SCORE';
-
-      const rankInfo = document.getElementById('hero-rank-info');
-      if (myRank > 0) {
-        rankInfo.innerHTML = `You're ranked <strong>#${myRank}</strong> out of ${leaderboard.length} players`;
-      } else {
-        rankInfo.innerHTML = '';
-      }
-
-      // Leaderboard
-      const lbContainer = document.getElementById('player-leaderboard');
-      const avatarMap = await fetchLeaderboardAvatars(leaderboard);
-      lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories, avatarMap);
-
-      // Coach Notes
-      const notesData = notesRes.notes || {};
-      const myNotes = notesData[authState.username];
-      const notesCard = document.getElementById('player-notes-card');
-      const notesText = document.getElementById('player-notes-text');
-      if (myNotes && myNotes.trim()) {
-        notesCard.style.display = 'block';
-        notesText.textContent = myNotes;
-      } else {
-        notesCard.style.display = 'none';
-      }
-
-      // Player's own achievements
-      const achContainer = document.getElementById('player-achievements');
-      const catList = categories.length > 0 ? categories : playerCats;
-      if (catList.length === 0) {
-        achContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No achievement categories yet — ask your admin to set them up.</p>';
-      } else {
-        const allValues = catList.map(cat => Number(playerAch[cat.id]) || 0);
-        const maxAch = Math.max(...allValues, 1);
-        achContainer.innerHTML = catList.map(cat => {
-          const val = Number(playerAch[cat.id]) || 0;
-          const pct = (val / maxAch) * 100;
-          return `
-          <div class="player-ach-card glass">
-            <div class="player-ach-title">${cat.title}</div>
-            <div class="player-ach-value">${val}</div>
-            <div class="player-ach-bar-wrapper">
-              <div class="player-ach-bar-fill" style="width:${pct}%"></div>
-            </div>
-          </div>
-        `}).join('');
-      }
-
-      // Coin balance inside achievements
+      // Coin balance
       try {
         const coinRes = await fetch('/api/coins/balance/' + encodeURIComponent(authState.username)).then(r => r.json());
         const coinBal = document.getElementById('player-coin-balance-ach');
@@ -936,7 +895,7 @@
         }
       } catch {}
 
-      // Daily Task
+      // Daily task
       renderDailyTask();
     } catch (err) {
       console.error('Player data refresh failed', err);
@@ -986,13 +945,96 @@
     }
   });
 
+  let _lastLbHash = '';
+  let _lbRendered = false;
+
+  function _lbHash(data) {
+    return data.map(e => e.username + ':' + e.total).join('|');
+  }
+
   function startPlayerPolling() {
     if (pollTimer) clearInterval(pollTimer);
     playerPollActive = true;
     pollTimer = setInterval(async () => {
       if (!playerPollActive) return;
-      await refreshPlayerData();
+      await refreshPlayerMeta();
     }, POLL_INTERVAL);
+  }
+
+  async function refreshPlayerMeta() {
+    try {
+      const [lbRes, achRes, notesRes] = await Promise.all([
+        API.getLeaderboard(),
+        API.getPlayerAchievements(authState.username),
+        API.getPlayerNotes(),
+      ]);
+      const leaderboard = lbRes.leaderboard || [];
+      const categories = lbRes.categories || [];
+      const playerAch = achRes.achievements || {};
+      const playerCats = achRes.categories || [];
+
+      // Update player-specific data
+      const myEntry = leaderboard.find(e => e.username === authState.username);
+      const myTotal = myEntry ? myEntry.total : 0;
+      const myRank = leaderboard.findIndex(e => e.username === authState.username) + 1;
+      document.getElementById('hero-name').textContent = authState.username;
+      document.getElementById('hero-score').textContent = myTotal;
+      document.getElementById('hero-badge').textContent = '🏅 YOUR SCORE';
+
+      const rankInfo = document.getElementById('hero-rank-info');
+      if (myRank > 0) {
+        rankInfo.innerHTML = `You're ranked <strong>#${myRank}</strong> out of ${leaderboard.length} players`;
+      } else {
+        rankInfo.innerHTML = '';
+      }
+
+      // Check if leaderboard needs update
+      const newHash = _lbHash(leaderboard);
+      if (newHash !== _lastLbHash || !_lbRendered) {
+        _lastLbHash = newHash;
+        const shouldAnimate = !_lbRendered;
+        _lbRendered = true;
+        const lbContainer = document.getElementById('player-leaderboard');
+        const avatarMap = await fetchLeaderboardAvatars(leaderboard);
+        lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories, avatarMap, shouldAnimate);
+      }
+
+      // Player achievements
+      const achContainer = document.getElementById('player-achievements');
+      const catList = categories.length > 0 ? categories : playerCats;
+      if (catList.length === 0) {
+        achContainer.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No achievement categories yet — ask your admin to set them up.</p>';
+      } else {
+        const allValues = catList.map(cat => Number(playerAch[cat.id]) || 0);
+        const maxAch = Math.max(...allValues, 1);
+        achContainer.innerHTML = catList.map(cat => {
+          const val = Number(playerAch[cat.id]) || 0;
+          const pct = (val / maxAch) * 100;
+          return `
+          <div class="player-ach-card glass">
+            <div class="player-ach-title">${cat.title}</div>
+            <div class="player-ach-value">${val}</div>
+            <div class="player-ach-bar-wrapper">
+              <div class="player-ach-bar-fill" style="width:${pct}%"></div>
+            </div>
+          </div>
+        `}).join('');
+      }
+
+      // Coach Notes
+      const notesData = notesRes.notes || {};
+      const myNotes = notesData[authState.username];
+      const notesCard = document.getElementById('player-notes-card');
+      const notesText = document.getElementById('player-notes-text');
+      if (myNotes && myNotes.trim()) {
+        notesCard.style.display = 'block';
+        notesText.textContent = myNotes;
+      } else {
+        notesCard.style.display = 'none';
+      }
+    } catch (err) {
+      console.error('Player meta refresh failed', err);
+    }
   }
 
   function stopPlayerPolling() {
@@ -1038,7 +1080,7 @@
     const lb = res.leaderboard || [];
     const cats = res.categories || [];
     const avatarMap = await fetchLeaderboardAvatars(lb);
-    container.innerHTML = renderLeaderboardHTML(lb, cats, avatarMap);
+    container.innerHTML = renderLeaderboardHTML(lb, cats, avatarMap, true);
   }
 
   /* ─── LOGOUT ─── */

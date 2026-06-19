@@ -1,1 +1,13 @@
 mongodb+srv://accessdenied:dawra1448@cluster0.fevqn9i.mongodb.net/fantastic-cup?retryWrites=true&w=majority
+
+
+
+how to push to render
+
+cd /home/master1/fantastic-cup
+git add .
+git commit -m "........."
+git push
+
+then manual deploy
+

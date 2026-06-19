@@ -327,7 +327,9 @@
           <div class="hero-player">
             <div class="hero-avatar" id="hero-avatar">
               <div class="avatar-upload-wrapper">
-                <img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 20px rgba(245,158,11,0.3);">
+                <span class="hero-avatar-img-wrap" style="display:inline-flex;border-radius:50%;overflow:hidden;width:80px;height:80px;">
+                  <img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:100%;height:100%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 20px rgba(245,158,11,0.3);border-radius:50%;">
+                </span>
                 <span id="hero-avatar-fallback" style="font-size:4.5rem;">👤</span>
                 <div class="avatar-actions">
                   <label for="player-avatar-upload" class="avatar-upload-label" title="Upload Photo">📷</label>
@@ -454,13 +456,7 @@
 
   <!-- ═══ HALL OF FAME OVERLAY ═══ -->
   <div id="hof-overlay" class="hof-overlay" style="display:none;">
-    <div class="hof-header">
-      <h1 class="hof-title">🏆 Legendary Hall of Fame</h1>
-      <div class="hof-controls">
-        <button class="hof-btn" id="hof-music-toggle">🔊 Music</button>
-        <button class="hof-btn" id="hof-close-btn">✕ Close</button>
-      </div>
-    </div>
+    <button class="hof-close-btn" id="hof-close-btn">✕</button>
     <div id="hof-canvas-container" class="hof-canvas-container"></div>
   </div>
 
