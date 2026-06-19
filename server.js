@@ -180,29 +180,45 @@ async function buildLeaderboard() {
 
 app.post('/login', async (req, res) => {
   const { username, password, role } = req.body;
+  let success = false;
+  let userData = null;
   if (!isMongoConnected()) {
     // Fallback: admin login when MongoDB is unavailable
     if (username === 'admin' && password === ADMIN_PASSWORD && role === 'admin') {
-      return res.json({ success: true, user: { username: 'admin', role: 'admin' } });
+      success = true;
+      userData = { username: 'admin', role: 'admin' };
     }
     if (username === 'player1' && password === 'pass123' && role === 'player') {
-      return res.json({ success: true, user: { username: 'player1', role: 'player' } });
+      success = true;
+      userData = { username: 'player1', role: 'player' };
     }
-    return res.json({ success: false, message: 'Invalid credentials (offline mode).' });
-  }
-  try {
-    const user = await User.findOne({ username, role, enabled: { $ne: false } }).lean();
-    if (!user) return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+    if (!success) return res.json({ success: false, message: 'Invalid credentials (offline mode).' });
+  } else {
+    try {
+      const user = await User.findOne({ username, role, enabled: { $ne: false } }).lean();
+      if (!user) return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
 
-    const passwordMatch = await bcrypt.compare(password, user.password).catch(() => false);
-    if (!passwordMatch && user.password !== password) {
-      return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+      const passwordMatch = await bcrypt.compare(password, user.password).catch(() => false);
+      if (!passwordMatch && user.password !== password) {
+        return res.json({ success: false, message: 'Invalid credentials or user disabled.' });
+      }
+      success = true;
+      userData = { username: user.username, role: user.role };
+    } catch {
+      return res.json({ success: false, message: 'Server error.' });
     }
-
-    res.json({ success: true, user: { username: user.username, role: user.role } });
-  } catch {
-    res.json({ success: false, message: 'Server error.' });
   }
+
+  // Track login for presence
+  if (success && userData) {
+    const now = Date.now();
+    loginHistory.unshift({ username: userData.username, timestamp: now });
+    if (loginHistory.length > MAX_LOGIN_HISTORY) loginHistory.length = MAX_LOGIN_HISTORY;
+    userPresence.set(userData.username, { username: userData.username, onlineAt: now, lastSeen: now });
+    broadcastPresence();
+  }
+
+  res.json({ success, user: userData });
 });
 
 app.get('/players', async (req, res) => {
@@ -1023,6 +1039,9 @@ io.on('connection', (socket) => {
 
 const ONLINE_TIMEOUT = 30000;
 const userPresence = new Map();
+const socketUserMap = new Map(); // socket.id -> username
+const loginHistory = []; // { username, timestamp }
+const MAX_LOGIN_HISTORY = 100;
 
 function broadcastPresence() {
   const now = Date.now();
@@ -1032,15 +1051,21 @@ function broadcastPresence() {
       .sort((a, b) => b.lastSeen - a.lastSeen)
       .slice(0, 20)
       .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
+    loginHistory: loginHistory.slice(0, 20),
   });
 }
 
 io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+
+  // If client sends username immediately, mark online
   socket.on('heartbeat', (data) => {
     const username = data?.username;
     if (!username) return;
     const now = Date.now();
-    userPresence.set(username, { username, onlineAt: userPresence.has(username) ? userPresence.get(username).onlineAt : now, lastSeen: now });
+    socketUserMap.set(socket.id, username);
+    const existing = userPresence.get(username);
+    userPresence.set(username, { username, onlineAt: existing ? existing.onlineAt : now, lastSeen: now });
     broadcastPresence();
   });
 
@@ -1048,13 +1073,54 @@ io.on('connection', (socket) => {
     const username = data?.username;
     if (!username) return;
     const now = Date.now();
+    socketUserMap.set(socket.id, username);
     userPresence.set(username, { username, onlineAt: now, lastSeen: now });
     broadcastPresence();
   });
 
   socket.on('disconnect', () => {
     console.log('Socket disconnected:', socket.id);
+    const username = socketUserMap.get(socket.id);
+    socketUserMap.delete(socket.id);
+    // Check if user has other active sockets
+    if (username) {
+      const hasOtherSockets = Array.from(socketUserMap.values()).some(u => u === username);
+      if (!hasOtherSockets) {
+        // Mark offline after a short grace period
+        const existing = userPresence.get(username);
+        if (existing) {
+          userPresence.set(username, { ...existing, lastSeen: Date.now() });
+          // Still broadcast so admin sees them fall off "online" immediately
+        }
+      }
+    }
     broadcastPresence();
+  });
+});
+
+// Login history endpoint
+app.post('/api/presence/login', (req, res) => {
+  const { username } = req.body;
+  if (!username) return res.json({ success: false });
+  const now = Date.now();
+  loginHistory.unshift({ username, timestamp: now });
+  if (loginHistory.length > MAX_LOGIN_HISTORY) loginHistory.length = MAX_LOGIN_HISTORY;
+  // Also mark them online
+  userPresence.set(username, { username, onlineAt: now, lastSeen: now });
+  broadcastPresence();
+  res.json({ success: true });
+});
+
+// Presence poll endpoint (fallback)
+app.get('/api/presence', (req, res) => {
+  const now = Date.now();
+  res.json({
+    online: Array.from(userPresence.values()).filter(u => now - u.lastSeen < ONLINE_TIMEOUT),
+    recent: Array.from(userPresence.values())
+      .sort((a, b) => b.lastSeen - a.lastSeen)
+      .slice(0, 20)
+      .map(u => ({ ...u, isOnline: now - u.lastSeen < ONLINE_TIMEOUT })),
+    loginHistory: loginHistory.slice(0, 20),
   });
 });
 

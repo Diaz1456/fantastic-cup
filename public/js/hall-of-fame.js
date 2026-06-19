@@ -65,6 +65,10 @@
               const avatarHtml = p.avatarUrl
                 ? `<img src="${p.avatarUrl}" class="hof-card-avatar-img" onerror="this.style.display='none'">`
                 : '';
+              const badges = p.badges || [];
+              const badgeHtml = badges.length > 0
+                ? `<div class="hof-card-badges">${badges.map(b => `<span class="hof-badge-icon" title="${b.name}: ${b.description || ''}" style="border-color:${window.RARITY_COLORS && window.RARITY_COLORS[b.rarity] ? window.RARITY_COLORS[b.rarity].border : '#b4b4be'};${b.rarity === 'legendary' ? 'animation:badgeLegendaryGlow 2s ease-in-out infinite;' : ''}">${b.icon}</span>`).join('')}</div>`
+                : '';
               return `
                 <div class="hof-card ${rankClass} ${isFirst ? 'hof-card-center' : ''}" data-index="${i}" style="--card-index:${i}">
                   <div class="hof-card-glow"></div>
@@ -74,6 +78,7 @@
                     <span class="hof-card-avatar-fallback" ${avatarHtml ? 'style="display:none"' : ''}>${i === 0 ? '👑' : i === 1 ? '🥈' : '🥉'}</span>
                   </div>
                   <div class="hof-card-name">${p.username}</div>
+                  ${badgeHtml}
                   <div class="hof-card-score">${p.total} pts</div>
                   <div class="hof-card-pedestal">
                     <span class="hof-pedestal-label">${rankLabel}</span>

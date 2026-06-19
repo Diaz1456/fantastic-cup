@@ -231,6 +231,12 @@
       if (res.success) {
         authState = res.user;
         if (typeof startHeartbeat === 'function') startHeartbeat();
+        // Notify server of login for presence tracking
+        fetch('/api/presence/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: res.user.username }),
+        }).catch(() => {});
         if (res.user.role === 'admin') {
           router.navigate('admin');
         } else {
@@ -1241,6 +1247,7 @@
     epic: { bg: 'rgba(168,85,247,0.15)', border: '#a855f7', text: '#c084fc', glow: 'rgba(168,85,247,0.3)' },
     legendary: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#fbbf24', glow: 'rgba(245,158,11,0.5)' },
   };
+  window.RARITY_COLORS = RARITY_COLORS;
 
   // Admin: Load badges management UI
   async function loadBadgesAdmin() {
@@ -1253,7 +1260,6 @@
       ]);
       const badges = badgesRes.badges || [];
       const players = playersRes.players || [];
-      // Also get assignments
       const assRes = await fetch('/api/badges/assignments').then(r => r.json());
       const assignments = assRes.assignments || {};
 
@@ -1286,10 +1292,15 @@
         }
         html += `</select>`;
         html += `<button class="btn btn-sm btn-primary" onclick="window.__assignBadge('${b.id}')">+</button>`;
-        // Show players who have this badge
+        // Show holders with remove buttons
         const holders = Object.entries(assignments).filter(([, list]) => list.some(ab => ab.id === b.id)).map(([u]) => u);
         if (holders.length > 0) {
-          html += `<span style="margin-left:0.5rem;font-size:0.75rem;color:${c.text}">${holders.join(', ')}</span>`;
+          html += `<span style="margin-left:0.5rem;font-size:0.75rem;color:${c.text}">`;
+          html += `Holders: `;
+          html += holders.map(h =>
+            `<span class="badge-holder-tag" style="display:inline-flex;align-items:center;gap:0.2rem;margin:0.1rem 0.2rem;padding:0.1rem 0.4rem;border-radius:4px;background:rgba(255,255,255,0.06);">${h}<button class="btn-badge-remove" onclick="window.__removeBadgeFromPlayer('${b.id}','${h}')" title="Remove ${b.name} from ${h}" style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:0.7rem;padding:0;line-height:1;">✕</button></span>`
+          ).join('');
+          html += `</span>`;
         }
         html += `</div>`;
       }
@@ -1381,6 +1392,19 @@
     else toast(res.message || 'Failed', 'error');
   };
 
+  window.__removeBadgeFromPlayer = async function (badgeId, username) {
+    const badgesRes = await fetch('/api/badges').then(r => r.json());
+    const badge = (badgesRes.badges || []).find(b => b.id === badgeId);
+    const badgeName = badge ? badge.name : badgeId;
+    if (!confirm(`Remove "${badgeName}" from ${username}?`)) return;
+    const res = await fetch('/api/badges/remove', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, badgeId }),
+    }).then(r => r.json());
+    if (res.success) { toast(`Removed "${badgeName}" from ${username}`); loadBadgesAdmin(); }
+    else toast(res.message || 'Failed', 'error');
+  };
+
   // Leaderboard badges helper
   async function loadLeaderboardBadges() {
     try {
@@ -1391,11 +1415,11 @@
         const userBadges = assignments[username] || [];
         if (userBadges.length > 0) {
           let badgeHtml = '';
-          for (const b of userBadges.slice(0, 3)) {
-            const rarClass = b.rarity || 'common';
-            badgeHtml += `<span class="badge-icon-sm badge-${rarClass}" title="${b.name}: ${b.description || ''}">${b.icon}</span>`;
+          for (const b of userBadges) {
+            const c = RARITY_COLORS[b.rarity] || RARITY_COLORS.common;
+            const legendaryClass = b.rarity === 'legendary' ? 'badge-lb-legendary' : '';
+            badgeHtml += `<span class="badge-lb-icon ${legendaryClass}" style="border-color:${c.border}" title="${b.name}: ${b.description || ''}">${b.icon}</span>`;
           }
-          if (userBadges.length > 3) badgeHtml += `<span class="badge-more">+${userBadges.length - 3}</span>`;
           placeholder.innerHTML = badgeHtml;
         }
       });
@@ -1406,30 +1430,54 @@
   async function loadPlayerBadges() {
     if (!authState) return;
     const container = document.getElementById('player-badges-display');
-    if (!container) return;
+    const heroContainer = document.getElementById('hero-badges-display');
     try {
       const res = await fetch('/api/badges/player/' + encodeURIComponent(authState.username)).then(r => r.json());
       const badges = res.badges || [];
-      if (badges.length === 0) {
-        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">🔒</span><span class="badges-empty-text">No badges earned yet</span></div>';
-        return;
+      // Player dashboard section badges
+      if (container) {
+        if (badges.length === 0) {
+          container.innerHTML = '<div class="badges-empty"><span class="badge-locked">🔒</span><span class="badges-empty-text">No badges earned yet</span></div>';
+        } else {
+          let html = '<div class="player-badges-grid">';
+          for (const b of badges) {
+            const c = RARITY_COLORS[b.rarity] || RARITY_COLORS.common;
+            const legendaryClass = b.rarity === 'legendary' ? 'badge-legendary-glow' : '';
+            html += `<div class="player-badge ${legendaryClass}" style="border-color:${c.border};background:${c.bg}">`;
+            html += `<div class="player-badge-icon">${b.icon}</div>`;
+            html += `<div class="player-badge-info">`;
+            html += `<div class="player-badge-name" style="color:${c.text}">${b.name}</div>`;
+            html += `<div class="player-badge-rarity" style="color:${c.text}">${b.rarity.toUpperCase()}</div>`;
+            html += `<div class="player-badge-desc">${b.description || ''}</div>`;
+            html += `</div>`;
+            html += `</div>`;
+          }
+          html += '</div>';
+          container.innerHTML = html;
+        }
       }
-      let html = '<div class="player-badges-grid">';
-      for (const b of badges) {
-        const c = RARITY_COLORS[b.rarity] || RARITY_COLORS.common;
-        const legendaryClass = b.rarity === 'legendary' ? 'badge-legendary-glow' : '';
-        html += `<div class="player-badge ${legendaryClass}" style="border-color:${c.border};background:${c.bg}">`;
-        html += `<div class="player-badge-icon">${b.icon}</div>`;
-        html += `<div class="player-badge-info">`;
-        html += `<div class="player-badge-name" style="color:${c.text}">${b.name}</div>`;
-        html += `<div class="player-badge-rarity" style="color:${c.text}">${b.rarity.toUpperCase()}</div>`;
-        html += `<div class="player-badge-desc">${b.description || ''}</div>`;
-        html += `</div>`;
-        html += `</div>`;
+      // Hero section - large prominent badges
+      if (heroContainer) {
+        if (badges.length === 0) {
+          heroContainer.innerHTML = '';
+        } else {
+          let html = '<div class="hero-badges-row">';
+          for (const b of badges) {
+            const c = RARITY_COLORS[b.rarity] || RARITY_COLORS.common;
+            const legendaryClass = b.rarity === 'legendary' ? 'badge-hero-legendary' : '';
+            html += `<div class="hero-badge-item ${legendaryClass}" style="border-color:${c.border};background:${c.bg}" title="${b.name}: ${b.description || ''}">`;
+            html += `<span class="hero-badge-icon">${b.icon}</span>`;
+            html += `<span class="hero-badge-label" style="color:${c.text}">${b.name}</span>`;
+            html += `<span class="hero-badge-rarity-tag" style="background:${c.border}">${b.rarity.toUpperCase()}</span>`;
+            html += `</div>`;
+          }
+          html += '</div>';
+          heroContainer.innerHTML = html;
+        }
       }
-      html += '</div>';
-      container.innerHTML = html;
-    } catch { container.innerHTML = ''; }
+    } catch {
+      if (container) container.innerHTML = '';
+    }
   }
 
   /* ─── STARTUP ─── */
@@ -1514,12 +1562,82 @@
     setupAdminDailyTask();
     loadDailyTaskConfig();
 
+    // ── Populate coin player searchable combo ──
+    async function populateCoinPlayerCombo() {
+      const searchInput = document.getElementById('coin-player-search');
+      const hiddenInput = document.getElementById('coin-player-input');
+      const dropdown = document.getElementById('coin-player-dropdown');
+      if (!searchInput || !dropdown) return;
+
+      let allPlayers = [];
+      try {
+        const [lbRes, playersRes] = await Promise.all([
+          fetch('/api/coins/leaderboard').then(r => r.json()),
+          fetch('/players').then(r => r.json()),
+        ]);
+        const balances = lbRes.balances || [];
+        const balanceMap = {};
+        for (const b of balances) balanceMap[b._id] = b.total;
+        const allP = playersRes.players || [];
+        const seen = new Set();
+        for (const p of allP) { seen.add(p.username); }
+        allPlayers = Array.from(seen).map(u => ({ username: u, balance: balanceMap[u] || 0 }));
+        // Sort by balance descending
+        allPlayers.sort((a, b) => b.balance - a.balance);
+      } catch { allPlayers = []; }
+
+      function renderDropdown(query) {
+        const q = (query || '').toLowerCase();
+        const filtered = q ? allPlayers.filter(p => p.username.toLowerCase().includes(q)) : allPlayers;
+        if (filtered.length === 0) {
+          dropdown.innerHTML = '<div class="coin-dropdown-item disabled" style="padding:0.5rem;color:var(--text-muted);text-align:center;">No players found</div>';
+          dropdown.style.display = 'block';
+          return;
+        }
+        dropdown.innerHTML = filtered.map(p =>
+          `<div class="coin-dropdown-item" data-username="${p.username}" data-balance="${p.balance}" style="padding:0.4rem 0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background=''">
+            <span>${p.username}</span>
+            <span style="font-size:0.8rem;color:var(--accent);font-weight:600;">${p.balance} 🪙</span>
+          </div>`
+        ).join('');
+        dropdown.style.display = 'block';
+        // Click handler
+        dropdown.querySelectorAll('.coin-dropdown-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const username = el.dataset.username;
+            const balance = el.dataset.balance;
+            searchInput.value = username;
+            hiddenInput.value = username;
+            dropdown.style.display = 'none';
+            // Update amount placeholder hint
+            document.getElementById('coin-amount-input').placeholder = `Amount (${username} has ${balance} 🪙)`;
+          });
+        });
+      }
+
+      searchInput.addEventListener('input', () => {
+        if (hiddenInput.value && hiddenInput.value !== searchInput.value) {
+          hiddenInput.value = '';
+        }
+        renderDropdown(searchInput.value);
+      });
+
+      searchInput.addEventListener('focus', () => renderDropdown(searchInput.value));
+      searchInput.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 200);
+      });
+
+      searchInput.value = '';
+      hiddenInput.value = '';
+    }
+
     // ── Coin Awarding ──
     document.getElementById('btn-award-coins')?.addEventListener('click', async () => {
       const playerUsername = document.getElementById('coin-player-input').value.trim();
       const amount = parseInt(document.getElementById('coin-amount-input').value);
       const stamp = document.getElementById('coin-stamp-select').value;
-      if (!playerUsername || !amount) { toast('Enter player and amount', 'error'); return; }
+      if (!playerUsername || !amount || amount <= 0) { toast('Select a player and enter a positive amount.', 'error'); return; }
+      if (!confirm(`Award ${amount} 🪙 to ${playerUsername}?`)) return;
       const res = await fetch('/api/coins/award', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1527,9 +1645,38 @@
       }).then(r => r.json());
       if (res.success) {
         toast(`Awarded ${amount} 🪙 to ${playerUsername}`);
-        document.getElementById('coin-player-input').value = '';
         document.getElementById('coin-amount-input').value = '';
+        document.getElementById('coin-player-search').value = '';
+        document.getElementById('coin-player-input').value = '';
+        document.getElementById('coin-amount-input').placeholder = 'Amount';
         window.__loadCoinLeaderboard();
+        populateCoinPlayerCombo();
+      } else {
+        toast(res.message || 'Failed', 'error');
+      }
+    });
+
+    // ── Coin Removal ──
+    document.getElementById('btn-remove-coins')?.addEventListener('click', async () => {
+      const playerUsername = document.getElementById('coin-player-input').value.trim();
+      const amount = parseInt(document.getElementById('coin-amount-input').value);
+      const stamp = document.getElementById('coin-stamp-select').value;
+      if (!playerUsername || !amount || amount <= 0) { toast('Select a player and enter a positive amount.', 'error'); return; }
+      if (!confirm(`Remove ${amount} 🪙 from ${playerUsername}? (Cannot go below zero)`)) return;
+      const res = await fetch('/api/coins/award', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerUsername, amount: -Math.abs(amount), stamp, note: 'Admin removal' }),
+      }).then(r => r.json());
+      if (res.success) {
+        const remaining = res.balance;
+        toast(`Removed ${amount} 🪙 from ${playerUsername}. Balance: ${remaining} 🪙`);
+        document.getElementById('coin-amount-input').value = '';
+        document.getElementById('coin-player-search').value = '';
+        document.getElementById('coin-player-input').value = '';
+        document.getElementById('coin-amount-input').placeholder = 'Amount';
+        window.__loadCoinLeaderboard();
+        populateCoinPlayerCombo();
       } else {
         toast(res.message || 'Failed', 'error');
       }
@@ -1631,33 +1778,7 @@
       });
     }
 
-    // ── Populate coin player select ──
-    async function populateCoinPlayerSelect(showAll) {
-      const select = document.getElementById('coin-player-input');
-      if (!select) return;
-      select.innerHTML = '<option value="">— Select player —</option>';
-      try {
-        const [lbRes, playersRes] = await Promise.all([
-          fetch('/api/coins/leaderboard').then(r => r.json()),
-          showAll ? fetch('/players').then(r => r.json()) : Promise.resolve({ players: [] }),
-        ]);
-        const withCoins = new Set((lbRes.balances || []).map(b => b._id));
-        const allPlayers = showAll
-          ? (playersRes.players || []).filter(p => !withCoins.has(p.username))
-          : [];
-        const sorted = (lbRes.balances || []).slice().sort((a, b) => b.total - a.total);
-        const opts = [];
-        for (const b of sorted) {
-          opts.push(`<option value="${b._id}">${b._id} (${b.total} 🪙)</option>`);
-        }
-        if (showAll) {
-          for (const p of allPlayers) {
-            opts.push(`<option value="${p.username}">${p.username} (0 🪙)</option>`);
-          }
-        }
-        select.insertAdjacentHTML('beforeend', opts.join(''));
-      } catch { /* ignore */ }
-    }
+    // "Show all players" toggle removed — searchable combo now shows all players
 
     // Coin leaderboard refresh
     window.__loadCoinLeaderboard = async function () {
@@ -1673,21 +1794,18 @@
         '</tbody></table>';
     };
 
-    // Load coin leaderboard + populate select when achievements tab is shown
+    // Load coin leaderboard + populate combo when achievements tab is shown
     const achievementsBtn = document.querySelector('#view-admin .nav-btn[data-section="achievements"]');
     if (achievementsBtn) {
       achievementsBtn.addEventListener('click', () => {
         setTimeout(() => {
           window.__loadCoinLeaderboard();
-          populateCoinPlayerSelect(false);
+          populateCoinPlayerCombo();
         }, 500);
       });
     }
 
-    // "Show all players" toggle
-    document.getElementById('coin-show-all')?.addEventListener('change', function () {
-      populateCoinPlayerSelect(this.checked);
-    });
+    // "Show all players" toggle removed — searchable combo now shows all players
 
     // ── Reset Coin Leaderboard ──
     document.getElementById('btn-reset-coins')?.addEventListener('click', async () => {
@@ -1853,7 +1971,56 @@
               return `<li><span class="presence-dot ${dotClass}"></span>${u.username} <span class="presence-time">${timeStr}</span></li>`;
             }).join('');
       }
+      // Also show login history
+      const loginList = document.getElementById('presence-login-list');
+      if (loginList && data.loginHistory) {
+        loginList.innerHTML = data.loginHistory.length === 0
+          ? '<li class="text-muted">No logins recorded</li>'
+          : data.loginHistory.map(l => {
+              const ago = Math.floor((Date.now() - l.timestamp) / 1000);
+              const timeStr = ago < 60 ? `${ago}s ago` : ago < 3600 ? `${Math.floor(ago / 60)}m ago` : ago < 86400 ? `${Math.floor(ago / 3600)}h ago` : `${Math.floor(ago / 86400)}d ago`;
+              return `<li><span class="presence-dot login"></span>${l.username} <span class="presence-time">${timeStr}</span></li>`;
+            }).join('');
+      }
     });
+
+    // Fallback: poll presence every 30s as backup
+    function pollPresence() {
+      fetch('/api/presence').then(r => r.json()).then(data => {
+        // Only update if socket hasn't provided data recently
+        socket.emit('ping'); // just check connection
+        const online = document.getElementById('presence-online-count');
+        const onlineList = document.getElementById('presence-online-list');
+        const recentList = document.getElementById('presence-recent-list');
+        if (online && data.online) online.textContent = data.online.length;
+        if (onlineList && data.online) {
+          onlineList.innerHTML = data.online.length === 0
+            ? '<li class="text-muted">No players online</li>'
+            : data.online.map(u => `<li><span class="presence-dot online"></span>${u.username}</li>`).join('');
+        }
+        if (recentList && data.recent) {
+          recentList.innerHTML = data.recent.length === 0
+            ? '<li class="text-muted">No recent activity</li>'
+            : data.recent.map(u => {
+                const ago = Math.floor((Date.now() - u.lastSeen) / 1000);
+                const timeStr = ago < 60 ? `${ago}s ago` : ago < 3600 ? `${Math.floor(ago / 60)}m ago` : ago < 86400 ? `${Math.floor(ago / 3600)}h ago` : `${Math.floor(ago / 86400)}d ago`;
+                const dotClass = u.isOnline ? 'online' : 'offline';
+                return `<li><span class="presence-dot ${dotClass}"></span>${u.username} <span class="presence-time">${timeStr}</span></li>`;
+              }).join('');
+        }
+        const loginList = document.getElementById('presence-login-list');
+        if (loginList && data.loginHistory) {
+          loginList.innerHTML = data.loginHistory.length === 0
+            ? '<li class="text-muted">No logins recorded</li>'
+            : data.loginHistory.map(l => {
+                const ago = Math.floor((Date.now() - l.timestamp) / 1000);
+                const timeStr = ago < 60 ? `${ago}s ago` : ago < 3600 ? `${Math.floor(ago / 60)}m ago` : ago < 86400 ? `${Math.floor(ago / 3600)}h ago` : `${Math.floor(ago / 86400)}d ago`;
+                return `<li><span class="presence-dot login"></span>${l.username} <span class="presence-time">${timeStr}</span></li>`;
+              }).join('');
+        }
+      }).catch(() => {});
+    }
+    setInterval(pollPresence, 30000);
 
     socket.on('dailyTask:completed', (data) => {
       if (!data) return;
@@ -1975,6 +2142,16 @@
     });
 
     // ── Hall of Fame ──
+    async function fetchBadgesForPlayers(players) {
+      try {
+        const assRes = await fetch('/api/badges/assignments').then(r => r.json());
+        const assignments = assRes.assignments || {};
+        for (const p of players) {
+          p.badges = assignments[p.username] || [];
+        }
+      } catch {}
+    }
+
     function openHallOfFame() {
       const leaderboard = adminDataCache.leaderboard;
       const top3 = leaderboard.slice(0, 3).map(e => ({
@@ -1987,7 +2164,8 @@
           const res = await fetch('/api/avatar/' + encodeURIComponent(p.username) + '?t=' + cacheBust).then(r => r.json());
           p.avatarUrl = res.avatar ? res.avatar + '?t=' + cacheBust : '';
         } catch { p.avatarUrl = ''; }
-      })).then(() => {
+      })).then(async () => {
+        await fetchBadgesForPlayers(top3);
         if (window.startHallOfFame) {
           window.startHallOfFame(top3);
         } else {
@@ -2011,23 +2189,23 @@
         avatarUrl: '',
       }));
       const cacheBust = Date.now();
-      Promise.all(top3.map(async (p) => {
+      await Promise.all(top3.map(async (p) => {
         try {
           const res = await fetch('/api/avatar/' + encodeURIComponent(p.username) + '?t=' + cacheBust).then(r => r.json());
           p.avatarUrl = res.avatar ? res.avatar + '?t=' + cacheBust : '';
         } catch { p.avatarUrl = ''; }
-      })).then(() => {
-        if (window.startHallOfFame) {
-          window.startHallOfFame(top3);
-        } else {
-          const check = setInterval(() => {
-            if (window.startHallOfFame) {
-              clearInterval(check);
-              window.startHallOfFame(top3);
-            }
-          }, 200);
-        }
-      });
+      }));
+      await fetchBadgesForPlayers(top3);
+      if (window.startHallOfFame) {
+        window.startHallOfFame(top3);
+      } else {
+        const check = setInterval(() => {
+          if (window.startHallOfFame) {
+            clearInterval(check);
+            window.startHallOfFame(top3);
+          }
+        }, 200);
+      }
     });
 
     // ── Socket: Note Updated (real-time player display) ──
