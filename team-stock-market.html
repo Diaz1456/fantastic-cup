@@ -239,9 +239,81 @@
     .last-event { max-width: 100px; }
     .status-badge { font-size: 10px; padding: 4px 10px; }
   }
+
+  /* ─── Donation Alert (Twitch-style) ─── */
+  .donation-alert-container {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .donation-alert {
+    background: linear-gradient(180deg, #faf8f4 0%, #f0ece0 100%);
+    border: 2px solid #d4a017;
+    border-radius: 12px;
+    padding: 0.8rem 1.5rem;
+    box-shadow: 0 8px 32px rgba(58, 42, 26, 0.15), 0 0 40px rgba(212, 160, 23, 0.1);
+    animation: donationSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    max-width: 420px;
+    width: 90%;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .donation-alert.exit {
+    animation: donationFadeOut 0.4s ease forwards;
+  }
+
+  .donation-alert-icon { font-size: 2rem; flex-shrink: 0; }
+  .donation-alert-body { flex: 1; min-width: 0; }
+
+  .donation-alert-team {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #1a2744;
+  }
+
+  .donation-alert-amount {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900;
+    font-size: 1.3rem;
+    margin-top: 2px;
+  }
+
+  .donation-alert-amount.up { color: #1b7a3d; }
+  .donation-alert-amount.down { color: #c0392b; }
+
+  .donation-alert-arrow { font-size: 1rem; margin-right: 4px; }
+
+  .donation-alert-player {
+    font-size: 0.75rem;
+    color: #7a6a5a;
+    margin-top: 2px;
+  }
+
+  @keyframes donationSlideIn {
+    0% { opacity: 0; transform: translateY(-40px) scale(0.8); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes donationFadeOut {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
+  }
 </style>
 </head>
 <body>
+<div id="donation-alert-container"></div>
 <div class="container">
 
   <div class="header">
@@ -407,6 +479,52 @@ function addLog(teamName, player, cat, delta) {
   logArea.innerHTML = logEntries.join('');
 }
 
+// ─── DONATION ALERT ──────────────────────────────────────────────────────────
+function showDonationAlert(teamName, teamColor, delta, player, cat, newPrice) {
+  const container = document.getElementById('donation-alert-container');
+  if (!container) return;
+  const div = document.createElement('div');
+  div.className = 'donation-alert';
+  const isUp = delta > 0;
+  const arrow = isUp ? '▲' : '▼';
+  const cls = isUp ? 'up' : 'down';
+  const icon = isUp ? '📈' : '📉';
+  const label = cat || 'achievement';
+  div.innerHTML = `
+    <div class="donation-alert-icon">${icon}</div>
+    <div class="donation-alert-body">
+      <div class="donation-alert-team" style="color:${teamColor}">${teamName}</div>
+      <div class="donation-alert-amount ${cls}"><span class="donation-alert-arrow">${arrow}</span>$${newPrice}</div>
+      <div class="donation-alert-player">${player} — ${label}</div>
+    </div>
+  `;
+  container.prepend(div);
+  while (container.children.length > 3) container.lastChild.remove();
+  setTimeout(() => {
+    div.classList.add('exit');
+    setTimeout(() => div.remove(), 400);
+  }, 2500);
+  // Cash register sound
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) {
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.08);
+      osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.16);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    }
+  } catch(e) {}
+}
+
 // ─── SOCKET LISTENER: track fresh updates for glow ─────────────────────────
 socket.on('teamstockUpdate', (data) => {
   if (!data || !data.teams) return;
@@ -420,6 +538,7 @@ socket.on('teamstockUpdate', (data) => {
       freshAction = t.stock.lastAction;
       updateBadge(t.name, t.stock.lastDelta, t.stock.lastPlayer, t.stock.lastEvent);
       addLog(t.name, t.stock.lastPlayer, t.stock.lastEvent, t.stock.lastDelta);
+      showDonationAlert(t.name, t.color, t.stock.lastDelta, t.stock.lastPlayer, t.stock.lastEvent, t.stock.price);
       break;
     }
   }
