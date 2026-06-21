@@ -1,13 +1,14 @@
 :root {
-  --mp-bg: #0b1229;
-  --mp-surface: #0f1838;
-  --mp-border: #1a2755;
-  --mp-text: #e0e8f0;
-  --mp-muted: #6e8bb8;
-  --mp-accent: #88a0c0;
-  --mp-win: #00ff46;
-  --mp-lose: #ff3232;
-  --mp-rank: #4a6a90;
+  --mp-bg: #f5f0e8;
+  --mp-surface: rgba(250,248,244,0.92);
+  --mp-border: rgba(58,42,26,0.12);
+  --mp-text: #3a2a1a;
+  --mp-muted: #7a6a5a;
+  --mp-accent: #1a2744;
+  --mp-win: #1b7a3d;
+  --mp-lose: #c0392b;
+  --mp-rank: #7a6a5a;
+  --mp-gold: #d4a017;
 }
 
 .monopoly-page {

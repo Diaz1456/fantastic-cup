@@ -6,7 +6,7 @@
   <title>Fantastic Cup – Score Lead</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
@@ -148,14 +148,6 @@
           <span class="nav-title">Fantastic Cup</span>
         </div>
         <div class="nav-links" id="admin-nav-links">
-          <div class="clock-display" id="admin-clock">
-            <span class="clock-time" id="admin-clock-time">00:00:00</span>
-            <span class="clock-label">LOCAL</span>
-          </div>
-          <div class="clock-display countdown-mode" id="admin-countdown" style="display:none">
-            <span class="clock-time" id="admin-countdown-time">00:00:00</span>
-            <span class="clock-label">COUNTDOWN</span>
-          </div>
           <button class="nav-btn active" data-section="dashboard">Dashboard</button>
           <button class="nav-btn" data-section="players">Players</button>
           <button class="nav-btn" data-section="achievements">Achievements</button>
@@ -171,6 +163,21 @@
           <button id="logout-btn" class="icon-btn" title="Logout">🚪</button>
         </div>
       </nav>
+
+      <!-- Clock Bank Card -->
+      <div class="clock-bank-card">
+        <div class="clock-bank-label">🏦 BANK</div>
+        <div class="clock-bank-body">
+          <div class="clock-display" id="admin-clock">
+            <span class="clock-time" id="admin-clock-time">00:00:00</span>
+            <span class="clock-label">LOCAL</span>
+          </div>
+          <div class="clock-display countdown-mode" id="admin-countdown" style="display:none">
+            <span class="clock-time" id="admin-countdown-time">00:00:00</span>
+            <span class="clock-label">COUNTDOWN</span>
+          </div>
+        </div>
+      </div>
 
       <div class="dashboard-content">
 
@@ -400,18 +407,8 @@
           <span class="nav-logo">🏆</span>
           <span class="nav-title">Fantastic Cup</span>
         </div>
-        <div class="nav-brand-center">
-          <div class="clock-display" id="player-clock">
-            <span class="clock-time" id="player-clock-time">00:00:00</span>
-            <span class="clock-label">LOCAL</span>
-          </div>
-          <div class="clock-display countdown-mode" id="player-countdown" style="display:none">
-            <span class="clock-time" id="player-countdown-time">00:00:00</span>
-            <span class="clock-label">COUNTDOWN</span>
-          </div>
-          <span class="player-greeting">Welcome, <strong id="player-name-display">Player</strong></span>
-        </div>
         <div class="nav-center-links">
+          <span class="player-greeting">Welcome, <strong id="player-name-display">Player</strong></span>
           <button class="nav-btn event-link" id="event-war-btn">⚡ EVENT</button>
           <button class="nav-btn" id="player-teams-nav-btn">👥 Teams</button>
         </div>
@@ -420,6 +417,21 @@
           <button id="logout-btn-player" class="icon-btn" title="Logout">🚪</button>
         </div>
       </nav>
+
+      <!-- Clock Bank Card -->
+      <div class="clock-bank-card">
+        <div class="clock-bank-label">🏦 BANK</div>
+        <div class="clock-bank-body">
+          <div class="clock-display" id="player-clock">
+            <span class="clock-time" id="player-clock-time">00:00:00</span>
+            <span class="clock-label">LOCAL</span>
+          </div>
+          <div class="clock-display countdown-mode" id="player-countdown" style="display:none">
+            <span class="clock-time" id="player-countdown-time">00:00:00</span>
+            <span class="clock-label">COUNTDOWN</span>
+          </div>
+        </div>
+      </div>
 
       <div class="player-content">
 
@@ -572,6 +584,9 @@
     <button class="hof-close-btn" id="hof-close-btn">✕</button>
     <div id="hof-canvas-container" class="hof-canvas-container"></div>
   </div>
+
+  <!-- ═══ STOCK DONATION ALERTS ═══ -->
+  <div id="donation-alert-container" class="donation-alert-container"></div>
 
   <div id="toast-container" class="toast-container"></div>
 

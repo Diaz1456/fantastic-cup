@@ -1,53 +1,15 @@
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-:root {
-  --bg-dark: #0a0505;
-  --bg-panel: #0d0808;
-  --bg-card: #120a0a;
-  --border-rust: #3a2020;
-  --text-primary: #d4c4a0;
-  --text-dim: #7a6a5a;
-  --accent-gold: #ffd700;
-  --accent-fire: #ff4500;
-  --accent-blood: #8b0000;
-  --danger: #cc2222;
-  --warning: #ff8800;
-  --success: #44bb44;
-  --neon-green: #00ff88;
-  --neon-blue: #4488ff;
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  background: #f5f0e8;
+  color: #3a2a1a;
 }
 
-html, body, #root { width: 100%; height: 100%; overflow: hidden; font-family: 'Oswald', sans-serif; background: var(--bg-dark); color: var(--text-primary); }
-
-.app { width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; }
+.app { width: 100%; min-height: 100vh; }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg-dark); }
-::-webkit-scrollbar-thumb { background: var(--border-rust); border-radius: 3px; }
-
-/* VIEW TOGGLE */
-.view-toggle { position: fixed; bottom: 16px; right: 16px; z-index: 1000; display: flex; gap: 4px; background: rgba(0,0,0,0.9); border: 1px solid var(--border-rust); border-radius: 6px; padding: 4px; }
-.main-site-btn { background: #1a0f0f; border: 1px solid var(--border-rust); color: var(--text-dim); padding: 6px 14px; font-family: 'Black Ops One', monospace; font-size: 11px; cursor: pointer; border-radius: 4px; transition: all 0.2s; letter-spacing: 1px; text-decoration: none; }
-.main-site-btn:hover { border-color: var(--text-primary); color: var(--text-primary); }
-.view-toggle .toggle-btn { background: #0a0505; border: 1px solid var(--border-rust); color: var(--text-dim); padding: 6px 14px; font-family: 'Black Ops One', monospace; font-size: 11px; cursor: pointer; border-radius: 4px; transition: all 0.2s; letter-spacing: 1px; }
-.view-toggle .toggle-btn.active { background: var(--accent-blood); color: white; border-color: var(--accent-fire); }
-.view-toggle .toggle-btn:hover { border-color: var(--text-primary); }
-
-/* LOGIN PAGE */
-.login-page { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0505, #1a0a0a); }
-.login-panel { background: linear-gradient(135deg, #0d0808, #120a0a); border: 2px solid var(--border-rust); border-radius: 16px; padding: 48px 40px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 0 40px rgba(0,0,0,0.3); }
-.login-emblem { font-size: 48px; margin-bottom: 12px; }
-.login-title { font-family: 'Black Ops One', monospace; font-size: 24px; color: var(--accent-fire); letter-spacing: 4px; margin-bottom: 4px; }
-.login-sub { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
-.login-input { width: 100%; background: #0a0505; border: 1px solid var(--border-rust); color: var(--text-primary); font-family: 'Black Ops One', monospace; font-size: 20px; padding: 14px; border-radius: 6px; text-align: center; letter-spacing: 4px; outline: none; margin-bottom: 16px; }
-.login-input:focus { border-color: var(--accent-fire); }
-.login-btn { width: 100%; background: linear-gradient(135deg, #8b0000, #cc2222); border: none; color: white; font-family: 'Black Ops One', monospace; font-size: 16px; padding: 14px; border-radius: 6px; cursor: pointer; letter-spacing: 4px; transition: all 0.2s; }
-.login-btn:hover { box-shadow: 0 0 25px rgba(204,34,34,0.3); }
-.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.login-error { color: var(--danger); font-size: 13px; margin-top: 12px; }
-
-/* TOAST */
-.toast-error { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--danger); color: white; padding: 10px 24px; border-radius: 4px; font-family: 'Black Ops One', monospace; font-size: 11px; z-index: 100; animation: toastIn 0.3s ease; }
-
-@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-@keyframes pulseGlow { 0%,100% { filter: none; } 50% { filter: drop-shadow(0 0 10px rgba(255,69,0,0.3)); } }
+::-webkit-scrollbar-track { background: #f5f0e8; }
+::-webkit-scrollbar-thumb { background: rgba(58,42,26,0.15); border-radius: 3px; }

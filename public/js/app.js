@@ -1499,10 +1499,22 @@
       this._playTone(1047, 0.25, 'triangle', 0.08, 0.26);
     },
     coin() {
-      this._playTone(1100, 0.06, 'sine', 0.08);
-      this._playTone(1380, 0.06, 'sine', 0.07, 0.04);
-      this._playTone(1650, 0.08, 'sine', 0.06, 0.08);
-      this._playTone(1980, 0.14, 'sine', 0.05, 0.12);
+      // Monopoly cash register cha-ching
+      this._playTone(800, 0.06, 'sine', 0.06);
+      this._playTone(1000, 0.06, 'sine', 0.07, 0.04);
+      this._playTone(1200, 0.08, 'sine', 0.08, 0.08);
+      this._playTone(1400, 0.1, 'sine', 0.06, 0.13);
+      this._playTone(1600, 0.18, 'sine', 0.05, 0.18);
+    },
+    diceRoll() {
+      for (let i = 0; i < 6; i++) {
+        this._playTone(300 + Math.random() * 400, 0.04, 'triangle', 0.04, i * 0.04);
+      }
+      this._playTone(600, 0.08, 'sine', 0.06, 0.28);
+    },
+    cardFlip() {
+      this._playTone(250, 0.03, 'square', 0.03);
+      this._playTone(400, 0.04, 'square', 0.02, 0.02);
     },
     notification() {
       this._playTone(660, 0.08, 'sine', 0.06);
@@ -2029,7 +2041,7 @@
           <div class="team-member-list">${memberList}</div>
           ${team.notes ? `<div class="player-team-notes">${team.notes}</div>` : ''}
           <div class="player-team-coins">
-            <span class="player-team-coin-icon">🥈</span> Team Silver Coins: <strong>${team.silverCoins || 0}</strong>
+            <span class="player-team-coin-icon">🥈</span> Team Silver: <span class="monopoly-money positive"><span class="dollar-sign">$</span>${team.silverCoins || 0}</span>
           </div>
         </div>`;
       }
@@ -2666,6 +2678,64 @@
         }
       }
     });
+
+    // ── Team Stock Market Donation Alerts ──
+    socket.on('teamstockUpdate', (data) => {
+      if (!data || !data.teams) return;
+      // Find the most recent change
+      const changed = data.teams.find(t => t.stock && t.stock.lastPlayer && t.stock.lastDelta !== 0);
+      if (!changed || !changed.stock) return;
+      const st = changed.stock;
+      showDonationAlert(changed.name, changed.color, st.lastDelta, st.lastPlayer, st.lastEvent, st.price);
+    });
+
+    function showDonationAlert(teamName, teamColor, delta, player, cat, newPrice) {
+      const container = document.getElementById('donation-alert-container');
+      if (!container) return;
+      const div = document.createElement('div');
+      div.className = 'donation-alert';
+      const isUp = delta > 0;
+      const arrow = isUp ? '▲' : '▼';
+      const cls = isUp ? 'up' : 'down';
+      const icon = isUp ? '📈' : '📉';
+      const label = cat || 'achievement';
+      div.innerHTML = `
+        <div class="donation-alert-icon">${icon}</div>
+        <div class="donation-alert-body">
+          <div class="donation-alert-team" style="color:${teamColor}">${teamName}</div>
+          <div class="donation-alert-amount ${cls}"><span class="donation-alert-arrow">${arrow}</span>$${newPrice}</div>
+          <div class="donation-alert-player">${player} — ${label}</div>
+        </div>
+      `;
+      container.prepend(div);
+      // Limit to 3 visible at once
+      while (container.children.length > 3) container.lastChild.remove();
+      // Remove after 2.5s
+      setTimeout(() => {
+        div.classList.add('exit');
+        setTimeout(() => div.remove(), 400);
+      }, 2500);
+      // Play cash register sound
+      if (SoundManager._enabled) {
+        try {
+          const ctx = SoundManager._getCtx && SoundManager._getCtx();
+          if (ctx) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(800, ctx.currentTime);
+            osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.08);
+            osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.16);
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.3);
+          }
+        } catch {}
+      }
+    }
 
     // ── Player Avatar Upload ──
     document.getElementById('player-avatar-upload')?.addEventListener('change', async (e) => {
