@@ -461,7 +461,6 @@ async function seedBadges() {
   ];
   syncBadgesToDB();
 }
-seedBadges();
 
 // GET all badges
 app.get('/api/badges', (req, res) => {
@@ -586,7 +585,6 @@ async function loadTeamsFromDB() {
     }
   } catch { /* ignore */ }
 }
-loadTeamsFromDB();
 
 function getTeamsForPlayer(username) {
   return teamsData.teams.filter(t => t.members.includes(username));
@@ -1523,7 +1521,6 @@ async function start() {
   if (mongoConnected) {
     console.log('✓ MongoDB connected');
     migrateFromFile().catch(() => {});
-    // Ensure default categories exist even if migration was skipped
     try {
       const catCount = await Category.countDocuments();
       if (catCount === 0) {
@@ -1534,6 +1531,10 @@ async function start() {
   } else {
     console.log('ℹ MongoDB not available — legacy data features disabled, event section works');
   }
+
+  // Load persisted data now that DB is available (or seed defaults if not)
+  await seedBadges();
+  await loadTeamsFromDB();
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`✓ Server running on http://0.0.0.0:${PORT}`);
