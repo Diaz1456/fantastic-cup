@@ -377,11 +377,21 @@
     const players = adminDataCache.players;
     const notes = adminDataCache.notes || {};
     if (players.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-muted)">No players yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text-muted)">No players yet.</td></tr>';
       return;
     }
 
+    // Fetch additional data: coins, badges, avatars
     const cacheBust = Date.now();
+    const [coinRes, badgeRes] = await Promise.all([
+      fetch('/api/coins/leaderboard').then(r => r.json()).catch(() => ({ balances: [] })),
+      fetch('/api/badges/assignments').then(r => r.json()).catch(() => ({ assignments: {} })),
+    ]);
+    const balanceMap = {};
+    (coinRes.balances || []).forEach(b => { balanceMap[b._id] = b.total; });
+    const badgeAssignments = badgeRes.assignments || {};
+    const lb = adminDataCache.leaderboard || [];
+
     const avatarMap = {};
     await Promise.all(players.map(async (p) => {
       try {
@@ -390,30 +400,95 @@
       } catch { avatarMap[p.username] = ''; }
     }));
 
-    tbody.innerHTML = players.map(p => {
-      const playerNotes = notes[p.username] || '';
-      const notesId = 'notes-' + p.username.replace(/[^a-zA-Z0-9]/g, '_');
-      const avatarUrl = avatarMap[p.username] || '';
-      const avatarHtml = avatarUrl
-        ? `<span class="avatar-loading" style="display:inline-flex;width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--accent);"><img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
+    // Build enhanced player data
+    const playerRank = {};
+    lb.forEach((e, i) => { playerRank[e.username] = i + 1; });
+
+    let enhanced = players.map(p => ({
+      username: p.username,
+      enabled: p.enabled,
+      score: lb.find(e => e.username === p.username)?.total || 0,
+      coins: balanceMap[p.username] || 0,
+      badges: badgeAssignments[p.username] || [],
+      rank: playerRank[p.username] || lb.length + 1,
+      notes: notes[p.username] || '',
+      avatarUrl: avatarMap[p.username] || '',
+    }));
+
+    // Search/filter state
+    if (!window._playersSortCol) window._playersSortCol = 'rank';
+    if (!window._playersSortDir) window._playersSortDir = 'asc';
+
+    const searchVal = (document.querySelector('.players-search-input')?.value || '').toLowerCase();
+    if (searchVal) {
+      enhanced = enhanced.filter(p => p.username.toLowerCase().includes(searchVal));
+    }
+
+    const sortCol = window._playersSortCol;
+    const sortDir = window._playersSortDir;
+    enhanced.sort((a, b) => {
+      let va = a[sortCol], vb = b[sortCol];
+      if (sortCol === 'username') { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+      if (sortCol === 'badges') { va = va.length; vb = vb.length; }
+      return va < vb ? (sortDir === 'asc' ? -1 : 1) : va > vb ? (sortDir === 'asc' ? 1 : -1) : 0;
+    });
+
+    const sortArrow = (col) => window._playersSortCol === col ? (window._playersSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+
+    const setSort = (col) => {
+      if (window._playersSortCol === col) {
+        window._playersSortDir = window._playersSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        window._playersSortCol = col;
+        window._playersSortDir = 'asc';
+      }
+      renderPlayersTable();
+    };
+
+    const colHeaders = [
+      { key: 'username', label: 'Player' },
+      { key: 'score', label: 'Score' },
+      { key: 'coins', label: 'Coins' },
+      { key: 'badges', label: 'Badges' },
+      { key: 'rank', label: 'Rank' },
+      { key: 'avatar', label: 'Avatar', nosort: true },
+    ];
+
+    // Check if sort click handlers already exist to avoid duplicates
+    if (!window._playersSortWired) {
+      window._playersSortWired = true;
+      // Will be wired via inline onclick
+    }
+
+    const notesId = (u) => 'notes-' + u.replace(/[^a-zA-Z0-9]/g, '_');
+
+    tbody.innerHTML = enhanced.map(p => {
+      const avatarHtml = p.avatarUrl
+        ? `<span class="avatar-loading" style="display:inline-flex;width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--accent);"><img src="${p.avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
         : `<span style="font-size:1.5rem;">👤</span>`;
+      const badgeIcons = p.badges.slice(0, 3).map(b => b.icon || '🏅').join('');
+      const badgeCount = p.badges.length;
       return `
       <tr>
         <td><strong class="player-stats-trigger" data-username="${p.username}">${p.username}</strong></td>
+        <td><strong>${p.score}</strong></td>
+        <td><span style="color:var(--accent);font-weight:600;">${p.coins} 🪙</span></td>
+        <td>${badgeCount > 0 ? `<span title="${p.badges.map(b => b.name).join(', ')}">${badgeIcons}${badgeCount > 3 ? '+' : ''}</span>` : '<span class="text-muted">—</span>'}</td>
+        <td>#${p.rank}</td>
         <td>
           <div class="avatar-cell">
             ${avatarHtml}
             <div class="avatar-cell-actions">
               <button class="avatar-set-btn btn btn-sm" onclick="window.__promptAvatar('${p.username}')">Set</button>
-              ${avatarUrl ? `<button class="avatar-remove-btn-sm btn btn-sm" onclick="window.__removeAvatar('${p.username}')">✕</button>` : ''}
+              ${p.avatarUrl ? `<button class="avatar-remove-btn-sm btn btn-sm" onclick="window.__removeAvatar('${p.username}')">✕</button>` : ''}
             </div>
           </div>
         </td>
         <td><span class="status-badge ${p.enabled !== false ? 'active' : 'disabled'}">${p.enabled !== false ? 'Active' : 'Disabled'}</span></td>
         <td>
           <div class="player-notes-textarea-wrapper">
-            <textarea class="player-notes-textarea" id="${notesId}" placeholder="Write notes for ${p.username}..." rows="2">${playerNotes}</textarea>
-            <button class="notes-save-btn" onclick="window.__saveNotes('${p.username}', '${notesId}')">Save</button>
+            <textarea class="player-notes-textarea" id="${notesId(p.username)}" placeholder="Write notes for ${p.username}..." rows="2">${p.notes}</textarea>
+            <button class="notes-save-btn" onclick="window.__saveNotes('${p.username}', '${notesId(p.username)}')">Save</button>
           </div>
         </td>
         <td>
@@ -427,7 +502,30 @@
         </td>
       </tr>
     `}).join('');
+
+    // Also set the table header with sort controls
+    const thead = document.querySelector('#players-table thead tr');
+    if (thead) {
+      thead.innerHTML = colHeaders.map(h => h.nosort
+        ? `<th>${h.label}</th>`
+        : `<th class="sortable-th" onclick="window.__sortPlayers('${h.key}')" style="cursor:pointer;">${h.label}${sortArrow(h.key)}</th>`
+      ).join('') + '<th>Status</th><th>Notes</th><th>Password</th><th>Actions</th>';
+    }
   }
+
+  window.__sortPlayers = (col) => {
+    if (window._playersSortCol === col) {
+      window._playersSortDir = window._playersSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      window._playersSortCol = col;
+      window._playersSortDir = 'asc';
+    }
+    renderPlayersTable();
+  };
+
+  window.__filterPlayers = () => {
+    renderPlayersTable();
+  };
 
   let _avatarInputActive = false;
 
@@ -694,6 +792,13 @@
         await API.saveCategory({ id: catId, title });
         toast('Category renamed');
       });
+    });
+
+    // Prevent mousewheel from changing achievement range sliders
+    container.querySelectorAll('.achievement-row input[type="range"]').forEach(slider => {
+      slider.addEventListener('wheel', (e) => {
+        e.preventDefault();
+      }, { passive: false });
     });
   }
 

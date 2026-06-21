@@ -252,8 +252,11 @@
             </form>
           </div>
           <div class="table-wrapper glass">
-            <table class="data-table">
-              <thead><tr><th>Username</th><th>Avatar</th><th>Status</th><th>Notes</th><th>Password</th><th>Actions</th></tr></thead>
+            <div class="players-search-wrapper" style="padding:0.5rem 0.75rem;border-bottom:1px solid var(--glass-border);">
+              <input type="text" class="players-search-input admin-input" placeholder="Search players..." oninput="window.__filterPlayers()" style="width:100%;padding:0.5rem 0.75rem;border-radius:6px;background:rgba(0,0,0,0.2);border:1px solid var(--glass-border);color:var(--text-dark);">
+            </div>
+            <table class="data-table" id="players-table">
+              <thead><tr><th>Player</th><th>Score</th><th>Coins</th><th>Badges</th><th>Rank</th><th>Avatar</th><th>Status</th><th>Notes</th><th>Password</th><th>Actions</th></tr></thead>
               <tbody id="players-tbody"></tbody>
             </table>
           </div>

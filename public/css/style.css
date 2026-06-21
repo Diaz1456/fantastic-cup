@@ -554,6 +554,32 @@ input, select, textarea {
   border: none;
 }
 
+/* ─── Unified Dark Input Styling ─── */
+.admin-input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-dark);
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.admin-input:focus {
+  border-color: rgba(102, 126, 234, 0.6);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+  background: rgba(10, 10, 25, 0.45);
+}
+.admin-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+}
+
 /* ─── Global Scrollbar ─── */
 ::-webkit-scrollbar {
   width: 6px;
