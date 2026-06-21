@@ -77,7 +77,7 @@
                     ${avatarHtml}
                     <span class="hof-card-avatar-fallback" ${avatarHtml ? 'style="display:none"' : ''}>${i === 0 ? '👑' : i === 1 ? '🥈' : '🥉'}</span>
                   </div>
-                  <div class="hof-card-name player-stats-trigger" data-username="${p.username}">${p.username}</div>
+                  <div class="hof-card-name player-stats-trigger" data-username="${p.username}"><span class="hof-name-token">${window.getPlayerToken ? window.getPlayerToken(p.username).icon : '👑'}</span>${p.username}</div>
                   ${badgeHtml}
                   <div class="hof-card-score">${p.total} pts</div>
                   <div class="hof-card-pedestal">

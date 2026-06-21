@@ -439,15 +439,21 @@
       <div class="player-content">
 
         <div class="player-hero glass" id="player-hero">
-          <h1 class="hero-name" id="hero-name">—</h1>
+          <div class="deed-token-card" id="deed-token-card">
+            <div class="deed-token-header">
+              <span class="deed-token-icon" id="deed-token-icon">🎩</span>
+              <span class="deed-token-name" id="hero-name">—</span>
+            </div>
+            <span class="deed-token-reg" id="deed-token-reg">ID: —</span>
+          </div>
           <div class="hero-badge" id="hero-badge">🏅 YOUR SCORE</div>
           <div class="hero-player">
-            <div class="hero-avatar" id="hero-avatar">
+            <div class="hero-avatar token-avatar-ring token-navy" id="hero-avatar">
               <div class="avatar-upload-wrapper">
                 <span class="hero-avatar-img-wrap" style="display:inline-flex;border-radius:50%;overflow:hidden;width:80px;height:80px;">
-                  <img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:100%;height:100%;object-fit:cover;border:3px solid var(--accent);box-shadow:0 0 20px rgba(245,158,11,0.3);border-radius:50%;">
+                  <img id="hero-avatar-img" src="" alt="Avatar" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%;">
                 </span>
-                <span id="hero-avatar-fallback" style="font-size:4.5rem;">👤</span>
+                <span class="hero-avatar-fallback" id="hero-avatar-fallback" style="font-size:3rem;">👤</span>
                 <div class="avatar-actions">
                   <label for="player-avatar-upload" class="avatar-upload-label" title="Upload Photo">📷</label>
                   <input type="file" id="player-avatar-upload" accept="image/jpeg,image/png,image/gif" style="display:none">

@@ -112,6 +112,30 @@
     return QUOTES[Math.floor(Math.random() * QUOTES.length)];
   }
 
+  const MonopolyTokens = [
+    { icon: '🎩', color: '#1a2744', className: 'token-navy' },
+    { icon: '🚗', color: '#1b7a3d', className: 'token-green' },
+    { icon: '🛶', color: '#d4a017', className: 'token-gold' },
+    { icon: '👞', color: '#c0392b', className: 'token-red' },
+    { icon: '🐕', color: '#6b21a8', className: 'token-purple' },
+    { icon: '⚓', color: '#0d9488', className: 'token-teal' },
+    { icon: '🔫', color: '#c2410c', className: 'token-orange' },
+    { icon: '🎰', color: '#be185d', className: 'token-pink' },
+    { icon: '🏠', color: '#1a2744', className: 'token-navy' },
+    { icon: '💰', color: '#1b7a3d', className: 'token-green' },
+    { icon: '🚂', color: '#d4a017', className: 'token-gold' },
+    { icon: '⚖️', color: '#c0392b', className: 'token-red' },
+  ];
+
+  function getPlayerToken(username) {
+    let hash = 0;
+    for (let i = 0; i < (username || '').length; i++) {
+      hash = ((hash << 5) - hash) + username.charCodeAt(i);
+      hash |= 0;
+    }
+    return MonopolyTokens[Math.abs(hash) % MonopolyTokens.length];
+  }
+
   /* ─── PARTICLE EFFECT (Canvas) ─── */
   function initParticles() {
     const canvas = document.getElementById('particle-canvas');
@@ -494,7 +518,7 @@
       const badgeCount = p.badges.length;
       return `
       <tr>
-        <td><strong class="player-stats-trigger" data-username="${p.username}">${p.username}</strong></td>
+        <td><span class="lb-name-with-token"><span class="lb-token-icon">${getPlayerToken(p.username).icon}</span><span class="lb-name-text player-stats-trigger" data-username="${p.username}" style="cursor:pointer;">${p.username}</span><span class="lb-name-reg">#${p.username.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span></span></td>
         <td><strong>${p.score}</strong></td>
         <td><span style="color:var(--accent);font-weight:600;">${p.coins} 🪙</span></td>
         <td>${badgeCount > 0 ? `<span title="${p.badges.map(b => b.name).join(', ')}">${badgeIcons}${badgeCount > 3 ? '+' : ''}</span>` : '<span class="text-muted">—</span>'}</td>
@@ -922,11 +946,15 @@
     return displayLb.map((entry, i) => {
       const rank = i + 1;
       const rankClass = rank === 1 ? 'lb-rank-1' : rank === 2 ? 'lb-rank-2' : rank === 3 ? 'lb-rank-3' : 'lb-rank-other';
-      const topClass = rank === 1 ? 'lb-top1' : rank === 2 ? 'lb-top2' : rank === 3 ? 'lb-top3' : '';
+      let topClass = rank === 1 ? 'lb-top1' : rank === 2 ? 'lb-top2' : rank === 3 ? 'lb-top3' : '';
+      if (rank === 4) topClass = 'lb-top4';
+      else if (rank === 5) topClass = 'lb-top5';
       const pct = (entry.total / maxScore) * 100;
       const delay = i * 0.06;
       const medal = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '👤';
       const avatarUrl = avatarMap ? (avatarMap[entry.username] || '') : '';
+      const token = getPlayerToken(entry.username);
+      const regId = entry.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const avatarHtml = avatarUrl
         ? `<span class="avatar-loading" style="display:inline-flex;width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;"><img src="${avatarUrl}" class="lb-avatar-img" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
         : `<span class="lb-avatar-emoji">${medal}</span>`;
@@ -937,7 +965,12 @@
             ${avatarHtml}
           </div>
           <div class="lb-info">
-            <div class="lb-name player-stats-trigger" data-username="${entry.username}">${entry.username}<span class="lb-badges-placeholder" data-username="${entry.username}"></span></div>
+            <div class="lb-name player-stats-trigger" data-username="${entry.username}">
+              <span class="lb-token-icon">${token.icon}</span>
+              <span class="lb-name-text">${entry.username}</span>
+              <span class="lb-name-reg">#${regId}</span>
+              <span class="lb-badges-placeholder" data-username="${entry.username}"></span>
+            </div>
             <div class="lb-score-bar-wrapper">
               <div class="lb-score-bar">
                 <div class="lb-score-bar-fill" style="width:${pct}%"></div>
@@ -954,7 +987,12 @@
           <span class="lb-avatar-emoji">🎯</span>
         </div>
         <div class="lb-info">
-          <div class="lb-name lb-personal-rank-name">${opts.playerEntry.username}<span class="lb-badges-placeholder" data-username="${opts.playerEntry.username}"></span></div>
+          <div class="lb-name lb-personal-rank-name">
+            <span class="lb-token-icon">${getPlayerToken(opts.playerEntry.username).icon}</span>
+            <span class="lb-name-text">${opts.playerEntry.username}</span>
+            <span class="lb-name-reg">#${opts.playerEntry.username.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span>
+            <span class="lb-badges-placeholder" data-username="${opts.playerEntry.username}"></span>
+          </div>
           <div class="lb-score-bar-wrapper">
             <div class="lb-score-bar">
               <div class="lb-score-bar-fill" style="width:${(opts.playerEntry.total / maxScore) * 100}%"></div>
@@ -994,9 +1032,10 @@
   async function loadPlayerDashboard() {
     if (!authState) return;
     showView('player');
+    const token = getPlayerToken(authState.username);
     document.getElementById('player-name-display').textContent = authState.username;
     document.querySelector('.player-greeting').innerHTML =
-      `Welcome, <strong>${authState.username}</strong>`;
+      `<span class="lb-token-icon">${token.icon}</span> Welcome, <strong>${authState.username}</strong>`;
 
     document.getElementById('motivational-quote').textContent = randomQuote();
 
@@ -1150,7 +1189,11 @@
       const myEntry = leaderboard.find(e => e.username === authState.username);
       const myTotal = myEntry ? myEntry.total : 0;
       const myRank = leaderboard.findIndex(e => e.username === authState.username) + 1;
+      const token = getPlayerToken(authState.username);
+      document.getElementById('deed-token-icon').textContent = token.icon;
       document.getElementById('hero-name').textContent = authState.username;
+      document.getElementById('deed-token-reg').textContent = 'ID: ' + authState.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      document.getElementById('hero-avatar').className = 'hero-avatar token-avatar-ring ' + token.className;
       document.getElementById('hero-score').textContent = myTotal;
       document.getElementById('hero-badge').textContent = '🏅 YOUR SCORE';
 
