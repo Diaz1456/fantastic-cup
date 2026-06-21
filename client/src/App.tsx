@@ -1,32 +1,30 @@
-import { useState } from 'react';
-import { useSocket } from './hooks/useSocket';
-import MonopolyPage from './components/MonopolyPage';
-import MonopolyAdmin from './components/MonopolyAdmin';
-import AdminLogin from './components/AdminLogin';
-
 export default function App() {
-  const [view, setView] = useState<'player' | 'admin'>('player');
-  const [adminAuthed, setAdminAuthed] = useState(false);
-  const socket = useSocket();
-
   return (
-    <div className="app">
-      {view === 'admin' && !adminAuthed ? (
-        <AdminLogin onLogin={() => setAdminAuthed(true)} />
-      ) : view === 'admin' ? (
-        <MonopolyAdmin socket={socket} onBack={() => { setView('player'); setAdminAuthed(false); }} />
-      ) : (
-        <MonopolyPage socket={socket} />
-      )}
-
-      <div className="mp-view-toggle">
-        <button className={`mp-toggle-btn ${view === 'player' ? 'active' : ''}`} onClick={() => setView('player')}>SCOREBOARD</button>
-        <button className={`mp-toggle-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>ADMIN</button>
-        <a href="/event/team-stock.html" className="mp-main-btn">TEAM STOCK</a>
-        <a href="/" className="mp-main-btn">MAIN SITE</a>
+    <div className="app" style={{
+      display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+      minHeight:'100vh',background:'#080c1a',color:'#c8d6e5',fontFamily:"'Courier New',monospace",gap:24,padding:20
+    }}>
+      <h1 style={{color:'#88a0c0',letterSpacing:3,textTransform:'uppercase',fontSize:'1.1rem'}}>
+        📈 Event Center
+      </h1>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap',justifyContent:'center'}}>
+        <a href="/event/team-stock.html" style={{
+          background:'#0f1838',border:'1px solid #1a2755',color:'#88a0c0',
+          padding:'10px 24px',borderRadius:6,textDecoration:'none',textTransform:'uppercase',
+          letterSpacing:2,fontSize:'12px',transition:'0.2s'
+        }} onMouseOver={e => e.target.style.borderColor='#88a0c0'}
+           onMouseOut={e => e.target.style.borderColor='#1a2755'}>
+          📊 Team Stock Market
+        </a>
+        <a href="/" style={{
+          background:'#0f1838',border:'1px solid #1a2755',color:'#6e8bb8',
+          padding:'10px 24px',borderRadius:6,textDecoration:'none',textTransform:'uppercase',
+          letterSpacing:2,fontSize:'12px',transition:'0.2s'
+        }} onMouseOver={e => e.target.style.borderColor='#6e8bb8'}
+           onMouseOut={e => e.target.style.borderColor='#1a2755'}>
+          🏠 Main Menu
+        </a>
       </div>
-
-      {socket.error && <div className="mp-toast">{socket.error}</div>}
     </div>
   );
 }

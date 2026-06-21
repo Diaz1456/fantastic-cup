@@ -280,8 +280,7 @@
   <div class="log-area" id="logArea"></div>
 
   <div class="bottom-bar">
-    <a href="/event/">← Back to Event Hub</a>
-    <button id="btnReset" class="danger">↻ Reset Prices</button>
+    <a href="/">🏠 Main Menu</a>
   </div>
 
 </div>
@@ -293,8 +292,6 @@ const tbody = document.getElementById('tbody');
 const statusBadge = document.getElementById('statusBadge');
 const logArea = document.getElementById('logArea');
 const connStatus = document.getElementById('connStatus');
-const btnReset = document.getElementById('btnReset');
-
 let teamsCache = [];  // { id, name, color, logo, members, stock }
 let logEntries = [];
 const MAX_LOG = 40;
@@ -438,15 +435,6 @@ socket.on('teamstockUpdate', (data) => {
   render();
 });
 
-// ─── RESET ──────────────────────────────────────────────────────────────────
-btnReset.addEventListener('click', () => {
-  if (!confirm('Reset all team stock prices to 0?')) return;
-  socket.emit('teamstock:reset');
-  logEntries.length = 0;
-  logArea.innerHTML = '';
-  updateBadge(null);
-  freshTeamId = null;
-});
 </script>
 </body>
 </html>
