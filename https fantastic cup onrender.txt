@@ -1,0 +1,4 @@
+https://fantastic-cup.onrender.com/
+
+
+mongodb+srv://zaidabualnasrbassatni_db_user:zaid1234560@cluster0.fevqn9i.mongodb.net/fantastic-cup?appName=Cluster0
