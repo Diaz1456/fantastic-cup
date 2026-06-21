@@ -160,6 +160,7 @@
           <button class="nav-btn" data-section="players">Players</button>
           <button class="nav-btn" data-section="achievements">Achievements</button>
           <button class="nav-btn" data-section="badges">Badges</button>
+          <button class="nav-btn" data-section="teams">Teams</button>
           <button class="nav-btn" data-section="leaderboard">Leaderboard</button>
           <button class="nav-btn" data-section="feedback">Feedback</button>
           <button class="nav-btn" data-section="presence">Presence</button>
@@ -329,6 +330,15 @@
           <div id="badges-admin-container"></div>
         </section>
 
+        <!-- Section: Teams -->
+        <section id="section-teams" class="dashboard-section">
+          <div class="section-header">
+            <h2 class="section-title">👥 Teams</h2>
+            <button class="btn btn-primary btn-sm" id="btn-create-team">+ Create Team</button>
+          </div>
+          <div id="teams-admin-container" class="teams-admin-container"></div>
+        </section>
+
         <!-- Section: Leaderboard -->
         <section id="section-leaderboard" class="dashboard-section">
           <div class="section-header">
@@ -457,6 +467,11 @@
         </div>
 
         <div class="player-section">
+          <h3 class="player-section-title">👥 My Teams</h3>
+          <div id="player-teams-display" class="player-teams-container"></div>
+        </div>
+
+        <div class="player-section">
           <h3 class="player-section-title">My Achievements</h3>
           <div id="player-achievements" class="player-achievements-grid"></div>
           <div class="player-coin-section glass" id="player-coin-section" style="margin-top:1rem;padding:1rem;border-radius:var(--radius);">
@@ -555,6 +570,23 @@
   </div>
 
   <div id="toast-container" class="toast-container"></div>
+
+  <!-- ═══ DANGER ZONE ALARM (bottom 3 players) ═══ -->
+  <div id="danger-zone-overlay" class="danger-zone-overlay" style="display:none;">
+    <div class="danger-zone-inner">
+      <div class="danger-zone-icon">⚠️</div>
+      <div class="danger-zone-text">DANGER ZONE – LAST 3</div>
+      <div class="danger-zone-sub">Complete tasks to move up the ranks!</div>
+    </div>
+  </div>
+
+  <!-- ═══ COUNTDOWN EXPLOSION OVERLAY (last 10 seconds) ═══ -->
+  <div id="countdown-explosion-overlay" class="countdown-explosion-overlay" style="display:none;">
+    <div class="countdown-explosion-inner">
+      <div class="countdown-explosion-digits" id="countdown-explosion-digits">10</div>
+    </div>
+  </div>
+  <div id="countdown-zero-flash" class="countdown-zero-flash" style="display:none;"></div>
 
   <!-- ═══ SQUID GAME EVENT PASSWORD GATE ═══ -->
   <div id="war-password-overlay" class="war-pw-overlay" style="display:none;">

@@ -5028,3 +5028,425 @@ input, select, textarea {
     top: -38px;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   PERSONAL RANK CARD (Top 5 + your rank)
+   ═══════════════════════════════════════════════════ */
+
+.lb-personal-rank-card {
+  border: 2px solid var(--accent) !important;
+  background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02)) !important;
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+.lb-personal-rank-card::before {
+  content: '● YOUR RANK';
+  position: absolute;
+  top: -10px;
+  left: 16px;
+  background: var(--accent);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.6rem;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.lb-personal-rank-name {
+  font-weight: 700;
+  color: var(--accent) !important;
+}
+
+.lb-personal-rank-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+/* ═══════════════════════════════════════════════════
+   DANGER ZONE OVERLAY (Bottom 3 Alarm)
+   ═══════════════════════════════════════════════════ */
+
+.danger-zone-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: danger-zone-pulse 1.5s ease-in-out infinite;
+}
+
+.danger-zone-inner {
+  background: rgba(239, 68, 68, 0.12);
+  backdrop-filter: blur(4px);
+  border: 3px solid rgba(239, 68, 68, 0.5);
+  border-radius: 16px;
+  padding: 1.5rem 3rem;
+  text-align: center;
+  animation: danger-zone-border-pulse 1.5s ease-in-out infinite;
+}
+
+.danger-zone-icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  animation: danger-zone-shake 0.5s ease-in-out infinite;
+}
+
+.danger-zone-text {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--danger);
+  letter-spacing: 3px;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+  animation: danger-zone-blink 0.8s step-end infinite;
+}
+
+.danger-zone-sub {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 0.3rem;
+}
+
+@keyframes danger-zone-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes danger-zone-border-pulse {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.5); box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
+  50% { border-color: rgba(239, 68, 68, 0.9); box-shadow: 0 0 40px rgba(239, 68, 68, 0.4); }
+}
+
+@keyframes danger-zone-shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+
+@keyframes danger-zone-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+/* ═══════════════════════════════════════════════════
+   COUNTDOWN DRAMATIC EFFECTS
+   ═══════════════════════════════════════════════════ */
+
+.countdown-explosion-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  animation: countdown-fade-in 0.3s ease-out;
+}
+
+.countdown-explosion-inner {
+  position: relative;
+}
+
+.countdown-explosion-digits {
+  font-size: 12rem;
+  font-weight: 900;
+  color: var(--danger);
+  text-shadow:
+    0 0 40px rgba(239, 68, 68, 0.8),
+    0 0 80px rgba(239, 68, 68, 0.4),
+    0 0 120px rgba(239, 68, 68, 0.2);
+  line-height: 1;
+  animation: countdown-digit-pop 0.4s ease-out;
+}
+
+.countdown-explosion-bounce .countdown-explosion-digits {
+  animation: countdown-digit-pop 0.4s ease-out;
+}
+
+@keyframes countdown-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes countdown-digit-pop {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.countdown-zero-flash {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9997;
+  background: white;
+  opacity: 0.8;
+  pointer-events: none;
+  animation: zero-flash 0.15s ease-out 3;
+}
+
+@keyframes zero-flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.9; }
+}
+
+/* ═══════════════════════════════════════════════════
+   TEAMS ADMIN
+   ═══════════════════════════════════════════════════ */
+
+.teams-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.team-create-card {
+  padding: 1.2rem;
+}
+
+.team-create-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.team-card {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-sm);
+}
+
+.team-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.team-logo {
+  font-size: 1.8rem;
+}
+
+.team-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex: 1;
+}
+
+.team-actions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.team-members {
+  margin-bottom: 0.8rem;
+}
+
+.team-members-title {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.team-member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.team-member-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+}
+
+.team-member-remove {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.team-member-remove:hover {
+  opacity: 1;
+}
+
+.team-add-member {
+  margin-top: 0.3rem;
+}
+
+.team-member-select {
+  width: 100%;
+  max-width: 200px;
+  font-size: 0.8rem;
+}
+
+.team-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.team-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.team-silver-input {
+  width: 100px;
+  font-size: 0.85rem;
+}
+
+.team-notes-input {
+  width: 100%;
+  min-height: 60px;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.team-save-btn {
+  align-self: flex-end;
+}
+
+/* ═══════════════════════════════════════════════════
+   PLAYER TEAMS DISPLAY
+   ═══════════════════════════════════════════════════ */
+
+.player-teams-container {
+  margin-bottom: 1rem;
+}
+
+.player-teams-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.player-team-card {
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius-sm);
+}
+
+.player-team-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.player-team-logo {
+  font-size: 1.5rem;
+}
+
+.player-team-name {
+  font-weight: 700;
+  font-size: 1rem;
+  flex: 1;
+}
+
+.player-team-members-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.player-team-notes {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--glass-border);
+  margin: 0.4rem 0;
+}
+
+.player-team-coins {
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
+
+.player-team-coin-icon {
+  font-size: 1rem;
+}
+
+.player-teams-total {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--accent);
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+}
+
+/* ═══════════════════════════════════════════════════
+   LIGHT THEME — Teams & Countdown & Danger Zone
+   ═══════════════════════════════════════════════════ */
+
+body.light-theme .lb-personal-rank-card {
+  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04)) !important;
+}
+
+body.light-theme .danger-zone-inner {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+body.light-theme .countdown-explosion-overlay {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+body.light-theme .countdown-explosion-digits {
+  color: #dc2626;
+  text-shadow: 0 0 40px rgba(220, 38, 38, 0.6), 0 0 80px rgba(220, 38, 38, 0.3);
+}
+
+body.light-theme .countdown-zero-flash {
+  background: #000;
+}
+
+body.light-theme .team-member-tag {
+  background: rgba(0,0,0,0.04);
+  border-color: #ddd;
+}
+
+body.light-theme .team-stats label {
+  color: #666;
+}
+
+body.light-theme .player-teams-total {
+  border-color: #ddd;
+  color: #d97706;
+}
+
+body.light-theme .team-card {
+  border: 1px solid #e0e0e0;
+}
+
+body.light-theme .team-create-card {
+  border: 1px solid #e0e0e0;
+}

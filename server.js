@@ -431,6 +431,111 @@ app.get('/api/badges/players', (req, res) => {
   res.json({ players: result });
 });
 
+// ─── TEAMS SYSTEM (in-memory, synced via socket) ───
+
+let teamsData = {
+  teams: [],  // { id, name, logo, color, members: [username], silverCoins: number, notes: string }
+  memberCoins: {}, // username -> silver coin balance from teams
+};
+
+function getTeamsForPlayer(username) {
+  return teamsData.teams.filter(t => t.members.includes(username));
+}
+
+function getTeamMemberBalance(username) {
+  let total = 0;
+  for (const t of teamsData.teams) {
+    if (t.members.includes(username)) {
+      total += t.silverCoins || 0;
+    }
+  }
+  return total;
+}
+
+function broadcastTeams() {
+  io.emit('teamsUpdate', teamsData.teams);
+}
+
+// GET all teams
+app.get('/api/teams', (req, res) => {
+  res.json({ teams: teamsData.teams });
+});
+
+// GET teams for a player
+app.get('/api/teams/player/:username', (req, res) => {
+  const playerTeams = getTeamsForPlayer(req.params.username);
+  res.json({ teams: playerTeams, silverBalance: getTeamMemberBalance(req.params.username) });
+});
+
+// GET all teams with member details
+app.get('/api/teams/admin', (req, res) => {
+  // Include all players for the admin assign UI
+  const allPlayers = [];
+  if (isMongoConnected()) {
+    User.find({ role: 'player' }).lean().then(users => {
+      users.forEach(u => allPlayers.push(u.username));
+    }).catch(() => {});
+  } else {
+    allPlayers.push('player1', 'player2', 'player3');
+  }
+  res.json({ teams: teamsData.teams, allPlayers: [...new Set(allPlayers)] });
+});
+
+// Create team
+app.post('/api/teams/create', (req, res) => {
+  const { name, logo, color } = req.body;
+  if (!name) return res.json({ success: false, message: 'Team name required.' });
+  const id = 'team-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+  const team = { id, name, logo: logo || '🏳️', color: color || '#667eea', members: [], silverCoins: 0, notes: '' };
+  teamsData.teams.push(team);
+  broadcastTeams();
+  res.json({ success: true, team });
+});
+
+// Update team
+app.post('/api/teams/update', (req, res) => {
+  const { id, name, logo, color, silverCoins, notes } = req.body;
+  const team = teamsData.teams.find(t => t.id === id);
+  if (!team) return res.json({ success: false, message: 'Team not found.' });
+  if (name !== undefined) team.name = name;
+  if (logo !== undefined) team.logo = logo;
+  if (color !== undefined) team.color = color;
+  if (silverCoins !== undefined) team.silverCoins = Number(silverCoins) || 0;
+  if (notes !== undefined) team.notes = notes;
+  broadcastTeams();
+  res.json({ success: true, team });
+});
+
+// Delete team
+app.post('/api/teams/delete', (req, res) => {
+  const { id } = req.body;
+  teamsData.teams = teamsData.teams.filter(t => t.id !== id);
+  broadcastTeams();
+  res.json({ success: true });
+});
+
+// Add member to team
+app.post('/api/teams/add-member', (req, res) => {
+  const { teamId, username } = req.body;
+  const team = teamsData.teams.find(t => t.id === teamId);
+  if (!team) return res.json({ success: false, message: 'Team not found.' });
+  if (!team.members.includes(username)) {
+    team.members.push(username);
+  }
+  broadcastTeams();
+  res.json({ success: true, team });
+});
+
+// Remove member from team
+app.post('/api/teams/remove-member', (req, res) => {
+  const { teamId, username } = req.body;
+  const team = teamsData.teams.find(t => t.id === teamId);
+  if (!team) return res.json({ success: false, message: 'Team not found.' });
+  team.members = team.members.filter(m => m !== username);
+  broadcastTeams();
+  res.json({ success: true, team });
+});
+
 app.get('/achievement-categories', async (req, res) => {
   const categories = await Category.find().lean();
   res.json({ categories });

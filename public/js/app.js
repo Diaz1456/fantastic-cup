@@ -783,12 +783,14 @@
   }
 
   /* ─── LEADERBOARD RENDERER ─── */
-  function renderLeaderboardHTML(leaderboard, categories, avatarMap, animate) {
+  function renderLeaderboardHTML(leaderboard, categories, avatarMap, animate, opts = {}) {
     if (!leaderboard || leaderboard.length === 0) {
       return '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No data yet.</p>';
     }
     const maxScore = Math.max(...leaderboard.map(e => e.total), 1);
-    return leaderboard.map((entry, i) => {
+    const displayLb = opts.topN ? leaderboard.slice(0, opts.topN) : leaderboard;
+    const totalPlayers = leaderboard.length;
+    return displayLb.map((entry, i) => {
       const rank = i + 1;
       const rankClass = rank === 1 ? 'lb-rank-1' : rank === 2 ? 'lb-rank-2' : rank === 3 ? 'lb-rank-3' : 'lb-rank-other';
       const topClass = rank === 1 ? 'lb-top1' : rank === 2 ? 'lb-top2' : rank === 3 ? 'lb-top3' : '';
@@ -816,7 +818,24 @@
           </div>
         </div>
       `;
-    }).join('');
+    }).join('') + (opts.showPersonalRank && opts.playerEntry && opts.playerRank > 0 && opts.playerRank > (opts.topN || 0) ? `
+      <div class="lb-card lb-personal-rank-card">
+        <div class="lb-rank lb-rank-other">${opts.playerRank}</div>
+        <div class="lb-avatar">
+          <span class="lb-avatar-emoji">🎯</span>
+        </div>
+        <div class="lb-info">
+          <div class="lb-name lb-personal-rank-name">${opts.playerEntry.username}<span class="lb-badges-placeholder" data-username="${opts.playerEntry.username}"></span></div>
+          <div class="lb-score-bar-wrapper">
+            <div class="lb-score-bar">
+              <div class="lb-score-bar-fill" style="width:${(opts.playerEntry.total / maxScore) * 100}%"></div>
+            </div>
+            <span class="lb-score">${opts.playerEntry.total}</span>
+          </div>
+          <div class="lb-personal-rank-label">Your Rank · ${totalPlayers} players</div>
+        </div>
+      </div>
+    ` : '');
   }
 
   async function fetchLeaderboardAvatars(leaderboard) {
@@ -858,6 +877,7 @@
     await refreshPlayerMeta();
     loadPlayerBadges();
     loadLeaderboardBadges();
+    loadPlayerTeams();
     startPlayerPolling();
   }
 
@@ -1020,7 +1040,24 @@
         _lbRendered = true;
         const lbContainer = document.getElementById('player-leaderboard');
         const avatarMap = await fetchLeaderboardAvatars(leaderboard);
-        lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories, avatarMap, shouldAnimate);
+        lbContainer.innerHTML = renderLeaderboardHTML(leaderboard, categories, avatarMap, shouldAnimate, {
+          topN: 5,
+          showPersonalRank: true,
+          playerEntry: myEntry,
+          playerRank: myRank,
+        });
+      }
+
+      // Bottom 3 danger zone alarm
+      const bottom3 = leaderboard.slice(-3);
+      const inDanger = myEntry && bottom3.some(e => e.username === authState.username);
+      const dangerEl = document.getElementById('danger-zone-overlay');
+      if (inDanger && myRank > 0) {
+        dangerEl.style.display = '';
+        SoundManager.alarmStart();
+      } else {
+        dangerEl.style.display = 'none';
+        SoundManager.alarmStop();
       }
 
       // Player achievements
@@ -1374,6 +1411,43 @@
       if (toggle) toggle.checked = this._enabled;
       if (this._enabled) this.click();
     },
+
+    // ── Countdown / Alarm Sounds ──
+
+    alarmStart() {
+      this._alarmInterval = setInterval(() => {
+        this._playTone(180, 0.3, 'sawtooth', 0.08);
+        this._playTone(160, 0.3, 'sawtooth', 0.06, 0.15);
+      }, 600);
+    },
+
+    alarmStop() {
+      if (this._alarmInterval) { clearInterval(this._alarmInterval); this._alarmInterval = null; }
+    },
+
+    countdownStart() {
+      this._playTone(200, 0.6, 'sawtooth', 0.12);
+      this._playTone(150, 0.4, 'sawtooth', 0.08, 0.1);
+    },
+
+    countdownBeep() {
+      this._playTone(1000, 0.08, 'square', 0.06);
+    },
+
+    countdownFinalBeep() {
+      this._playTone(600, 0.15, 'square', 0.1);
+    },
+
+    countdownZero() {
+      this._playTone(300, 0.3, 'sawtooth', 0.15);
+      this._playTone(200, 0.5, 'sawtooth', 0.12, 0.15);
+      this._playTone(100, 0.8, 'sawtooth', 0.1, 0.3);
+      // Second burst
+      setTimeout(() => {
+        this._playTone(400, 0.2, 'square', 0.12);
+        this._playTone(250, 0.3, 'square', 0.1, 0.1);
+      }, 500);
+    },
   };
 
   window.__playSound = (name) => {
@@ -1632,6 +1706,233 @@
       }
     } catch {
       if (container) container.innerHTML = '';
+    }
+  }
+
+  /* ─── TEAMS FUNCTIONS ─── */
+
+  async function loadTeamsAdmin() {
+    const container = document.getElementById('teams-admin-container');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/teams').then(r => r.json());
+      const teams = res.teams || [];
+      const playersRes = await fetch('/players').then(r => r.json());
+      const allPlayers = playersRes.players || [];
+
+      let html = `
+      <div class="teams-grid">
+        <div class="team-create-card glass">
+          <h4>Create Team</h4>
+          <div class="team-create-form">
+            <input type="text" id="team-create-name" placeholder="Team name" class="form-input" />
+            <input type="text" id="team-create-logo" placeholder="Emoji logo (e.g. 🦅)" class="form-input" style="max-width:80px" />
+            <input type="color" id="team-create-color" value="#667eea" class="form-input" style="width:60px;height:40px;padding:2px" />
+            <button class="btn btn-primary btn-sm" id="btn-team-create-submit">Create</button>
+          </div>
+        </div>
+      `;
+      for (const team of teams) {
+        html += `
+        <div class="team-card glass" data-team-id="${team.id}" style="border-left:4px solid ${team.color}">
+          <div class="team-card-header">
+            <span class="team-logo">${team.logo}</span>
+            <span class="team-name">${team.name}</span>
+            <div class="team-actions">
+              <button class="btn btn-sm btn-icon team-edit-btn" data-team-id="${team.id}" title="Edit Team">✏️</button>
+              <button class="btn btn-sm btn-icon team-delete-btn" data-team-id="${team.id}" title="Delete Team">🗑️</button>
+            </div>
+          </div>
+          <div class="team-members">
+            <div class="team-members-title">Members (${team.members.length})</div>
+            <div class="team-member-list">
+              ${team.members.map(m => `
+                <span class="team-member-tag">
+                  ${m}
+                  <button class="team-member-remove" data-team-id="${team.id}" data-username="${m}">✕</button>
+                </span>
+              `).join('')}
+            </div>
+            <div class="team-add-member">
+              <select class="form-input team-member-select" data-team-id="${team.id}">
+                <option value="">Add member...</option>
+                ${allPlayers.map(p => `<option value="${p.username}">${p.username}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="team-stats">
+            <label class="team-stat-label">Silver Coins</label>
+            <input type="number" class="form-input team-silver-input" data-team-id="${team.id}" value="${team.silverCoins || 0}" min="0" />
+            <textarea class="form-input team-notes-input" data-team-id="${team.id}" placeholder="Team notes...">${team.notes || ''}</textarea>
+            <button class="btn btn-sm btn-primary team-save-btn" data-team-id="${team.id}">Save</button>
+          </div>
+        </div>`;
+      }
+      html += '</div>';
+      container.innerHTML = html;
+      attachTeamAdminEvents(allPlayers);
+    } catch (e) {
+      container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">Failed to load teams.</p>';
+      console.error('Teams admin load failed', e);
+    }
+  }
+
+  function attachTeamAdminEvents(allPlayers) {
+    // Create team
+    const createBtn = document.getElementById('btn-team-create-submit');
+    if (createBtn) {
+      createBtn.addEventListener('click', async () => {
+        const name = document.getElementById('team-create-name').value.trim();
+        const logo = document.getElementById('team-create-logo').value.trim() || '🏳️';
+        const color = document.getElementById('team-create-color').value;
+        if (!name) { toast('Enter a team name', 'error'); return; }
+        const res = await fetch('/api/teams/create', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ name, logo, color })
+        }).then(r => r.json());
+        if (res.success) { toast(`Team "${name}" created!`); loadTeamsAdmin(); }
+        else toast(res.message || 'Failed', 'error');
+      });
+    }
+
+    // Delete team
+    document.querySelectorAll('.team-delete-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.teamId;
+        const name = btn.closest('.team-card').querySelector('.team-name').textContent;
+        if (!confirm(`Delete team "${name}"?`)) return;
+        const res = await fetch('/api/teams/delete', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ id })
+        }).then(r => r.json());
+        if (res.success) { toast(`Team "${name}" deleted.`); loadTeamsAdmin(); }
+      });
+    });
+
+    // Edit team (opens inline editor)
+    document.querySelectorAll('.team-edit-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const card = btn.closest('.team-card');
+        const header = card.querySelector('.team-card-header');
+        const nameEl = card.querySelector('.team-name');
+        const logoEl = card.querySelector('.team-logo');
+        const currentName = nameEl.textContent;
+        const currentLogo = logoEl.textContent;
+        const currentColor = card.style.borderLeftColor || '#667eea';
+        const id = btn.dataset.teamId;
+        header.innerHTML = `
+          <input type="text" class="form-input team-edit-name" value="${currentName}" placeholder="Name" />
+          <input type="text" class="form-input team-edit-logo" value="${currentLogo}" style="max-width:50px" placeholder="Logo" />
+          <input type="color" class="form-input team-edit-color" value="${currentColor}" style="width:50px;height:38px;padding:2px" />
+          <button class="btn btn-sm btn-primary team-edit-save" data-team-id="${id}">Save</button>
+          <button class="btn btn-sm team-edit-cancel">Cancel</button>
+        `;
+      });
+    });
+
+    // Save inline edit
+    document.addEventListener('click', (e) => {
+      const saveBtn = e.target.closest('.team-edit-save');
+      if (saveBtn) {
+        const card = saveBtn.closest('.team-card');
+        const id = saveBtn.dataset.teamId;
+        const name = card.querySelector('.team-edit-name').value.trim();
+        const logo = card.querySelector('.team-edit-logo').value.trim();
+        const color = card.querySelector('.team-edit-color').value;
+        if (!name) { toast('Name required', 'error'); return; }
+        fetch('/api/teams/update', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ id, name, logo, color })
+        }).then(r => r.json()).then(res => {
+          if (res.success) { toast('Team updated!'); loadTeamsAdmin(); }
+          else toast(res.message || 'Failed', 'error');
+        });
+      }
+      const cancelBtn = e.target.closest('.team-edit-cancel');
+      if (cancelBtn) { loadTeamsAdmin(); }
+    });
+
+    // Add member
+    document.querySelectorAll('.team-member-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const username = sel.value;
+        if (!username) return;
+        const teamId = sel.dataset.teamId;
+        const res = await fetch('/api/teams/add-member', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ teamId, username })
+        }).then(r => r.json());
+        if (res.success) { toast(`Added ${username}!`); loadTeamsAdmin(); }
+        else toast(res.message || 'Failed', 'error');
+      });
+    });
+
+    // Remove member
+    document.querySelectorAll('.team-member-remove').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const teamId = btn.dataset.teamId;
+        const username = btn.dataset.username;
+        if (!confirm(`Remove ${username} from this team?`)) return;
+        const res = await fetch('/api/teams/remove-member', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ teamId, username })
+        }).then(r => r.json());
+        if (res.success) { toast(`Removed ${username}.`); loadTeamsAdmin(); }
+      });
+    });
+
+    // Save silver coins / notes
+    document.querySelectorAll('.team-save-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const teamId = btn.dataset.teamId;
+        const card = btn.closest('.team-card');
+        const silverCoins = parseInt(card.querySelector('.team-silver-input').value) || 0;
+        const notes = card.querySelector('.team-notes-input').value.trim();
+        const res = await fetch('/api/teams/update', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ id: teamId, silverCoins, notes })
+        }).then(r => r.json());
+        if (res.success) { toast('Team saved!'); loadTeamsAdmin(); }
+        else toast(res.message || 'Failed', 'error');
+      });
+    });
+  }
+
+  async function loadPlayerTeams() {
+    if (!authState) return;
+    const container = document.getElementById('player-teams-display');
+    if (!container) return;
+    try {
+      const res = await fetch('/api/teams/player/' + encodeURIComponent(authState.username)).then(r => r.json());
+      const teams = res.teams || [];
+      const silverBalance = res.silverBalance || 0;
+      if (teams.length === 0) {
+        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">👥</span><span class="badges-empty-text">Not on any team yet</span></div>';
+        return;
+      }
+      let html = '<div class="player-teams-grid">';
+      for (const team of teams) {
+        const memberCount = team.members ? team.members.length : 0;
+        html += `
+        <div class="player-team-card glass" style="border-left:4px solid ${team.color || '#667eea'}">
+          <div class="player-team-header">
+            <span class="player-team-logo">${team.logo}</span>
+            <span class="player-team-name">${team.name}</span>
+            <span class="player-team-members-count">${memberCount} member${memberCount === 1 ? '' : 's'}</span>
+          </div>
+          ${team.notes ? `<div class="player-team-notes">${team.notes}</div>` : ''}
+          <div class="player-team-coins">
+            <span class="player-team-coin-icon">🥈</span> Team Silver Coins: <strong>${team.silverCoins || 0}</strong>
+          </div>
+        </div>`;
+      }
+      html += '</div>';
+      if (silverBalance > 0) {
+        html += `<div class="player-teams-total"><span class="player-team-coin-icon">🥈</span> Your Total Team Silver: <strong>${silverBalance}</strong></div>`;
+      }
+      container.innerHTML = html;
+    } catch {
+      container.innerHTML = '';
     }
   }
 
@@ -2026,6 +2327,53 @@
       if (playerCountdown) playerCountdown.style.display = show ? '' : 'none';
     }
 
+    let _lastCountdownSec = -1;
+    let _zeroFlashTimeout = null;
+
+    function applyCountdownEffects(remainingMs) {
+      const totalSec = Math.floor(remainingMs / 1000);
+      const explosionEl = document.getElementById('countdown-explosion-overlay');
+      const digitsEl = document.getElementById('countdown-explosion-digits');
+      const zeroFlash = document.getElementById('countdown-zero-flash');
+
+      if (totalSec <= 0 && remainingMs > -2000) {
+        // ZERO moment
+        if (_lastCountdownSec !== -2) {
+          _lastCountdownSec = -2;
+          if (explosionEl) explosionEl.style.display = 'none';
+          if (zeroFlash) {
+            zeroFlash.style.display = '';
+            if (_zeroFlashTimeout) clearTimeout(_zeroFlashTimeout);
+            _zeroFlashTimeout = setTimeout(() => { zeroFlash.style.display = 'none'; }, 2000);
+          }
+          SoundManager.countdownZero();
+        }
+        return;
+      }
+
+      if (totalSec <= 10 && totalSec > 0) {
+        // Last 10 seconds – explosion mode
+        if (explosionEl) explosionEl.style.display = '';
+        if (digitsEl) digitsEl.textContent = totalSec;
+        if (explosionEl) {
+          explosionEl.classList.remove('countdown-explosion-bounce');
+          void explosionEl.offsetWidth;
+          explosionEl.classList.add('countdown-explosion-bounce');
+        }
+        if (totalSec !== _lastCountdownSec) {
+          if (totalSec <= 3) {
+            SoundManager.countdownFinalBeep();
+          } else {
+            SoundManager.countdownBeep();
+          }
+        }
+      } else if (explosionEl) {
+        explosionEl.style.display = 'none';
+      }
+
+      _lastCountdownSec = totalSec;
+    }
+
     // ── Socket Setup ──
     const socket = io();
 
@@ -2033,6 +2381,18 @@
       countdownActive = true;
       showCountdownMode(true);
       updateCountdownDisplay(remaining);
+      _lastCountdownSec = -1;
+      applyCountdownEffects(remaining);
+
+      // Dramatic start effect
+      const explosionEl = document.getElementById('countdown-explosion-overlay');
+      const zeroFlash = document.getElementById('countdown-zero-flash');
+      if (zeroFlash) zeroFlash.style.display = 'none';
+      if (explosionEl) explosionEl.style.display = 'none';
+      if (remaining > 10000) {
+        SoundManager.countdownStart();
+      }
+
       if (countdownInterval) clearInterval(countdownInterval);
       countdownInterval = setInterval(() => {
         if (document.getElementById('admin-countdown') && document.getElementById('admin-countdown').style.display !== 'none') {
@@ -2043,6 +2403,10 @@
             if (totalSec > 0) {
               totalSec--;
               updateCountdownDisplay(totalSec * 1000);
+              applyCountdownEffects(totalSec * 1000);
+            } else {
+              // Zero reached
+              applyCountdownEffects(0);
             }
           }
         }
@@ -2051,18 +2415,27 @@
 
     socket.on('countdownTick', (remaining) => {
       updateCountdownDisplay(remaining);
+      applyCountdownEffects(remaining);
     });
 
     socket.on('countdownStop', () => {
       countdownActive = false;
       if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
       showCountdownMode(false);
+      const explosionEl = document.getElementById('countdown-explosion-overlay');
+      const zeroFlash = document.getElementById('countdown-zero-flash');
+      if (explosionEl) explosionEl.style.display = 'none';
+      if (zeroFlash) zeroFlash.style.display = 'none';
     });
 
     socket.on('countdownCancel', () => {
       countdownActive = false;
       if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
       showCountdownMode(false);
+      const explosionEl = document.getElementById('countdown-explosion-overlay');
+      const zeroFlash = document.getElementById('countdown-zero-flash');
+      if (explosionEl) explosionEl.style.display = 'none';
+      if (zeroFlash) zeroFlash.style.display = 'none';
     });
 
     // Admin countdown controls
@@ -2388,11 +2761,27 @@
       }
     });
 
-    // Load badges on admin/player nav
+    // ── Socket: Teams Updated ──
+    socket.on('teamsUpdate', () => {
+      if (authState && authState.role === 'admin') {
+        loadTeamsAdmin();
+      }
+      if (authState && authState.role === 'player') {
+        loadPlayerTeams();
+      }
+    });
+
+    // Load badges & teams on admin/player nav
     const adminBadgesNav = document.querySelector('#view-admin .nav-btn[data-section="badges"]');
     if (adminBadgesNav) {
       adminBadgesNav.addEventListener('click', () => {
         setTimeout(loadBadgesAdmin, 300);
+      });
+    }
+    const adminTeamsNav = document.querySelector('#view-admin .nav-btn[data-section="teams"]');
+    if (adminTeamsNav) {
+      adminTeamsNav.addEventListener('click', () => {
+        setTimeout(loadTeamsAdmin, 300);
       });
     }
 
