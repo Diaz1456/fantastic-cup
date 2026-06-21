@@ -222,7 +222,7 @@
   function applyTheme() {
     document.body.classList.toggle('light-theme', !isDark);
     const btns = $$('#theme-toggle, #theme-toggle-player');
-    btns.forEach(b => { b.textContent = isDark ? '🌙' : '☀️'; });
+    btns.forEach(b => { b.textContent = isDark ? 'DARK' : 'LIGHT'; });
   }
 
   // Restore saved theme on load
@@ -513,7 +513,7 @@
     tbody.innerHTML = enhanced.map(p => {
       const avatarHtml = p.avatarUrl
         ? `<span class="avatar-loading" style="display:inline-flex;width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--accent);"><img src="${p.avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
-        : `<span style="font-size:1.5rem;">👤</span>`;
+        : `<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.05);border:2px solid var(--glass-border);color:var(--text-muted);font-weight:700;font-size:1rem;">?</span>`;
       const badgeIcons = p.badges.slice(0, 3).map(b => b.icon || '🏅').join('');
       const badgeCount = p.badges.length;
       return `
@@ -951,13 +951,12 @@
       else if (rank === 5) topClass = 'lb-top5';
       const pct = (entry.total / maxScore) * 100;
       const delay = i * 0.06;
-      const medal = rank === 1 ? '👑' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '👤';
       const avatarUrl = avatarMap ? (avatarMap[entry.username] || '') : '';
       const token = getPlayerToken(entry.username);
       const regId = entry.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
       const avatarHtml = avatarUrl
         ? `<span class="avatar-loading" style="display:inline-flex;width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;"><img src="${avatarUrl}" class="lb-avatar-img" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
-        : `<span class="lb-avatar-emoji">${medal}</span>`;
+        : `<span class="lb-avatar-emoji">${token.icon}</span>`;
       return `
         <div class="lb-card ${topClass}${animate ? ' lb-animate' : ''}" style="${animate ? `animation-delay:${delay}s` : ''}">
           <div class="lb-rank ${rankClass}">${rank}</div>
@@ -984,7 +983,7 @@
       <div class="lb-card lb-personal-rank-card">
         <div class="lb-rank lb-rank-other">${opts.playerRank}</div>
         <div class="lb-avatar">
-          <span class="lb-avatar-emoji">🎯</span>
+          <span class="lb-avatar-emoji">${getPlayerToken(opts.playerEntry.username).icon}</span>
         </div>
         <div class="lb-info">
           <div class="lb-name lb-personal-rank-name">
@@ -1035,7 +1034,7 @@
     const token = getPlayerToken(authState.username);
     document.getElementById('player-name-display').textContent = authState.username;
     document.querySelector('.player-greeting').innerHTML =
-      `<span class="lb-token-icon">${token.icon}</span> Welcome, <strong>${authState.username}</strong>`;
+      `Welcome, <strong>${authState.username}</strong>`;
 
     document.getElementById('motivational-quote').textContent = randomQuote();
 
@@ -1372,14 +1371,14 @@
       html += '<div class="stats-avatar-wrap">';
       if (res.avatarUrl) {
         html += `<img src="${res.avatarUrl}" class="stats-avatar-img" onerror="this.style.display='none'">`;
-        html += '<span class="stats-avatar-fallback" style="display:none;">👤</span>';
+        html += '<span class="stats-avatar-fallback" style="display:none;">?</span>';
       } else {
-        html += '<span class="stats-avatar-fallback">👤</span>';
+        html += '<span class="stats-avatar-fallback">?</span>';
       }
       html += '</div>';
       html += `<div class="stats-name-row">`;
       html += `<h2 class="stats-name">${res.username}</h2>`;
-      html += `<span class="stats-coin-badge"><span class="stats-coin-icon">🪙</span> ${res.coinBalance}</span>`;
+      html += `<span class="stats-coin-badge"><span class="stats-coin-icon">$</span> ${res.coinBalance}</span>`;
       html += `</div>`;
       html += '</div>';
 
@@ -2767,10 +2766,10 @@
       const isUp = delta > 0;
       const arrow = isUp ? '▲' : '▼';
       const cls = isUp ? 'up' : 'down';
-      const icon = isUp ? '📈' : '📉';
+      const icon = isUp ? 'UP' : 'DOWN';
       const label = cat || 'achievement';
       div.innerHTML = `
-        <div class="donation-alert-icon">${icon}</div>
+        <div class="donation-alert-icon" style="font-size:1rem;font-weight:700;">${icon}</div>
         <div class="donation-alert-body">
           <div class="donation-alert-team" style="color:${teamColor}">${teamName}</div>
           <div class="donation-alert-amount ${cls}"><span class="donation-alert-arrow">${arrow}</span>$${newPrice}</div>
