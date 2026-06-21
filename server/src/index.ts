@@ -2,27 +2,19 @@ import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import { Server } from 'socket.io';
-import jwt from 'jsonwebtoken';
 import path from 'path';
 
-import { eventManager } from './gameState';
-import {
-  ServerToClientEvents,
-  ClientToServerEvents,
-  JWT_SECRET,
-  ADMIN_PASSWORD,
-  PORT,
-} from './types';
+import { EventStateManager } from './gameState';
+import { ADMIN_PASSWORD, PORT } from './types';
 
 const app = express();
 const server = http.createServer(app);
+const eventManager = new EventStateManager();
 
 app.use(cors());
 app.use(express.json());
 
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
-});
+const io = new Server(server, { cors: { origin: '*', methods: ['GET', 'POST'] } });
 
 let timerInterval: NodeJS.Timeout | null = null;
 
@@ -31,29 +23,20 @@ function broadcastState() {
 }
 
 function broadcastTimerTick() {
-  const remaining = eventManager.getRemainingTime();
+  const remaining = eventManager.getRemaining();
   const state = eventManager.getState();
 
-  if (state.timer.mysteryMode && remaining > 10000) {
-    io.emit('timerTick', remaining, '? ? : ? ? : ? ? : ? ?');
-    return;
-  }
-
-  const d = Math.floor(remaining / 86400000);
-  const h = Math.floor((remaining % 86400000) / 3600000);
+  const h = Math.floor(remaining / 3600000);
   const m = Math.floor((remaining % 3600000) / 60000);
   const s = Math.floor((remaining % 60000) / 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
   const display = state.timer.mysteryMode && remaining > 10000
-    ? '? ? : ? ? : ? ? : ? ?'
-    : `${pad(d)} : ${pad(h)} : ${pad(m)} : ${pad(s)}`;
+    ? '? ? : ? ? : ? ?'
+    : `${pad(h)}:${pad(m)}:${pad(s)}`;
 
   io.emit('timerTick', remaining, display);
 
-  if (remaining <= 0 && state.phase === 'countdown') {
-    eventManager.setPhase('standby');
-    io.emit('phaseChange', 'standby');
-    broadcastState();
+  if (remaining <= 0) {
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
   }
 }
@@ -65,7 +48,6 @@ function startTimer() {
 }
 
 io.on('connection', (socket) => {
-  console.log(`Client connected: ${socket.id}`);
   socket.emit('stateSync', eventManager.getState());
 
   socket.on('join', () => socket.emit('stateSync', eventManager.getState()));
@@ -75,12 +57,11 @@ io.on('connection', (socket) => {
       socket.emit('error', 'Invalid admin password');
       return;
     }
-    const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
-    socket.emit('stateSync', { ...eventManager.getState(), adminToken: token } as any);
+    socket.emit('stateSync', { ...eventManager.getState(), adminToken: 'granted' } as any);
   });
 
-  socket.on('adminSetTimer', (data) => {
-    eventManager.setTimer(data);
+  socket.on('adminSetTimer', (data: { deadline: number; mysteryMode: boolean }) => {
+    eventManager.setTimer(data.deadline, data.mysteryMode);
     broadcastState();
     startTimer();
   });
@@ -89,7 +70,6 @@ io.on('connection', (socket) => {
     eventManager.pauseTimer();
     broadcastState();
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    broadcastTimerTick();
   });
 
   socket.on('adminResumeTimer', () => {
@@ -104,86 +84,11 @@ io.on('connection', (socket) => {
     broadcastState();
   });
 
-  socket.on('adminExtendTimer', (seconds) => {
+  socket.on('adminExtendTimer', (seconds: number) => {
     eventManager.extendTimer(seconds);
-    broadcastState();
-    broadcastTimerTick();
   });
 
-  socket.on('adminUpdateTeams', (teams) => {
-    eventManager.updateTeams(teams);
-    io.emit('teamsUpdate', eventManager.getState().teams);
-    broadcastState();
-  });
-
-  socket.on('adminAwardCoin', (data) => {
-    const { tx, newBalance } = eventManager.awardCoin(data);
-    io.emit('coinAwarded', tx, newBalance);
-    broadcastState();
-  });
-
-  // ─── SQUID GAME ─────────────────────────────────────────
-
-  socket.on('adminStartSquidGame', () => {
-    eventManager.startSquidGame();
-    io.emit('squidGameStarted');
-    broadcastState();
-  });
-
-  socket.on('adminResetSquidGame', () => {
-    eventManager.resetSquidGame();
-    io.emit('squidGameReset');
-    broadcastState();
-  });
-
-  socket.on('adminAddSquidPlayer', (data) => {
-    const player = eventManager.addSquidPlayer(data.username, data.avatarUrl);
-    if (player) {
-      io.emit('squidPlayerAdded', player);
-      broadcastState();
-    }
-  });
-
-  socket.on('adminRemoveSquidPlayer', (playerId) => {
-    eventManager.removeSquidPlayer(playerId);
-    io.emit('squidPlayerRemoved', playerId);
-    broadcastState();
-  });
-
-  socket.on('adminEliminateSquidPlayer', (data) => {
-    const state = eventManager.getState();
-    if (state.squidGame.phase !== 'active') {
-      socket.emit('error', 'Game not started');
-      return;
-    }
-
-    eventManager.setSquidTarget(data.playerId);
-    io.emit('squidPlayerTargeted', data.playerId);
-
-    setTimeout(() => {
-      const eliminated = eventManager.eliminateSquidPlayer(data.playerId, data.adminName);
-      if (eliminated) {
-        io.emit('squidPlayerEliminated', { player: eliminated, rank: data.rank || null });
-
-        const gs = eventManager.getState().squidGame;
-        if (gs.phase === 'victory') {
-          const winner = eventManager.getSquidWinner();
-          const remaining = eventManager.getAliveSquidPlayers();
-          io.emit('squidGameVictory', { winner, remaining });
-        }
-        broadcastState();
-      }
-    }, 2500);
-  });
-
-  socket.on('disconnect', () => console.log(`Disconnected: ${socket.id}`));
-});
-
-app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
-  const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ token });
+  socket.on('disconnect', () => {});
 });
 
 app.get('/api/state', (_req, res) => res.json(eventManager.getState()));
@@ -193,6 +98,5 @@ app.use(express.static(clientDist));
 app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')));
 
 server.listen(PORT, () => {
-  console.log(`fantastic-cup server on port ${PORT}`);
   startTimer();
 });

@@ -2168,68 +2168,18 @@
       }
     });
 
-    // ── War Password Gate ──
-    const warBtn = document.getElementById('event-war-btn');
-    const warOverlay = document.getElementById('war-password-overlay');
-    const warInput = document.getElementById('war-password-input');
-    const warSubmit = document.getElementById('war-pw-submit');
-    const warCancel = document.getElementById('war-pw-cancel');
-    const warError = document.getElementById('war-pw-error');
-
-    if (warBtn) {
-      warBtn.addEventListener('click', () => {
+    // ── Event Section (Stock Market) ──
+    const eventBtn = document.getElementById('event-war-btn');
+    if (eventBtn) {
+      eventBtn.addEventListener('click', () => {
         window.location.href = '/event/';
       });
     }
 
-    const closeWarGate = () => {
-      warOverlay.style.display = 'none';
-      warInput.value = '';
-    };
-
-    const submitWarPassword = async () => {
-      const pw = warInput.value;
-      if (!pw) {
-        warError.textContent = 'Access code required.';
-        warError.style.display = 'block';
-        return;
-      }
-      try {
-        const res = await fetch('/api/verify-war-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pw }),
-        }).then(r => r.json());
-
-        if (res.granted) {
-          localStorage.setItem('warToken', res.token);
-          closeWarGate();
-          window.location.href = '/event/';
-        } else {
-          warError.textContent = 'Invalid access code.';
-          warError.style.display = 'block';
-          warInput.value = '';
-          warInput.focus();
-        }
-      } catch {
-        warError.textContent = 'Connection error.';
-        warError.style.display = 'block';
-      }
-    };
-
-    if (warSubmit) warSubmit.addEventListener('click', submitWarPassword);
-    if (warCancel) warCancel.addEventListener('click', closeWarGate);
-    if (warInput) {
-      warInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') submitWarPassword();
-        if (e.key === 'Escape') closeWarGate();
-      });
-    }
-
-    // Admin nav EVENT button also goes directly to the event page
-    const warBtnAdmin = document.getElementById('event-war-btn-admin');
-    if (warBtnAdmin) {
-      warBtnAdmin.addEventListener('click', () => {
+    // Admin nav EVENT button
+    const eventBtnAdmin = document.getElementById('event-war-btn-admin');
+    if (eventBtnAdmin) {
+      eventBtnAdmin.addEventListener('click', () => {
         window.location.href = '/event/';
       });
     }

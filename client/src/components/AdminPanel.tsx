@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import type { StockMarketState, StockTeam } from '../types';
 
 interface Props {
   socket: any;
@@ -6,253 +7,169 @@ interface Props {
 }
 
 export default function AdminPanel({ socket, onBack }: Props) {
-  const state = socket.gameState;
-  const [dateStr, setDateStr] = useState(() => new Date(Date.now() + 3600000).toISOString().slice(0, 16));
-  const [mysteryMode, setMysteryMode] = useState(false);
-  const [confirmEliminate, setConfirmEliminate] = useState<string | null>(null);
-  const [extendSeconds, setExtendSeconds] = useState(30);
-  const [newPlayerName, setNewPlayerName] = useState('');
-  const [playerFilter, setPlayerFilter] = useState('');
-  const [showSquidControls, setShowSquidControls] = useState(true);
-  const [showRoster, setShowRoster] = useState(true);
+  const marketState: StockMarketState | null = socket.marketState;
+  const [multiplier, setMultiplier] = useState(5);
+  const [baseValue, setBaseValue] = useState(100);
+  const [performanceInputs, setPerformanceInputs] = useState<Record<string, Record<string, string>>>({});
+  const [sentimentInputs, setSentimentInputs] = useState<Record<string, string>>({});
+  const [spikeInputs, setSpikeInputs] = useState<Record<string, string>>({});
 
-  if (!state) return <div className="admin-panel"><h2>Loading...</h2></div>;
+  if (!marketState) return <div className="admin-panel"><h2>Loading...</h2></div>;
 
-  const phase = state.phase;
-  const teams = socket.teams || state.teams || [];
-  const squid = state.squidGame || {};
-  const players = squid.players || [];
+  const teams = marketState.teams;
 
-  const filteredPlayers = players.filter((p: any) =>
-    p.username.toLowerCase().includes(playerFilter.toLowerCase())
-  );
-
-  const handleSetTimer = () => {
-    const deadline = new Date(dateStr).getTime();
-    if (!isNaN(deadline)) socket.adminSetTimer(deadline, mysteryMode);
+  const handlePerformance = (teamId: string, username: string, score: string) => {
+    setPerformanceInputs(prev => ({
+      ...prev,
+      [teamId]: { ...(prev[teamId] || {}), [username]: score }
+    }));
   };
 
-  const handleAddPlayer = () => {
-    const name = newPlayerName.trim();
-    if (name) {
-      socket.adminAddSquidPlayer(name);
-      setNewPlayerName('');
+  const submitPerformance = (teamId: string, username: string) => {
+    const score = parseFloat(performanceInputs[teamId]?.[username] || '0');
+    if (!isNaN(score)) {
+      socket.updatePerformance({ teamId, username, score });
     }
+  };
+
+  const submitSentiment = (teamId: string) => {
+    const val = parseFloat(sentimentInputs[teamId] || '0');
+    if (!isNaN(val)) {
+      socket.setSentiment({ teamId, sentiment: val });
+    }
+  };
+
+  const submitSpike = (teamId: string) => {
+    const val = parseFloat(spikeInputs[teamId] || '0');
+    if (!isNaN(val)) {
+      socket.spike({ teamId, amount: val });
+      setSpikeInputs(prev => ({ ...prev, [teamId]: '' }));
+    }
+  };
+
+  const handleConfigSave = () => {
+    socket.updateConfig({
+      multiplier: multiplier,
+      baseValue: baseValue,
+    });
   };
 
   return (
     <div className="admin-panel">
       <div className="admin-header">
-        <h1 className="admin-title">🎴 FANTASTIC CUP — COMMAND CENTER</h1>
+        <h1 className="admin-title">📈 FANTASTIC CUP — TRADING DESK</h1>
         <button className="admin-back-btn" onClick={onBack}>EXIT</button>
       </div>
 
       <div className="admin-grid">
-        {/* TIMER CARD */}
-        <div className="admin-card timer-card">
-          <h2>⏱ GLOBAL COUNTDOWN</h2>
+        {/* CONFIG CARD */}
+        <div className="admin-card config-card">
+          <h2>⚙️ MARKET CONFIG</h2>
           <div className="admin-row">
-            <label>Deadline:</label>
-            <input type="datetime-local" value={dateStr} onChange={e => setDateStr(e.target.value)} className="admin-input" />
+            <label>Multiplier:</label>
+            <input
+              type="number"
+              value={multiplier}
+              onChange={e => setMultiplier(Number(e.target.value))}
+              className="admin-input small"
+              min={1}
+            />
           </div>
           <div className="admin-row">
-            <label>Mystery Mode:</label>
-            <label className="toggle-switch">
-              <input type="checkbox" checked={mysteryMode} onChange={e => setMysteryMode(e.target.checked)} />
-              <span className="toggle-slider" />
-            </label>
+            <label>Base Value:</label>
+            <input
+              type="number"
+              value={baseValue}
+              onChange={e => setBaseValue(Number(e.target.value))}
+              className="admin-input small"
+              min={1}
+            />
           </div>
           <div className="admin-actions">
-            <button onClick={handleSetTimer} className="admin-btn primary">SET</button>
-            {state.timer?.deadline && (
-              <>
-                {state.timer.paused
-                  ? <button onClick={socket.adminResumeTimer} className="admin-btn">RESUME</button>
-                  : <button onClick={socket.adminPauseTimer} className="admin-btn warning">PAUSE</button>
-                }
-                <button onClick={socket.adminResetTimer} className="admin-btn danger">RESET</button>
-              </>
-            )}
-          </div>
-          {state.timer?.deadline && (
-            <div className="admin-row">
-              <label>Extend (s):</label>
-              <input type="number" value={extendSeconds} onChange={e => setExtendSeconds(Number(e.target.value))} className="admin-input small" min={1} />
-              <button onClick={() => socket.adminExtendTimer(extendSeconds)} className="admin-btn small">+ADD</button>
-            </div>
-          )}
-          <div className="admin-timer-display">
-            <span className="timer-label">TIMER:</span>
-            <span className={`timer-value ${socket.timerRemaining <= 10000 ? 'urgent' : ''}`}>{socket.timerDisplay || '-- : --'}</span>
+            <button onClick={handleConfigSave} className="admin-btn primary">APPLY CONFIG</button>
+            <button onClick={socket.resetPrices} className="admin-btn danger">RESET ALL PRICES</button>
           </div>
         </div>
 
-        {/* SQUID GAME ADMIN — reorganised with collapsible sections */}
-        <div className="admin-card squid-admin-card">
-          <h2>🎴 SQUID GAME</h2>
-          <div className="phase-indicator">
-            GAME: <span className={`phase-badge ${squid.phase}`}>{(squid.phase || 'idle').toUpperCase()}</span>
-            | PHASE: <span className={`phase-badge ${phase}`}>{phase.toUpperCase()}</span>
-          </div>
+        {/* PER-TEAM ADMIN */}
+        {teams.map((team: StockTeam) => {
+          const price = marketState.prices[team.id] || marketState.config.baseValue;
+          const hist = marketState.history[team.id] || [];
+          const oldPrice = hist.length > 1 ? hist[hist.length - 2].price : price;
+          const change = price - oldPrice;
+          const pct = oldPrice > 0 ? ((change / oldPrice) * 100) : 0;
+          const isUp = change >= 0;
+          const isFrozen = marketState.frozen[team.id];
+          const members = team.members || [];
+          const currentPerf = marketState.playerPerformance[team.id] || {};
 
-          {/* ─── Collapsible: Game Controls ─── */}
-          <div className="squid-collapsible">
-            <button
-              className="squid-collapse-header"
-              onClick={() => setShowSquidControls(!showSquidControls)}
-            >
-              <span>🎮 Game Controls</span>
-              <span className={`collapse-arrow ${showSquidControls ? 'open' : ''}`}>▼</span>
-            </button>
-            {showSquidControls && (
-              <div className="squid-collapse-body">
-                <div className="admin-actions">
-                  {squid.phase === 'idle' && (
-                    <button onClick={socket.adminStartSquidGame} className="admin-btn start-game">START GAME</button>
-                  )}
-                  {squid.phase === 'active' && (
-                    <button onClick={socket.adminStartSquidGame} className="admin-btn warning">RESTART GAME</button>
-                  )}
-                  <button onClick={socket.adminResetSquidGame} className="admin-btn danger">RESET GAME</button>
-                </div>
-
-                {/* Add player inline */}
-                <div className="admin-row" style={{ marginTop: '0.5rem' }}>
-                  <input
-                    type="text"
-                    value={newPlayerName}
-                    onChange={e => setNewPlayerName(e.target.value)}
-                    placeholder="Player username..."
-                    className="admin-input small"
-                    onKeyDown={e => { if (e.key === 'Enter') handleAddPlayer(); }}
-                  />
-                  <button onClick={handleAddPlayer} className="admin-btn small">ADD</button>
-                </div>
+          return (
+            <div key={team.id} className="admin-card team-admin-card" style={{ borderLeft: `4px solid ${team.color}` }}>
+              <div className="team-admin-header">
+                <span className="team-admin-logo">{team.logo}</span>
+                <span className="team-admin-name">{team.name}</span>
+                <span className={`stock-change-admin ${isUp ? 'up' : 'down'}`}>
+                  {price.toLocaleString()} {isUp ? '▲' : '▼'} {Math.abs(pct).toFixed(1)}%
+                </span>
               </div>
-            )}
-          </div>
 
-          {/* ─── Collapsible: Player Roster ─── */}
-          <div className="squid-collapsible">
-            <button
-              className="squid-collapse-header"
-              onClick={() => setShowRoster(!showRoster)}
-            >
-              <span>👥 Player Roster ({players.length})</span>
-              <span className={`collapse-arrow ${showRoster ? 'open' : ''}`}>▼</span>
-            </button>
-            {showRoster && (
-              <div className="squid-collapse-body">
-                {players.length === 0 && <p className="text-muted">No players added yet.</p>}
-
-                {players.length > 0 && (
-                  <>
-                    {/* Search / filter */}
+              {/* Player Performance */}
+              <div className="team-perf-section">
+                <h4>Player Performance</h4>
+                {members.length === 0 && <p className="text-muted">No members in this team.</p>}
+                {members.map((username: string) => (
+                  <div key={username} className="perf-row">
+                    <span className="perf-username">{username}</span>
+                    <span className="perf-current">Current: {currentPerf[username] ?? 0}</span>
                     <input
-                      type="text"
-                      value={playerFilter}
-                      onChange={e => setPlayerFilter(e.target.value)}
-                      placeholder="🔍 Filter players..."
+                      type="number"
                       className="admin-input small"
-                      style={{ width: '100%', marginBottom: '0.5rem' }}
+                      placeholder="Score"
+                      value={performanceInputs[team.id]?.[username] ?? ''}
+                      onChange={e => handlePerformance(team.id, username, e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') submitPerformance(team.id, username); }}
                     />
-
-                    <div className="squid-roster-grid">
-                      {filteredPlayers.map((p: any) => {
-                        const isEliminated = p.status === 'eliminated';
-                        return (
-                          <div key={p.id} className={`squid-roster-card ${isEliminated ? 'eliminated' : ''}`}>
-                            <div className="squid-roster-avatar">
-                              {p.avatarUrl
-                                ? <img src={p.avatarUrl} alt="" className="squid-roster-img" />
-                                : <span className="squid-roster-fallback">🎭</span>
-                              }
-                            </div>
-                            <div className="squid-roster-info">
-                              <span className="squid-roster-name">{p.username}</span>
-                              <span className={`squid-roster-status ${p.status}`}>{p.status.toUpperCase()}</span>
-                            </div>
-                            <div className="squid-roster-actions">
-                              {!isEliminated && squid.phase === 'active' && (
-                                <>
-                                  {confirmEliminate === p.id ? (
-                                    <div className="confirm-group">
-                                      <button
-                                        onClick={() => { socket.adminEliminateSquidPlayer(p.id); setConfirmEliminate(null); }}
-                                        className="admin-btn danger small"
-                                      >✕ CONFIRM</button>
-                                      <button onClick={() => setConfirmEliminate(null)} className="admin-btn small">CANCEL</button>
-                                    </div>
-                                  ) : (
-                                    <button onClick={() => setConfirmEliminate(p.id)} className="admin-btn eliminate-btn">ELIMINATE</button>
-                                  )}
-                                </>
-                              )}
-                              <button
-                                onClick={() => socket.adminRemoveSquidPlayer(p.id)}
-                                className="admin-btn small danger"
-                                title="Remove player"
-                              >✕</button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {filteredPlayers.length === 0 && (
-                        <p className="text-muted">No players match filter.</p>
-                      )}
-                    </div>
-                  </>
-                )}
+                    <button onClick={() => submitPerformance(team.id, username)} className="admin-btn small">SET</button>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* TEAMS (read-only) */}
-        <div className="admin-card team-admin-card">
-          <h2>🏟 TEAMS</h2>
-          <div className="team-edit-list">
-            {teams.length === 0 && <p className="text-muted">No teams configured.</p>}
-            {teams.map((team: any) => (
-              <div key={team.id} className="team-edit-row">
-                <span className="team-edit-logo">{team.logo}</span>
-                <span className="team-edit-name">{team.name}</span>
-                <span className="status-value">{team.points} pts</span>
-                <span className="status-badge">#{team.rank}</span>
+              {/* Sentiment + Freeze + Spike */}
+              <div className="team-admin-controls">
+                <div className="admin-row">
+                  <label>Sentiment:</label>
+                  <input
+                    type="number"
+                    className="admin-input small"
+                    value={sentimentInputs[team.id] ?? ''}
+                    placeholder={String(marketState.sentiment[team.id] || 0)}
+                    onChange={e => setSentimentInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                  />
+                  <button onClick={() => submitSentiment(team.id)} className="admin-btn small">SET</button>
+                </div>
+                <div className="admin-row">
+                  <label>Spike:</label>
+                  <input
+                    type="number"
+                    className="admin-input small"
+                    value={spikeInputs[team.id] ?? ''}
+                    placeholder="+/- amount"
+                    onChange={e => setSpikeInputs(prev => ({ ...prev, [team.id]: e.target.value }))}
+                  />
+                  <button onClick={() => submitSpike(team.id)} className="admin-btn small warning">APPLY</button>
+                </div>
+                <div className="admin-actions">
+                  <button
+                    onClick={() => socket.setFrozen({ teamId: team.id, frozen: !isFrozen })}
+                    className={`admin-btn ${isFrozen ? 'danger' : 'warning'}`}
+                  >
+                    {isFrozen ? 'UNFREEZE' : 'FREEZE'}
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* STATUS OVERVIEW */}
-        <div className="admin-card status-card wide">
-          <h2>📊 EVENT STATUS</h2>
-          <div className="status-grid">
-            <div className="status-col">
-              <h3>Teams</h3>
-              {teams.length === 0 && <p className="text-muted">No teams</p>}
-              {teams.map((t: any) => (
-                <div key={t.id} className="status-item">
-                  <span className="status-dot" style={{ background: t.color }} />
-                  <span>{t.name}</span>
-                  <span className="status-value">{t.points} pts</span>
-                  <span className="status-badge">#{t.rank}</span>
-                </div>
-              ))}
             </div>
-            <div className="status-col">
-              <h3>Players ({players.length})</h3>
-              {players.length === 0 && <p className="text-muted">No players</p>}
-              {players.map((p: any) => (
-                <div key={p.id} className="status-item">
-                  <span className="status-dot" style={{ background: p.status === 'alive' ? '#10b981' : p.status === 'winner' ? '#ffd700' : '#ef4444' }} />
-                  <span>{p.username}</span>
-                  <span className={`status-tag ${p.status}`}>{p.status.toUpperCase()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       {socket.error && <div className="admin-toast">{socket.error}</div>}

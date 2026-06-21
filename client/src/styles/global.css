@@ -28,57 +28,26 @@ html, body, #root { width: 100%; height: 100%; overflow: hidden; font-family: 'O
 /* VIEW TOGGLE */
 .view-toggle { position: fixed; bottom: 16px; right: 16px; z-index: 1000; display: flex; gap: 4px; background: rgba(0,0,0,0.9); border: 1px solid var(--border-rust); border-radius: 6px; padding: 4px; }
 .main-site-btn { background: #1a0f0f; border: 1px solid var(--border-rust); color: var(--text-dim); padding: 6px 14px; font-family: 'Black Ops One', monospace; font-size: 11px; cursor: pointer; border-radius: 4px; transition: all 0.2s; letter-spacing: 1px; text-decoration: none; }
-.main-site-btn:hover { color: var(--text-primary); border-color: var(--accent-gold); }
-.toggle-btn { background: transparent; border: 1px solid transparent; color: var(--text-dim); padding: 6px 16px; font-family: 'Black Ops One', monospace; font-size: 11px; cursor: pointer; border-radius: 4px; transition: all 0.2s; letter-spacing: 1px; }
-.toggle-btn.active { background: var(--accent-blood); color: white; border-color: var(--accent-fire); box-shadow: 0 0 10px rgba(255,69,0,0.3); }
-.toast-error { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--danger); color: white; padding: 12px 28px; border-radius: 4px; font-family: 'Black Ops One', monospace; font-size: 13px; z-index: 9999; animation: toastIn 0.3s ease; box-shadow: 0 0 30px rgba(204,34,34,0.5); }
+.main-site-btn:hover { border-color: var(--text-primary); color: var(--text-primary); }
+.view-toggle .toggle-btn { background: #0a0505; border: 1px solid var(--border-rust); color: var(--text-dim); padding: 6px 14px; font-family: 'Black Ops One', monospace; font-size: 11px; cursor: pointer; border-radius: 4px; transition: all 0.2s; letter-spacing: 1px; }
+.view-toggle .toggle-btn.active { background: var(--accent-blood); color: white; border-color: var(--accent-fire); }
+.view-toggle .toggle-btn:hover { border-color: var(--text-primary); }
 
-@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+/* LOGIN PAGE */
+.login-page { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0505, #1a0a0a); }
+.login-panel { background: linear-gradient(135deg, #0d0808, #120a0a); border: 2px solid var(--border-rust); border-radius: 16px; padding: 48px 40px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 0 40px rgba(0,0,0,0.3); }
+.login-emblem { font-size: 48px; margin-bottom: 12px; }
+.login-title { font-family: 'Black Ops One', monospace; font-size: 24px; color: var(--accent-fire); letter-spacing: 4px; margin-bottom: 4px; }
+.login-sub { color: var(--text-dim); font-size: 13px; margin-bottom: 24px; }
+.login-input { width: 100%; background: #0a0505; border: 1px solid var(--border-rust); color: var(--text-primary); font-family: 'Black Ops One', monospace; font-size: 20px; padding: 14px; border-radius: 6px; text-align: center; letter-spacing: 4px; outline: none; margin-bottom: 16px; }
+.login-input:focus { border-color: var(--accent-fire); }
+.login-btn { width: 100%; background: linear-gradient(135deg, #8b0000, #cc2222); border: none; color: white; font-family: 'Black Ops One', monospace; font-size: 16px; padding: 14px; border-radius: 6px; cursor: pointer; letter-spacing: 4px; transition: all 0.2s; }
+.login-btn:hover { box-shadow: 0 0 25px rgba(204,34,34,0.3); }
+.login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.login-error { color: var(--danger); font-size: 13px; margin-top: 12px; }
 
-/* LOGIN */
-.login-page { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, #1a0a0a 0%, #000 70%); position: relative; }
-.login-panel { background: linear-gradient(135deg, #1a0f0f 0%, #0a0505 100%); border: 2px solid var(--border-rust); border-radius: 12px; padding: 48px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 0 60px rgba(139,0,0,0.3); }
-.login-emblem { font-size: 48px; margin-bottom: 16px; }
-.login-title { font-family: 'Black Ops One', monospace; font-size: 24px; color: var(--accent-fire); letter-spacing: 4px; margin-bottom: 8px; }
-.login-sub { color: var(--text-dim); font-size: 13px; margin-bottom: 32px; letter-spacing: 2px; }
-.login-input { width: 100%; background: #0a0505; border: 1px solid var(--border-rust); color: var(--text-primary); font-family: 'Special Elite', monospace; font-size: 18px; padding: 14px 20px; border-radius: 4px; text-align: center; letter-spacing: 4px; margin-bottom: 16px; outline: none; }
-.login-input:focus { border-color: var(--neon-green); box-shadow: 0 0 15px rgba(0,255,136,0.2); }
-.login-btn { width: 100%; background: linear-gradient(135deg, var(--accent-blood), var(--accent-fire)); color: white; border: none; padding: 14px; font-family: 'Black Ops One', monospace; font-size: 16px; letter-spacing: 3px; cursor: pointer; border-radius: 4px; }
-.login-btn:hover { box-shadow: 0 0 30px rgba(255,69,0,0.4); }
-.login-error { color: var(--accent-fire); margin-top: 16px; font-size: 13px; }
+/* TOAST */
+.toast-error { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); background: var(--danger); color: white; padding: 10px 24px; border-radius: 4px; font-family: 'Black Ops One', monospace; font-size: 11px; z-index: 100; animation: toastIn 0.3s ease; }
 
-/* EVENT PAGE */
-.event-page { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; background: radial-gradient(ellipse at 50% 30%, #1a0a0a 0%, #000 100%); }
-.event-page::before { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px); pointer-events: none; z-index: 1; }
-.event-page.loading { align-items: center; justify-content: center; }
-
-.loading-screen { text-align: center; }
-.loading-emblem { font-size: 64px; margin-bottom: 24px; animation: pulseGlow 2s ease infinite; }
-@keyframes pulseGlow { 0%,100% { text-shadow: 0 0 20px rgba(255,69,0,0.3); } 50% { text-shadow: 0 0 60px rgba(255,69,0,0.6); } }
-.loading-text { font-family: 'Black Ops One', monospace; font-size: 14px; color: var(--text-dim); letter-spacing: 3px; margin-bottom: 24px; }
-.loading-bar { width: 280px; height: 4px; background: var(--bg-card); border-radius: 2px; overflow: hidden; margin: 0 auto; }
-.loading-fill { height: 100%; width: 30%; background: var(--accent-fire); animation: loadingSlide 2s ease infinite; }
-@keyframes loadingSlide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
-
-.event-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%); z-index: 10; position: relative; }
-.event-badge { background: var(--accent-blood); color: white; font-family: 'Black Ops One', monospace; font-size: 11px; padding: 4px 12px; letter-spacing: 2px; border-radius: 2px; animation: pulseBadge 2s ease infinite; }
-@keyframes pulseBadge { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
-.event-title { font-family: 'Black Ops One', monospace; font-size: 22px; color: var(--accent-gold); letter-spacing: 6px; text-shadow: 0 0 30px rgba(255,215,0,0.2); }
-.connection-status { display: flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 1px; color: var(--text-dim); }
-.dot { width: 8px; height: 8px; border-radius: 50%; }
-.dot.connected { background: var(--success); box-shadow: 0 0 8px rgba(68,187,68,0.5); }
-.dot.disconnected { background: var(--accent-fire); animation: pulseBadge 0.5s ease infinite; }
-
-.event-body { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; z-index: 5; overflow: hidden; }
-.countdown-section { display: flex; flex-direction: column; align-items: center; gap: 32px; }
-.countdown-subtitle { text-align: center; display: flex; flex-direction: column; gap: 4px; color: var(--text-dim); font-family: 'Special Elite', monospace; font-size: 13px; letter-spacing: 3px; }
-
-.standby-section { text-align: center; }
-.standby-message h2 { font-family: 'Black Ops One', monospace; font-size: 28px; color: var(--accent-gold); letter-spacing: 6px; margin-bottom: 8px; }
-.standby-message p { color: var(--text-dim); font-size: 14px; letter-spacing: 2px; }
-.standby-icon { font-size: 48px; margin-bottom: 16px; animation: pulseGlow 2s ease infinite; }
-.active-module-indicator { margin-top: 24px; padding: 12px 24px; border: 1px solid var(--border-rust); border-radius: 4px; font-size: 14px; color: var(--text-dim); }
-
-.event-footer { position: relative; z-index: 10; text-align: center; padding: 8px; }
-.footer-scanlines { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent, transparent 4px, rgba(0,0,0,0.08) 4px, rgba(0,0,0,0.08) 5px); pointer-events: none; }
-.footer-text { font-family: 'Black Ops One', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 4px; opacity: 0.5; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes pulseGlow { 0%,100% { filter: none; } 50% { filter: drop-shadow(0 0 10px rgba(255,69,0,0.3)); } }

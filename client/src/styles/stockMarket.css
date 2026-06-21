@@ -1,0 +1,439 @@
+/* ═══════════════════════════════════════════════════
+   STOCK MARKET — Dark Financial District Theme
+   ═══════════════════════════════════════════════════ */
+
+:root {
+  --mkt-bg: #0a0d12;
+  --mkt-card-bg: #0f151d;
+  --mkt-border: rgba(0, 200, 255, 0.12);
+  --mkt-green: #22c55e;
+  --mkt-red: #ef4444;
+  --mkt-gold: #ffaa00;
+  --mkt-cyan: #00c8ff;
+  --mkt-text: #c8d6e5;
+  --mkt-dim: #667788;
+}
+
+.stock-market-page {
+  background: linear-gradient(180deg, #0a0d12 0%, #0f151d 40%, #0a0d12 100%);
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Background Effects */
+.market-bg-grid {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 200, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 200, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.market-particles {
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(0, 200, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 30% 60%, rgba(34, 197, 94, 0.2), transparent),
+    radial-gradient(1px 1px at 50% 30%, rgba(255, 170, 0, 0.2), transparent),
+    radial-gradient(1px 1px at 70% 80%, rgba(0, 200, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 90% 10%, rgba(34, 197, 94, 0.3), transparent);
+  background-size: 200% 200%;
+  animation: particleDrift 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes particleDrift {
+  0%, 100% { background-position: 0% 0%; }
+  50% { background-position: 50% 50%; }
+}
+
+/* Header */
+.market-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 20px 20px 10px;
+}
+
+.market-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #003355, #005588);
+  color: white;
+  padding: 4px 16px;
+  border-radius: 2px;
+  font-family: 'Black Ops One', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  margin-bottom: 8px;
+  border: 1px solid var(--mkt-cyan);
+  box-shadow: 0 0 20px rgba(0, 200, 255, 0.15);
+}
+
+.market-title {
+  font-family: 'Black Ops One', monospace;
+  font-size: 28px;
+  color: var(--mkt-gold);
+  letter-spacing: 6px;
+  text-shadow: 0 0 30px rgba(255, 170, 0, 0.2);
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--mkt-dim);
+  margin-top: 6px;
+}
+
+.connection-status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.connected { background: var(--mkt-green); box-shadow: 0 0 6px rgba(34, 197, 94, 0.5); }
+.dot.disconnected { background: var(--mkt-red); }
+
+/* Ticker Tape */
+.market-ticker {
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(90deg, #0a0d12, #111922, #0a0d12);
+  border-top: 1px solid rgba(0, 200, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 200, 255, 0.1);
+  padding: 6px 0;
+  overflow: hidden;
+}
+
+.market-ticker.bottom {
+  position: fixed;
+  bottom: 50px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+.ticker-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.ticker-label {
+  font-family: 'Black Ops One', monospace;
+  font-size: 11px;
+  color: var(--mkt-cyan);
+  letter-spacing: 2px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  animation: tickerPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes tickerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.ticker-scroll {
+  display: flex;
+  gap: 30px;
+  animation: tickerScroll 25s linear infinite;
+}
+
+.market-ticker.bottom .ticker-scroll {
+  animation-direction: reverse;
+}
+
+@keyframes tickerScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--mkt-text);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ticker-item strong {
+  font-weight: 700;
+  color: white;
+}
+
+.ticker-pct {
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.ticker-pct.up { color: var(--mkt-green); }
+.ticker-pct.down { color: var(--mkt-red); }
+
+/* Market Body */
+.market-body {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
+
+.market-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.market-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--mkt-dim);
+}
+
+.market-empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+/* Stock Cards */
+.stock-card {
+  background: linear-gradient(135deg, #0f151d, #151d27);
+  border: 1px solid rgba(0, 200, 255, 0.12);
+  border-radius: 10px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.stock-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--mkt-cyan), transparent);
+  opacity: 0.3;
+}
+
+.stock-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 200, 255, 0.08);
+  border-color: rgba(0, 200, 255, 0.3);
+}
+
+.stock-card.up {
+  border-left: 3px solid var(--mkt-green);
+}
+
+.stock-card.down {
+  border-left: 3px solid var(--mkt-red);
+}
+
+.stock-card.frozen {
+  opacity: 0.6;
+  filter: grayscale(0.5);
+}
+
+.stock-card.flash {
+  animation: stockFlash 0.3s ease;
+}
+
+@keyframes stockFlash {
+  0%, 100% { background: linear-gradient(135deg, #0f151d, #151d27); }
+  50% { background: linear-gradient(135deg, rgba(0, 200, 255, 0.1), rgba(0, 200, 255, 0.05)); }
+}
+
+.stock-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.stock-logo {
+  font-size: 1.4rem;
+}
+
+.stock-name {
+  font-family: 'Black Ops One', monospace;
+  font-size: 14px;
+  color: var(--mkt-text);
+  letter-spacing: 1px;
+  flex: 1;
+}
+
+.stock-frozen-badge {
+  font-size: 9px;
+  font-family: 'Courier New', monospace;
+  color: var(--mkt-cyan);
+  padding: 2px 6px;
+  border: 1px solid var(--mkt-cyan);
+  border-radius: 2px;
+}
+
+.stock-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.stock-price {
+  font-family: 'Courier New', monospace;
+  font-size: 26px;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 1px;
+}
+
+.stock-change {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.stock-change.up { color: var(--mkt-green); }
+.stock-change.down { color: var(--mkt-red); }
+
+.stock-sparkline {
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.sparkline-svg {
+  display: block;
+  width: 100%;
+  height: 24px;
+}
+
+.sparkline-placeholder {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--mkt-dim);
+  text-align: center;
+}
+
+.stock-members {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stock-members-label {
+  font-size: 11px;
+  color: var(--mkt-dim);
+}
+
+.stock-frozen-text {
+  font-size: 9px;
+  color: var(--mkt-cyan);
+  font-family: 'Courier New', monospace;
+}
+
+/* Loading Screen */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+}
+
+.loading-emblem {
+  font-size: 3rem;
+  animation: loadingBounce 1s ease-in-out infinite;
+}
+
+@keyframes loadingBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.loading-text {
+  font-family: 'Black Ops One', monospace;
+  font-size: 14px;
+  color: var(--mkt-cyan);
+  letter-spacing: 4px;
+}
+
+.loading-bar {
+  width: 200px;
+  height: 2px;
+  background: rgba(0, 200, 255, 0.1);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.loading-fill {
+  height: 100%;
+  width: 30%;
+  background: var(--mkt-cyan);
+  border-radius: 1px;
+  animation: loadingFill 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingFill {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* Footer */
+.market-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 99;
+  background: #0a0d12;
+  border-top: 1px solid rgba(0, 200, 255, 0.1);
+  padding: 8px;
+  text-align: center;
+}
+
+.footer-scanlines {
+  display: none;
+}
+
+.footer-text {
+  font-family: 'Black Ops One', monospace;
+  font-size: 9px;
+  color: var(--mkt-dim);
+  letter-spacing: 4px;
+}
+
+/* Event Header (standby from old code) */
+.event-header {
+  text-align: center;
+  padding: 8px;
+}
+
+.event-body {
+  flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .market-title { font-size: 20px; letter-spacing: 3px; }
+  .market-cards-grid { grid-template-columns: 1fr; }
+  .stock-price { font-size: 22px; }
+  .ticker-scroll { animation-duration: 40s; }
+}

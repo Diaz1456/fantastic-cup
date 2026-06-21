@@ -9,12 +9,80 @@ const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, connectDB } = require('./db');
-const { EventBridge } = require('./eventBridge');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
-const eventBridge = new EventBridge();
+
+// ─── STOCK MARKET (IN-MEMORY) ───
+const stockMarket = {
+  teams: [],
+  prices: {},
+  history: {},
+  playerPerformance: {},
+  sentiment: {},
+  frozen: {},
+  config: { multiplier: 5, baseValue: 100 },
+  lastUpdate: null,
+};
+
+function recalcTeamPrice(teamId) {
+  if (stockMarket.frozen[teamId]) return stockMarket.prices[teamId] || stockMarket.config.baseValue;
+  const team = stockMarket.teams.find(t => t.id === teamId);
+  if (!team) return stockMarket.config.baseValue;
+  const perf = stockMarket.playerPerformance[teamId] || {};
+  const totalPerf = Object.values(perf).reduce((a, b) => a + Number(b), 0);
+  const sent = Number(stockMarket.sentiment[teamId]) || 0;
+  const price = stockMarket.config.baseValue + totalPerf * stockMarket.config.multiplier + sent;
+  return Math.round(Math.max(price, 1));
+}
+
+function updateStockPrice(teamId) {
+  const oldPrice = stockMarket.prices[teamId] || stockMarket.config.baseValue;
+  const newPrice = recalcTeamPrice(teamId);
+  stockMarket.prices[teamId] = newPrice;
+  if (!stockMarket.history[teamId]) stockMarket.history[teamId] = [];
+  stockMarket.history[teamId].push({ price: newPrice, timestamp: Date.now() });
+  if (stockMarket.history[teamId].length > 20) stockMarket.history[teamId].shift();
+  stockMarket.lastUpdate = Date.now();
+  const change = newPrice - oldPrice;
+  const pctChange = oldPrice > 0 ? ((change / oldPrice) * 100).toFixed(2) : '0';
+  io.emit('stockPriceChange', { teamId, price: newPrice, oldPrice, change, pctChange: Number(pctChange), history: stockMarket.history[teamId] });
+  return { price: newPrice, change, pctChange: Number(pctChange) };
+}
+
+function broadcastStockMarket() {
+  const state = {
+    teams: stockMarket.teams,
+    prices: { ...stockMarket.prices },
+    history: { ...stockMarket.history },
+    sentiment: { ...stockMarket.sentiment },
+    frozen: { ...stockMarket.frozen },
+    config: { ...stockMarket.config },
+    lastUpdate: stockMarket.lastUpdate,
+    playerPerformance: { ...stockMarket.playerPerformance },
+  };
+  io.emit('stockMarketUpdate', state);
+}
+
+function syncTeamsToMarket() {
+  stockMarket.teams = JSON.parse(JSON.stringify(teamsData.teams));
+  for (const team of stockMarket.teams) {
+    if (stockMarket.prices[team.id] === undefined) {
+      stockMarket.prices[team.id] = stockMarket.config.baseValue;
+    }
+    if (!stockMarket.history[team.id]) stockMarket.history[team.id] = [];
+    if (!stockMarket.playerPerformance[team.id]) stockMarket.playerPerformance[team.id] = {};
+  }
+  broadcastStockMarket();
+}
+
+// Sync teams on any teams update
+const originalBroadcastTeams = broadcastTeams;
+broadcastTeams = function() {
+  originalBroadcastTeams();
+  syncTeamsToMarket();
+};
 
 let mongoReady = false;
 
@@ -25,27 +93,40 @@ function isMongoConnected() {
   } catch { return false; }
 }
 
-// Broadcast state through Socket.IO when bridge changes
-eventBridge.on((state) => {
-  const { _timerRemaining, _timerDisplay, ...clean } = state;
-  io.emit('stateSync', clean);
-  // Emit countdown events for legacy app
-  const remaining = _timerRemaining !== undefined ? _timerRemaining : 0;
-  if (state.timer.deadline && remaining > 0) {
-    io.emit('countdownStart', remaining);
-    io.emit('countdownTick', remaining);
-  } else if (!state.timer.deadline) {
-    io.emit('countdownCancel');
-  }
-});
+// ─── COUNTDOWN TIMER (Admin Dashboard) ───
+let countdownTimer = null;
+let countdownDeadline = null;
+let countdownPaused = false;
+let countdownPausedRemaining = null;
+let countdownMystery = false;
 
-// Emit timer ticks separately
-eventBridge.on((state) => {
-  if (state._timerRemaining !== undefined) {
-    io.emit('timerTick', state._timerRemaining, state._timerDisplay || '');
-    io.emit('countdownTick', state._timerRemaining);
-  }
-});
+function startCountdownInterval() {
+  stopCountdownInterval();
+  countdownTimer = setInterval(() => {
+    const remaining = getCountdownRemaining();
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    const pad = n => String(n).padStart(2, '0');
+    const display = countdownMystery && remaining > 10000 ? '? ? : ? ? : ? ?' : `${pad(h)}:${pad(m)}:${pad(s)}`;
+    io.emit('countdownTick', remaining);
+    io.emit('timerTick', remaining, display);
+    if (remaining <= 0) {
+      io.emit('countdownStop');
+      stopCountdownInterval();
+    }
+  }, 1000);
+}
+
+function stopCountdownInterval() {
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+}
+
+function getCountdownRemaining() {
+  if (countdownPaused) return countdownPausedRemaining || 0;
+  if (!countdownDeadline) return 0;
+  return Math.max(0, countdownDeadline - Date.now());
+}
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/fantastic-cup';
@@ -1134,94 +1215,130 @@ io.on('connection', (socket) => {
     socket.leave(`event:${eventId}`);
   });
 
-  // ─── EVENT BRIDGE SOCKET HANDLERS ───
+  // ─── STOCK MARKET SOCKET HANDLERS ───
 
-  socket.emit('stateSync', eventBridge.getState());
-
-  socket.on('join', () => {
-    socket.emit('stateSync', eventBridge.getState());
+  socket.on('stockMarket:join', () => {
+    const state = {
+      teams: stockMarket.teams,
+      prices: { ...stockMarket.prices },
+      history: { ...stockMarket.history },
+      sentiment: { ...stockMarket.sentiment },
+      frozen: { ...stockMarket.frozen },
+      config: { ...stockMarket.config },
+      lastUpdate: stockMarket.lastUpdate,
+      playerPerformance: { ...stockMarket.playerPerformance },
+    };
+    socket.emit('stockMarketUpdate', state);
   });
 
-  socket.on('adminLogin', (password) => {
-    if (password !== ADMIN_PASSWORD) {
-      return socket.emit('error', 'Invalid admin password');
+  socket.on('stockMarket:adminLogin', (password) => {
+    if (password !== ADMIN_PASSWORD) return socket.emit('error', 'Invalid admin password');
+    socket.emit('stockMarket:adminGranted');
+  });
+
+  socket.on('stockMarket:updatePerformance', (data) => {
+    if (!data.teamId || !data.username || data.score === undefined) return;
+    if (!stockMarket.playerPerformance[data.teamId]) stockMarket.playerPerformance[data.teamId] = {};
+    stockMarket.playerPerformance[data.teamId][data.username] = Math.max(0, Number(data.score) || 0);
+    const result = updateStockPrice(data.teamId);
+    broadcastStockMarket();
+    io.emit('stockPerformanceUpdated', { teamId: data.teamId, username: data.username, score: Number(data.score) || 0 });
+  });
+
+  socket.on('stockMarket:setSentiment', (data) => {
+    if (!data.teamId) return;
+    stockMarket.sentiment[data.teamId] = Number(data.sentiment) || 0;
+    updateStockPrice(data.teamId);
+    broadcastStockMarket();
+  });
+
+  socket.on('stockMarket:setFrozen', (data) => {
+    if (!data.teamId) return;
+    stockMarket.frozen[data.teamId] = !!data.frozen;
+    if (!data.frozen) updateStockPrice(data.teamId);
+    broadcastStockMarket();
+  });
+
+  socket.on('stockMarket:resetPrices', () => {
+    for (const team of stockMarket.teams) {
+      stockMarket.prices[team.id] = stockMarket.config.baseValue;
+      stockMarket.history[team.id] = [{ price: stockMarket.config.baseValue, timestamp: Date.now() }];
+      stockMarket.playerPerformance[team.id] = {};
+      stockMarket.sentiment[team.id] = 0;
+      stockMarket.frozen[team.id] = false;
     }
-    socket.emit('stateSync', { ...eventBridge.getState(), adminToken: 'granted' });
+    broadcastStockMarket();
   });
 
+  socket.on('stockMarket:spike', (data) => {
+    if (!data.teamId) return;
+    const team = stockMarket.teams.find(t => t.id === data.teamId);
+    if (!team) return;
+    const amount = Number(data.amount) || 0;
+    const newPrice = Math.max(1, (stockMarket.prices[team.id] || stockMarket.config.baseValue) + amount);
+    stockMarket.prices[team.id] = newPrice;
+    if (!stockMarket.history[team.id]) stockMarket.history[team.id] = [];
+    stockMarket.history[team.id].push({ price: newPrice, timestamp: Date.now() });
+    if (stockMarket.history[team.id].length > 20) stockMarket.history[team.id].shift();
+    broadcastStockMarket();
+    io.emit('stockPriceChange', {
+      teamId: data.teamId, price: newPrice, oldPrice: newPrice - amount,
+      change: amount, pctChange: stockMarket.config.baseValue > 0 ? Number(((amount / (newPrice - amount)) * 100).toFixed(2)) : 0,
+      history: stockMarket.history[data.teamId],
+      spike: true,
+    });
+  });
+
+  socket.on('stockMarket:updateConfig', (data) => {
+    if (data.multiplier !== undefined) stockMarket.config.multiplier = Math.max(1, Number(data.multiplier));
+    if (data.baseValue !== undefined) stockMarket.config.baseValue = Math.max(1, Number(data.baseValue));
+    for (const team of stockMarket.teams) {
+      updateStockPrice(team.id);
+    }
+    broadcastStockMarket();
+  });
+
+  // ─── COUNTDOWN TIMER (Admin Dashboard) ───
   socket.on('adminSetTimer', (data) => {
-    eventBridge.setTimer(data.deadline, data.mysteryMode);
+    countdownDeadline = data.deadline;
+    countdownMystery = !!data.mysteryMode;
+    countdownPaused = false;
+    countdownPausedRemaining = null;
+    const remaining = getCountdownRemaining();
+    io.emit('countdownStart', remaining);
+    startCountdownInterval();
   });
 
-  socket.on('adminPauseTimer', () => eventBridge.pauseTimer());
-  socket.on('adminResumeTimer', () => eventBridge.resumeTimer());
-  socket.on('adminResetTimer', () => eventBridge.resetTimer());
-  socket.on('adminExtendTimer', (s) => eventBridge.extendTimer(s));
-
-  // Force Squid Game as active module when timer transitions to standby
-  eventBridge.setActiveModule('squid-game');
-
-  // Teams
-  socket.on('adminUpdateTeams', (teams) => {
-    eventBridge.updateTeams(teams);
-    io.emit('teamsUpdate', eventBridge.getState().teams);
-  });
-
-  socket.on('adminAwardCoin', (data) => {
-    const result = eventBridge.awardCoin(data);
-    io.emit('coinAwarded', result.tx, result.newBalance);
-  });
-
-  // ─── SQUID GAME ─────────────────────────────────────────────
-
-  socket.on('adminStartSquidGame', () => {
-    eventBridge.startSquidGame();
-    io.emit('squidGameStarted');
-  });
-
-  socket.on('adminResetSquidGame', () => {
-    eventBridge.resetSquidGame();
-    io.emit('squidGameReset');
-  });
-
-  socket.on('adminAddSquidPlayer', (data) => {
-    const player = eventBridge.addSquidPlayer(data.username, data.avatarUrl || '');
-    if (player) {
-      io.emit('squidPlayerAdded', player);
+  socket.on('adminPauseTimer', () => {
+    if (!countdownPaused && countdownDeadline) {
+      countdownPaused = true;
+      countdownPausedRemaining = Math.max(0, countdownDeadline - Date.now());
+      stopCountdownInterval();
     }
   });
 
-  socket.on('adminRemoveSquidPlayer', (playerId) => {
-    eventBridge.removeSquidPlayer(playerId);
-    io.emit('squidPlayerRemoved', playerId);
+  socket.on('adminResumeTimer', () => {
+    if (countdownPaused && countdownPausedRemaining !== null) {
+      countdownDeadline = Date.now() + countdownPausedRemaining;
+      countdownPaused = false;
+      countdownPausedRemaining = null;
+      startCountdownInterval();
+    }
   });
 
-  socket.on('adminEliminateSquidPlayer', (data) => {
-    const g = eventBridge.state.squidGame;
-    if (g.phase !== 'active') return socket.emit('error', 'Game not started');
-
-    // Mark as targeted — triggers guard appearance on clients
-    eventBridge.setSquidTarget(data.playerId);
-    io.emit('squidPlayerTargeted', data.playerId);
-
-    // After 2.5s cinematic delay, perform elimination
-    setTimeout(() => {
-      const eliminated = eventBridge.eliminateSquidPlayer(data.playerId, data.adminName || 'Guard');
-      if (eliminated) {
-        io.emit('squidPlayerEliminated', { player: eliminated, rank: data.rank || null });
-
-        const gs = eventBridge.state.squidGame;
-        if (gs.phase === 'victory') {
-          const winner = eventBridge.getSquidWinner();
-          const alive = eventBridge.getAliveSquidPlayers();
-          io.emit('squidGameVictory', { winner, remaining: alive });
-        }
-      }
-    }, 2500);
+  socket.on('adminResetTimer', () => {
+    countdownDeadline = null;
+    countdownPaused = false;
+    countdownPausedRemaining = null;
+    stopCountdownInterval();
+    io.emit('countdownCancel');
   });
 
-  // ─── END SQUID GAME ──────────────────────────────────────────
-  // ─── END EVENT BRIDGE ───
+  socket.on('adminExtendTimer', (sec) => {
+    if (countdownDeadline) {
+      countdownDeadline += (Number(sec) || 30) * 1000;
+    }
+  });
 });
 
 // ─── PRESENCE / HEARTBEAT ─────────────────────────────────────
@@ -1318,27 +1435,28 @@ setInterval(broadcastPresence, 15000);
 
 // ═══════════════════════════════════════════════
 
-// ─── EVENT BRIDGE REST ROUTES ───
+// ─── STOCK MARKET REST ROUTES ───
 
-// Password gate for the war section
-app.post('/api/verify-war-password', (req, res) => {
-  const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
-    // Return a simple token the client can store
-    const token = Buffer.from(JSON.stringify({ access: 'war', ts: Date.now() })).toString('base64');
-    return res.json({ granted: true, token });
-  }
-  res.json({ granted: false, message: 'Invalid access code.' });
+app.get('/api/stock-market/state', (req, res) => {
+  res.json({
+    teams: stockMarket.teams,
+    prices: stockMarket.prices,
+    history: stockMarket.history,
+    sentiment: stockMarket.sentiment,
+    frozen: stockMarket.frozen,
+    config: stockMarket.config,
+    lastUpdate: stockMarket.lastUpdate,
+    playerPerformance: stockMarket.playerPerformance,
+  });
 });
-app.get('/api/event-bridge/state', (req, res) => res.json(eventBridge.getState()));
 
-app.post('/api/event-bridge/admin/login', (req, res) => {
+app.post('/api/stock-market/admin/login', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
   res.json({ token: 'granted' });
 });
 
-// Serve the new React Event Section
+// Serve the React Event Section (stock market)
 const eventDist = path.join(__dirname, 'client', 'dist');
 app.use('/event', express.static(eventDist));
 app.get('/event/*', (req, res) => {

@@ -5,6 +5,9 @@ export interface Team {
   color: string;
   points: number;
   rank: number;
+  members?: string[];
+  silverCoins?: number;
+  notes?: string;
 }
 
 export interface CoinTransaction {
@@ -17,73 +20,57 @@ export interface CoinTransaction {
   timestamp: number;
 }
 
-export interface SquidPlayer {
+export interface StockTeam {
   id: string;
-  username: string;
-  avatarUrl: string;
-  status: 'alive' | 'eliminated' | 'winner';
-  eliminatedAt: number | null;
-  eliminatedBy: string | null;
+  name: string;
+  logo: string;
+  color: string;
+  members: string[];
+  silverCoins: number;
+  notes: string;
 }
 
-export type GamePhase = 'countdown' | 'standby' | 'active';
-export type ActiveModule = 'squid-game' | null;
-
-export interface TimerState {
-  deadline: number | null;
-  paused: boolean;
-  mysteryMode: boolean;
-  pausedRemaining: number | null;
+export interface PricePoint {
+  price: number;
+  timestamp: number;
 }
 
-export interface SquidGameState {
-  phase: 'idle' | 'active' | 'victory';
-  players: SquidPlayer[];
-  gameStartedAt: number | null;
-  lastEliminationAt: number | null;
-  currentlyTargetedId: string | null;
+export interface StockMarketState {
+  teams: StockTeam[];
+  prices: Record<string, number>;
+  history: Record<string, PricePoint[]>;
+  sentiment: Record<string, number>;
+  frozen: Record<string, boolean>;
+  config: { multiplier: number; baseValue: number };
+  lastUpdate: number | null;
+  playerPerformance: Record<string, Record<string, number>>;
 }
 
-export interface EventState {
-  phase: GamePhase;
-  activeModule: ActiveModule;
-  timer: TimerState;
-  teams: Team[];
-  coins: CoinTransaction[];
-  playerBalances: Record<string, number>;
-  squidGame: SquidGameState;
-  adminToken?: string;
+export interface PriceChange {
+  teamId: string;
+  price: number;
+  oldPrice: number;
+  change: number;
+  pctChange: number;
+  history: PricePoint[];
+  spike?: boolean;
 }
 
 export interface ServerToClientEvents {
-  stateSync: (state: EventState) => void;
-  timerTick: (remaining: number, display: string) => void;
-  phaseChange: (phase: GamePhase) => void;
-  teamsUpdate: (teams: Team[]) => void;
-  coinAwarded: (transaction: CoinTransaction, newBalance: number) => void;
-  squidGameStarted: () => void;
-  squidGameReset: () => void;
-  squidPlayerAdded: (player: SquidPlayer) => void;
-  squidPlayerRemoved: (playerId: string) => void;
-  squidPlayerTargeted: (playerId: string) => void;
-  squidPlayerEliminated: (data: { player: SquidPlayer; rank: number | null }) => void;
-  squidGameVictory: (data: { winner: SquidPlayer | null; remaining: SquidPlayer[] }) => void;
+  stockMarketUpdate: (state: StockMarketState) => void;
+  stockPriceChange: (change: PriceChange) => void;
+  stockPerformanceUpdated: (data: { teamId: string; username: string; score: number }) => void;
+  'stockMarket:adminGranted': () => void;
   error: (message: string) => void;
 }
 
 export interface ClientToServerEvents {
-  join: () => void;
-  adminLogin: (password: string) => void;
-  adminSetTimer: (data: { deadline: number; mysteryMode: boolean }) => void;
-  adminPauseTimer: () => void;
-  adminResumeTimer: () => void;
-  adminResetTimer: () => void;
-  adminExtendTimer: (seconds: number) => void;
-  adminUpdateTeams: (teams: Team[]) => void;
-  adminAwardCoin: (data: { playerId: string; playerName: string; amount: number; reason: string; emoji: string }) => void;
-  adminStartSquidGame: () => void;
-  adminResetSquidGame: () => void;
-  adminAddSquidPlayer: (data: { username: string; avatarUrl?: string }) => void;
-  adminRemoveSquidPlayer: (playerId: string) => void;
-  adminEliminateSquidPlayer: (data: { playerId: string; adminName?: string; rank?: number }) => void;
+  'stockMarket:join': () => void;
+  'stockMarket:adminLogin': (password: string) => void;
+  'stockMarket:updatePerformance': (data: { teamId: string; username: string; score: number }) => void;
+  'stockMarket:setSentiment': (data: { teamId: string; sentiment: number }) => void;
+  'stockMarket:setFrozen': (data: { teamId: string; frozen: boolean }) => void;
+  'stockMarket:resetPrices': () => void;
+  'stockMarket:spike': (data: { teamId: string; amount: number }) => void;
+  'stockMarket:updateConfig': (data: { multiplier?: number; baseValue?: number }) => void;
 }
