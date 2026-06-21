@@ -706,7 +706,7 @@
   <div class="header">
     <h1 class="title">Team Stock Market Ticker</h1>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-      <span id="statusBadge" class="status-badge">⚪ Waiting...</span>
+      <span id="statusBadge" class="status-badge">WAITING...</span>
       <span id="connStatus" class="connection-status offline">OFFLINE</span>
     </div>
   </div>
@@ -733,7 +733,7 @@
   <div class="log-area" id="logArea"></div>
 
   <div class="bottom-bar">
-    <a href="/">🏠 Main Menu</a>
+    <a href="/">MAIN MENU</a>
   </div>
 
 </div>
@@ -843,7 +843,7 @@ function renderPlain() {
 function updateBadge(teamName, delta, player, cat) {
   if (!teamName) {
     statusBadge.className = 'status-badge';
-    statusBadge.textContent = '⚪ Waiting for events...';
+    statusBadge.textContent = 'Waiting for events...';
     return;
   }
   const label = cat || 'achievement';

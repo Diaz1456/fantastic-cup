@@ -64,11 +64,11 @@
         <div class="event-card-header">
           <div>
             <strong>${ev.name}</strong>
-            <span class="event-status ${ev.active ? 'status-live' : 'status-draft'}">${ev.active ? '🔴 LIVE' : 'Draft'}</span>
+            <span class="event-status ${ev.active ? 'status-live' : 'status-draft'}">${ev.active ? 'LIVE' : 'Draft'}</span>
           </div>
           <div class="event-card-actions">
-            <button class="btn btn-sm btn-edit-event" data-id="${ev._id}">✏️ Edit</button>
-            <button class="btn btn-sm btn-danger btn-del-event" data-id="${ev._id}">🗑️</button>
+            <button class="btn btn-sm btn-edit-event" data-id="${ev._id}">Edit</button>
+            <button class="btn btn-sm btn-danger btn-del-event" data-id="${ev._id}">Delete</button>
           </div>
         </div>
         <div class="event-card-meta">${ev.description || ''} · ${ev.categories?.length || 0} categories · ${(ev.categories || []).reduce((s, c) => s + (c.teams?.length || 0), 0)} teams</div>
@@ -149,7 +149,7 @@
         <div class="team-list" id="team-list-${ci}">
           ${(cat.teams || []).map((team, ti) => `
             <div class="team-row">
-              <span class="team-logo-display">${team.logo || '🏆'}</span>
+              <span class="team-logo-display">${team.logo || 'T'}</span>
               <input type="text" class="team-name-input" value="${team.name}" data-ci="${ci}" data-ti="${ti}">
               <input type="number" class="team-score-input" value="${team.score || 0}" data-ci="${ci}" data-ti="${ti}" min="0">
               <button class="btn btn-sm btn-danger del-team-btn" data-ci="${ci}" data-ti="${ti}">✕</button>
@@ -179,7 +179,7 @@
         const logoInput = container.querySelector(`.new-team-logo[data-ci="${ci}"]`);
         const name = nameInput.value.trim();
         if (!name) { window.__toast('Enter team name', 'error'); return; }
-        await API.post(`/api/events/${editingEventId}/categories/${ci}/teams`, { name, logo: logoInput.value || '🏆' });
+        await API.post(`/api/events/${editingEventId}/categories/${ci}/teams`, { name, logo: logoInput.value || 'T' });
         nameInput.value = '';
         logoInput.value = '';
         refreshEditor();
@@ -248,7 +248,7 @@
       return;
     }
     container.innerHTML = '<table class="data-table compact"><thead><tr><th>Player</th><th>Coins</th></tr></thead><tbody>' +
-      res.balances.slice(0, 20).map(b => `<tr><td>${b._id}</td><td><strong>${b.total}</strong> 🪙</td></tr>`).join('') +
+      res.balances.slice(0, 20).map(b => `<tr><td>${b._id}</td><td><strong>${b.total}</strong> COINS</td></tr>`).join('') +
       '</tbody></table>';
   }
 
@@ -342,7 +342,7 @@
     const list = document.getElementById('all-teams-list');
     list.innerHTML = allTeams.map(t => `
       <div class="team-mini-row">
-        <span>${t.logo || '🏆'} <strong>${t.name}</strong></span>
+        <span>${t.logo || 'T'} <strong>${t.name}</strong></span>
         <span class="team-mini-cat">${t.category}</span>
         <span class="team-mini-score">${t.score} pts</span>
       </div>
@@ -375,7 +375,7 @@
     const el = document.createElement('div');
     el.className = 'coin-toast glass';
     el.innerHTML = `
-      <span class="coin-toast-stamp">${data.stamp || '⭐'}</span>
+      <span class="coin-toast-stamp">${data.stamp || '*'}</span>
       <span class="coin-toast-amount">+${data.amount}</span>
       <span class="coin-toast-label">Coins</span>
       ${data.note ? `<span class="coin-toast-note">${data.note}</span>` : ''}

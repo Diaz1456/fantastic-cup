@@ -16,7 +16,7 @@
   <div id="app">
 
     <!-- ═══ LANDING ═══ -->
-    <div id="view-landing" class="view active">
+      <div id="view-landing" class="view active">
       <div class="landing-overlay"></div>
       <div class="landing-skip-btn" id="skip-intro">Skip →</div>
       <div class="landing-content">
@@ -98,22 +98,22 @@
       <div class="login-wrapper">
         <div class="login-card glass">
           <div class="login-header">
-            <div class="login-icon">🏆</div>
+            <div class="login-icon">CROWN</div>
             <h2>Welcome Back</h2>
             <p class="login-subtitle">Sign in to your account</p>
           </div>
           <form id="login-form" class="login-form" autocomplete="off">
             <div class="form-group">
               <label for="login-username">Username</label>
-              <div class="input-wrapper"><span class="input-icon">👤</span><input type="text" id="login-username" placeholder="Enter username" required></div>
+              <div class="input-wrapper"><span class="input-icon">*</span><input type="text" id="login-username" placeholder="Enter username" required></div>
             </div>
             <div class="form-group">
               <label for="login-password">Password</label>
-              <div class="input-wrapper"><span class="input-icon">🔒</span><input type="password" id="login-password" placeholder="Enter password" required></div>
+              <div class="input-wrapper"><span class="input-icon">*</span><input type="password" id="login-password" placeholder="Enter password" required></div>
             </div>
             <div class="form-group">
               <label for="login-role">Role</label>
-              <div class="input-wrapper"><span class="input-icon">🎯</span>
+              <div class="input-wrapper"><span class="input-icon">*</span>
                 <select id="login-role" required>
                   <option value="player">Player</option>
                   <option value="admin">Admin</option>
@@ -145,9 +145,9 @@
     <div id="view-admin" class="view">
       <nav class="navbar">
         <div class="nav-brand">
-          <span class="nav-logo">🏆</span>
+          <span class="nav-logo">CROWN</span>
           <span class="nav-title">Fantastic Cup</span>
-          <span class="monopoly-logo" style="margin-left:12px;font-size:0.85rem;">🎩 MONOPOLY</span>
+          <span class="monopoly-logo" style="margin-left:12px;font-size:0.85rem;"><span class="token-monopoly">*</span> MONOPOLY</span>
         </div>
         <div class="nav-links" id="admin-nav-links">
           <button class="nav-btn active" data-section="dashboard">Dashboard</button>
@@ -158,7 +158,7 @@
           <button class="nav-btn" data-section="leaderboard">Leaderboard</button>
           <button class="nav-btn" data-section="feedback">Feedback</button>
           <button class="nav-btn" data-section="presence">Presence</button>
-          <button class="nav-btn event-link" id="event-war-btn-admin">⚡ EVENT</button>
+          <button class="nav-btn event-link" id="event-war-btn-admin">EVENT</button>
         </div>
         <div class="nav-actions">
           <button id="theme-toggle" class="icon-btn" title="Toggle Theme">DARK</button>
@@ -168,7 +168,7 @@
 
       <!-- Clock Bank Card -->
       <div class="clock-bank-card">
-        <div class="clock-bank-label">🏦 BANK</div>
+        <div class="clock-bank-label">BANK</div>
         <div class="clock-bank-body">
           <div class="clock-display" id="admin-clock">
             <span class="clock-time" id="admin-clock-time">00:00:00</span>
@@ -188,28 +188,28 @@
           <h2 class="section-title">Dashboard Overview</h2>
           <div class="stats-grid">
             <div class="stat-card glass">
-              <div class="stat-icon">👥</div>
+              <div class="stat-icon">TEAMS</div>
               <div class="stat-info">
                 <span class="stat-number" id="stat-players">0</span>
                 <span class="stat-label">Total Players</span>
               </div>
             </div>
             <div class="stat-card glass">
-              <div class="stat-icon">🏅</div>
+              <div class="stat-icon">SCORE</div>
               <div class="stat-info">
                 <span class="stat-number" id="stat-categories">0</span>
                 <span class="stat-label">Categories</span>
               </div>
             </div>
             <div class="stat-card glass">
-              <div class="stat-icon">📝</div>
+              <div class="stat-icon">FEEDBACK</div>
               <div class="stat-info">
                 <span class="stat-number" id="stat-feedback">0</span>
                 <span class="stat-label">Feedbacks</span>
               </div>
             </div>
             <div class="stat-card glass">
-              <div class="stat-icon">⭐</div>
+              <div class="stat-icon">TOP</div>
               <div class="stat-info">
                 <span class="stat-number" id="stat-topscore">0</span>
                 <span class="stat-label">Top Score</span>
@@ -218,7 +218,7 @@
           </div>
           <div class="admin-timer-section glass">
             <div class="admin-timer-header">
-              <span class="admin-timer-icon">⏱</span>
+              <span class="admin-timer-icon">TIMER</span>
               <h3>Global Countdown Timer</h3>
             </div>
             <div class="admin-timer-row">
@@ -271,7 +271,7 @@
           </div>
 
           <div class="admin-password-section glass">
-            <h4>🔑 Admin Password</h4>
+            <h4>ADMIN PASSWORD</h4>
             <p class="admin-pw-desc">Change your own admin account password.</p>
             <div class="admin-pw-form-row">
               <input type="password" id="admin-pw-current" class="admin-input" placeholder="Current password">
@@ -292,7 +292,7 @@
           <div class="achievement-categories" id="achievement-categories"></div>
 
           <div class="admin-coin-section glass">
-            <h4>🪙 Award Pocket Coins</h4>
+            <h4>AWARD POCKET COINS</h4>
             <div class="coin-form-row">
               <div class="coin-player-combo" style="position:relative;flex:1;min-width:180px;">
                 <input type="text" id="coin-player-search" placeholder="Search player..." class="admin-input" autocomplete="off" style="width:100%;">
@@ -301,26 +301,26 @@
               </div>
               <input type="number" id="coin-amount-input" placeholder="Amount" min="1" style="width:90px;">
               <select id="coin-stamp-select">
-                <option value="⭐">⭐</option>
-                <option value="🔥">🔥</option>
-                <option value="💎">💎</option>
-                <option value="👑">👑</option>
-                <option value="🎯">🎯</option>
+                <option value="*">*</option>
+                <option value="STREAK">STREAK</option>
+                <option value="*">*</option>
+                <option value="CROWN">CROWN</option>
+                <option value="TARGET">TARGET</option>
               </select>
-              <button class="btn btn-primary" id="btn-award-coins">Award 🪙</button>
-              <button class="btn btn-danger" id="btn-remove-coins">Remove 🪙</button>
+              <button class="btn btn-primary" id="btn-award-coins">Award $</button>
+              <button class="btn btn-danger" id="btn-remove-coins">Remove $</button>
             </div>
             <div class="coin-history-wrapper">
               <h5>Coin Leaderboard <span class="text-muted" style="font-weight:400;font-size:0.75rem;">(showing coin balances)</span></h5>
               <div id="coin-leaderboard-admin"></div>
             </div>
             <div class="admin-coin-actions" style="display:flex;gap:0.5rem;margin-top:0.5rem;">
-              <button class="btn btn-sm btn-danger" id="btn-reset-coins">🔄 Reset Coin Leaderboard</button>
+              <button class="btn btn-sm btn-danger" id="btn-reset-coins">RESET Coin Leaderboard</button>
             </div>
           </div>
 
           <div class="admin-daily-task-section glass">
-            <h4>📅 Daily Task Manager</h4>
+            <h4>DAILY TASK MANAGER</h4>
             <div class="daily-task-config-row">
               <input type="text" id="admin-daily-task-input" placeholder="Set daily task text..." class="admin-input" style="flex:1;">
               <button class="btn btn-primary btn-sm" id="btn-admin-set-daily-task">Set Task</button>
@@ -337,7 +337,7 @@
         <!-- Section: Badges -->
         <section id="section-badges" class="dashboard-section">
           <div class="section-header">
-            <h2 class="section-title">🏅 Badges System</h2>
+            <h2 class="section-title">BADGES SYSTEM</h2>
           </div>
           <div id="badges-admin-container"></div>
         </section>
@@ -345,7 +345,7 @@
         <!-- Section: Teams -->
         <section id="section-teams" class="dashboard-section">
           <div class="section-header">
-            <h2 class="section-title">👥 Teams</h2>
+            <h2 class="section-title">TEAMS</h2>
             <button class="btn btn-primary btn-sm" id="btn-create-team">+ Create Team</button>
           </div>
           <div id="teams-admin-container" class="teams-admin-container"></div>
@@ -354,10 +354,10 @@
         <!-- Section: Leaderboard -->
         <section id="section-leaderboard" class="dashboard-section">
           <div class="section-header">
-            <h2 class="section-title">🏆 Champions Leaderboard</h2>
+            <h2 class="section-title">CHAMPIONS LEADERBOARD</h2>
             <div class="leaderboard-actions">
-              <button class="btn btn-primary" id="btn-export-csv">📥 Export CSV</button>
-              <button class="btn btn-golden" id="btn-hof-admin">🌟 Hall of Fame</button>
+              <button class="btn btn-primary" id="btn-export-csv">EXPORT CSV</button>
+              <button class="btn btn-golden" id="btn-hof-admin">HALL OF FAME</button>
             </div>
           </div>
           <div class="leaderboard-search-wrapper">
@@ -374,23 +374,23 @@
 
         <!-- Section: Presence -->
         <section id="section-presence" class="dashboard-section">
-          <h2 class="section-title">👁 Player Presence</h2>
+          <h2 class="section-title">PLAYER PRESENCE</h2>
           <div class="presence-grid">
             <div class="presence-card glass">
-              <h3>🟢 Online Now</h3>
+              <h3>ONLINE NOW</h3>
               <div class="presence-count" id="presence-online-count">0</div>
               <ul class="presence-list" id="presence-online-list">
                 <li class="text-muted">No players online</li>
               </ul>
             </div>
             <div class="presence-card glass">
-              <h3>🕐 Recently Active</h3>
+              <h3>RECENTLY ACTIVE</h3>
               <ul class="presence-list" id="presence-recent-list">
                 <li class="text-muted">No recent activity</li>
               </ul>
             </div>
             <div class="presence-card glass">
-              <h3>🔑 Recently Logged In</h3>
+              <h3>RECENTLY LOGGED IN</h3>
               <ul class="presence-list" id="presence-login-list">
                 <li class="text-muted">No logins recorded</li>
               </ul>
@@ -406,14 +406,14 @@
     <div id="view-player" class="view">
       <nav class="navbar player-nav">
         <div class="nav-brand">
-          <span class="nav-logo">🏆</span>
+          <span class="nav-logo">CROWN</span>
           <span class="nav-title">Fantastic Cup</span>
         </div>
         <div class="nav-center-links">
-          <span class="monopoly-logo">🎩 <span class="monopoly-logo-text">MONOPOLY</span></span>
+          <span class="monopoly-logo"><span class="token-monopoly">*</span> <span class="monopoly-logo-text">MONOPOLY</span></span>
           <span class="player-greeting">Welcome, <strong id="player-name-display">Player</strong></span>
-          <button class="nav-btn event-link" id="event-war-btn">⚡ EVENT</button>
-          <button class="nav-btn" id="player-teams-nav-btn">👥 Teams</button>
+          <button class="nav-btn event-link" id="event-war-btn">EVENT</button>
+          <button class="nav-btn" id="player-teams-nav-btn">TEAMS</button>
         </div>
         <div class="nav-actions">
           <button id="theme-toggle-player" class="icon-btn" title="Toggle Theme">DARK</button>
@@ -423,7 +423,7 @@
 
       <!-- Clock Bank Card -->
       <div class="clock-bank-card">
-        <div class="clock-bank-label">🏦 BANK</div>
+        <div class="clock-bank-label">BANK</div>
         <div class="clock-bank-body">
           <div class="clock-display" id="player-clock">
             <span class="clock-time" id="player-clock-time">00:00:00</span>
@@ -441,12 +441,11 @@
         <div class="player-hero glass" id="player-hero">
           <div class="deed-token-card" id="deed-token-card">
             <div class="deed-token-header">
-              <span class="deed-token-icon" id="deed-token-icon">🎩</span>
               <span class="deed-token-name" id="hero-name">—</span>
             </div>
             <span class="deed-token-reg" id="deed-token-reg">ID: —</span>
           </div>
-          <div class="hero-badge" id="hero-badge">🏅 YOUR SCORE</div>
+          <div class="hero-badge" id="hero-badge">YOUR SCORE</div>
           <div class="hero-player">
             <div class="hero-avatar token-avatar-ring token-navy" id="hero-avatar">
               <div class="avatar-upload-wrapper">
@@ -473,26 +472,26 @@
 
         <div class="player-section">
           <div class="player-notes-card glass" id="player-notes-card" style="display:none;">
-            <div class="player-notes-header">📋 Message from Admin</div>
+            <div class="player-notes-header">MESSAGE FROM ADMIN</div>
             <div class="player-notes-text" id="player-notes-text"></div>
           </div>
         </div>
 
         <div class="player-section">
           <div class="player-section-header">
-            <h3 class="player-section-title">🏆 Champions Leaderboard</h3>
-            <button class="btn btn-golden btn-sm" id="btn-hof-player">🌟 Hall of Fame</button>
+            <h3 class="player-section-title">CHAMPIONS LEADERBOARD</h3>
+            <button class="btn btn-golden btn-sm" id="btn-hof-player">HALL OF FAME</button>
           </div>
           <div id="player-leaderboard" class="leaderboard-container"></div>
         </div>
 
         <div class="player-section">
-          <h3 class="player-section-title">🏅 My Badges</h3>
+          <h3 class="player-section-title">MY BADGES</h3>
           <div id="player-badges-display" class="player-badges-container"></div>
         </div>
 
         <div class="player-section">
-          <h3 class="player-section-title">👥 Teams</h3>
+          <h3 class="player-section-title">TEAMS</h3>
           <div id="player-teams-display" class="player-teams-container"></div>
         </div>
 
@@ -501,12 +500,12 @@
           <div id="player-achievements" class="player-achievements-grid"></div>
           <div class="player-coin-section glass" id="player-coin-section" style="margin-top:1rem;padding:1rem;border-radius:var(--radius);">
             <div class="coin-balance-display" id="coin-ach-balance" style="display:flex;align-items:center;gap:0.5rem;justify-content:center;font-size:1.2rem;margin-bottom:0.5rem;">
-              <span class="coin-icon">🪙</span>
+              <span class="coin-icon">$</span>
               <span class="coin-amount" id="player-coin-balance-ach">0</span>
               <span class="coin-label">Pocket Coins</span>
             </div>
             <button class="collapsible-btn glass" id="coin-history-toggle-ach" style="width:100%;">
-              <span>📜</span> Transaction History <span class="collapse-arrow">▼</span>
+              <span>*</span> Transaction History <span class="collapse-arrow">▼</span>
             </button>
             <div class="collapsible-content" id="coin-history-collapse-ach">
               <div id="player-coin-history-ach"></div>
@@ -515,7 +514,7 @@
         </div>
 
         <div class="player-section">
-          <h3 class="player-section-title">📅 Daily Task</h3>
+          <h3 class="player-section-title">DAILY TASK</h3>
           <div id="player-daily-task" class="daily-task-card glass">
             <div class="daily-task-row">
               <label class="daily-task-checkbox-wrapper">
@@ -531,7 +530,7 @@
 
         <div class="player-section player-settings-section">
           <div class="player-settings-row">
-            <span class="settings-label">🔊 Sound Effects</span>
+            <span class="settings-label">SOUND EFFECTS</span>
             <label class="toggle-switch">
               <input type="checkbox" id="sound-toggle" checked>
               <span class="toggle-slider"></span>
@@ -541,7 +540,7 @@
 
         <div class="player-section">
           <button class="collapsible-btn glass" id="password-toggle">
-            <span>🔑</span> Change Password <span class="collapse-arrow">▼</span>
+            <span>PASSWORD</span> Change Password <span class="collapse-arrow">▼</span>
           </button>
           <div class="collapsible-content" id="password-collapse">
             <form id="password-change-form" class="password-change-form glass">
@@ -556,7 +555,7 @@
 
         <div class="player-section">
           <button class="collapsible-btn glass" id="feedback-toggle">
-            <span>💬</span> Send Feedback <span class="collapse-arrow">▼</span>
+            <span>FEEDBACK</span> Send Feedback <span class="collapse-arrow">▼</span>
           </button>
           <div class="collapsible-content" id="feedback-collapse">
             <form id="feedback-form" class="feedback-form glass">
@@ -567,7 +566,7 @@
         </div>
 
         <div class="quote-bar glass">
-          <span class="quote-icon">💫</span>
+          <span class="quote-icon">*</span>
           <span class="quote-text" id="motivational-quote">"The only limit to your impact is your imagination and commitment."</span>
         </div>
 
@@ -578,7 +577,7 @@
     <div id="view-leaderboard" class="view">
       <div class="leaderboard-page">
         <div class="lb-header glass">
-          <h1>🏆 Fantastic Cup</h1>
+          <h1>CROWN Fantastic Cup</h1>
           <h2>Champions Leaderboard</h2>
         </div>
         <div id="public-leaderboard" class="leaderboard-container"></div>
@@ -602,7 +601,7 @@
   <!-- ═══ DANGER ZONE ALARM (bottom 3 players) ═══ -->
   <div id="danger-zone-overlay" class="danger-zone-overlay" style="display:none;">
     <div class="danger-zone-inner">
-      <div class="danger-zone-icon">⚠️</div>
+      <div class="danger-zone-icon">!</div>
       <div class="danger-zone-text">DANGER ZONE – LAST 3</div>
       <div class="danger-zone-sub">Complete tasks to move up the ranks!</div>
     </div>

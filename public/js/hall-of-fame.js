@@ -83,7 +83,7 @@
                   <div class="hof-card-pedestal">
                     <span class="hof-pedestal-label">${rankLabel}</span>
                   </div>
-                  ${isFirst ? `<div class="hof-crown" id="hof-crown">👑</div>` : ''}
+                  ${isFirst ? `<div class="hof-crown" id="hof-crown">CROWN</div>` : ''}
                 </div>
               `;
             }).join('')}

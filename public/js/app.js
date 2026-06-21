@@ -113,18 +113,18 @@
   }
 
   const MonopolyTokens = [
-    { icon: '🎩', color: '#1a2744', className: 'token-navy' },
-    { icon: '🚗', color: '#1b7a3d', className: 'token-green' },
-    { icon: '🛶', color: '#d4a017', className: 'token-gold' },
-    { icon: '👞', color: '#c0392b', className: 'token-red' },
-    { icon: '🐕', color: '#6b21a8', className: 'token-purple' },
-    { icon: '⚓', color: '#0d9488', className: 'token-teal' },
-    { icon: '🔫', color: '#c2410c', className: 'token-orange' },
-    { icon: '🎰', color: '#be185d', className: 'token-pink' },
-    { icon: '🏠', color: '#1a2744', className: 'token-navy' },
-    { icon: '💰', color: '#1b7a3d', className: 'token-green' },
-    { icon: '🚂', color: '#d4a017', className: 'token-gold' },
-    { icon: '⚖️', color: '#c0392b', className: 'token-red' },
+    { icon: 'TH', color: '#1a2744', className: 'token-navy' },
+    { icon: 'CR', color: '#1b7a3d', className: 'token-green' },
+    { icon: 'BT', color: '#d4a017', className: 'token-gold' },
+    { icon: 'SH', color: '#c0392b', className: 'token-red' },
+    { icon: 'DG', color: '#6b21a8', className: 'token-purple' },
+    { icon: 'AN', color: '#0d9488', className: 'token-teal' },
+    { icon: 'GN', color: '#c2410c', className: 'token-orange' },
+    { icon: 'SL', color: '#be185d', className: 'token-pink' },
+    { icon: 'HS', color: '#1a2744', className: 'token-navy' },
+    { icon: 'BG', color: '#1b7a3d', className: 'token-green' },
+    { icon: 'TR', color: '#d4a017', className: 'token-gold' },
+    { icon: 'SC', color: '#c0392b', className: 'token-red' },
   ];
 
   function getPlayerToken(username) {
@@ -192,7 +192,7 @@
   function initVortexParticles() {
     const container = document.getElementById('vortex-container');
     if (!container) return;
-    const tokens = ['🎲', '🏠', '💰', '🚗', '🎩', '💵', '🏢', '⭐', '👞', '🐕', '🛶', '🔫'];
+    const tokens = ['$', '#', '%', '&', '+', '=', '@', '*', '!', '?', '~', '^'];
     const baseRadius = Math.min(window.innerWidth, window.innerHeight) * 0.25;
     for (let i = 0; i < 14; i++) {
       const el = document.createElement('div');
@@ -514,13 +514,13 @@
       const avatarHtml = p.avatarUrl
         ? `<span class="avatar-loading" style="display:inline-flex;width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--accent);"><img src="${p.avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onload="this.parentElement.classList.remove('avatar-loading')" onerror="this.parentElement.classList.remove('avatar-loading');this.style.display='none'" loading="lazy"></span>`
         : `<span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.05);border:2px solid var(--glass-border);color:var(--text-muted);font-weight:700;font-size:1rem;">?</span>`;
-      const badgeIcons = p.badges.slice(0, 3).map(b => b.icon || '🏅').join('');
+      const badgeIcons = p.badges.slice(0, 3).map(b => b.icon || 'BADGE').join('');
       const badgeCount = p.badges.length;
       return `
       <tr>
-        <td><span class="lb-name-with-token"><span class="lb-token-icon">${getPlayerToken(p.username).icon}</span><span class="lb-name-text player-stats-trigger" data-username="${p.username}" style="cursor:pointer;">${p.username}</span><span class="lb-name-reg">#${p.username.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span></span></td>
+        <td><span class="lb-name-with-token"><span class="lb-name-text player-stats-trigger" data-username="${p.username}" style="cursor:pointer;">${p.username}</span><span class="lb-name-reg">#${p.username.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span></span></td>
         <td><strong>${p.score}</strong></td>
-        <td><span style="color:var(--accent);font-weight:600;">${p.coins} 🪙</span></td>
+        <td><span style="color:var(--accent);font-weight:600;">${p.coins}</span></td>
         <td>${badgeCount > 0 ? `<span title="${p.badges.map(b => b.name).join(', ')}">${badgeIcons}${badgeCount > 3 ? '+' : ''}</span>` : '<span class="text-muted">—</span>'}</td>
         <td>#${p.rank}</td>
         <td>
@@ -540,7 +540,7 @@
           </div>
         </td>
         <td>
-          <button class="btn btn-sm" onclick="window.__setPlayerPassword('${p.username}')">🔑 Set</button>
+          <button class="btn btn-sm" onclick="window.__setPlayerPassword('${p.username}')">SET</button>
         </td>
         <td class="actions-cell">
           <button class="btn btn-sm ${p.enabled !== false ? 'btn-secondary' : 'btn-primary'}" onclick="window.__togglePlayer('${p.username}')">
@@ -965,7 +965,6 @@
           </div>
           <div class="lb-info">
             <div class="lb-name player-stats-trigger" data-username="${entry.username}">
-              <span class="lb-token-icon">${token.icon}</span>
               <span class="lb-name-text">${entry.username}</span>
               <span class="lb-name-reg">#${regId}</span>
               <span class="lb-badges-placeholder" data-username="${entry.username}"></span>
@@ -987,7 +986,6 @@
         </div>
         <div class="lb-info">
           <div class="lb-name lb-personal-rank-name">
-            <span class="lb-token-icon">${getPlayerToken(opts.playerEntry.username).icon}</span>
             <span class="lb-name-text">${opts.playerEntry.username}</span>
             <span class="lb-name-reg">#${opts.playerEntry.username.toLowerCase().replace(/[^a-z0-9]/g, '_')}</span>
             <span class="lb-badges-placeholder" data-username="${opts.playerEntry.username}"></span>
@@ -1189,12 +1187,11 @@
       const myTotal = myEntry ? myEntry.total : 0;
       const myRank = leaderboard.findIndex(e => e.username === authState.username) + 1;
       const token = getPlayerToken(authState.username);
-      document.getElementById('deed-token-icon').textContent = token.icon;
       document.getElementById('hero-name').textContent = authState.username;
       document.getElementById('deed-token-reg').textContent = 'ID: ' + authState.username.toLowerCase().replace(/[^a-z0-9]/g, '_');
       document.getElementById('hero-avatar').className = 'hero-avatar token-avatar-ring ' + token.className;
       document.getElementById('hero-score').textContent = myTotal;
-      document.getElementById('hero-badge').textContent = '🏅 YOUR SCORE';
+      document.getElementById('hero-badge').textContent = 'YOUR SCORE';
 
       const rankInfo = document.getElementById('hero-rank-info');
       if (myRank > 0) {
@@ -1384,7 +1381,7 @@
 
       // Badges section
       if (res.badges && res.badges.length > 0) {
-        html += '<div class="stats-section"><h3 class="stats-section-title">🏅 Badges</h3><div class="stats-badges-row">';
+        html += '<div class="stats-section"><h3 class="stats-section-title">BADGES</h3><div class="stats-badges-row">';
         for (const b of res.badges) {
           const bc = c[b.rarity] || c.common || { bg: 'rgba(180,180,190,0.15)', border: '#b4b4be', text: '#b4b4be' };
           const legendaryClass = b.rarity === 'legendary' ? 'stats-badge-legendary' : '';
@@ -1396,11 +1393,11 @@
         }
         html += '</div></div>';
       } else {
-        html += '<div class="stats-section"><h3 class="stats-section-title">🏅 Badges</h3><p class="stats-empty">No badges earned yet</p></div>';
+        html += '<div class="stats-section"><h3 class="stats-section-title">BADGES</h3><p class="stats-empty">No badges earned yet</p></div>';
       }
 
       // Achievements section
-      html += '<div class="stats-section"><h3 class="stats-section-title">📊 Achievements</h3>';
+      html += '<div class="stats-section"><h3 class="stats-section-title">ACHIEVEMENTS</h3>';
       const cats = res.categories || [];
       const ach = res.achievements || {};
       if (cats.length > 0) {
@@ -1423,14 +1420,14 @@
       html += '</div>';
 
       // Daily streak
-      html += '<div class="stats-section"><h3 class="stats-section-title">🔥 Daily Streak</h3>';
+      html += '<div class="stats-section"><h3 class="stats-section-title">DAILY STREAK</h3>';
       const streak = res.dailyStreak || 0;
       html += `<div class="stats-streak-display"><span class="stats-streak-count">${streak}</span><span class="stats-streak-label">day${streak !== 1 ? 's' : ''}</span></div>`;
       html += '</div>';
 
       // Admin note
       if (showNote && res.adminNote && res.adminNote.trim()) {
-        html += '<div class="stats-section"><h3 class="stats-section-title">📋 Message from Admin</h3>';
+        html += '<div class="stats-section"><h3 class="stats-section-title">MESSAGE FROM ADMIN</h3>';
         html += `<div class="stats-note">${res.adminNote}</div>`;
         html += '</div>';
       }
@@ -1690,7 +1687,7 @@
         html += `<div class="badge-admin-desc">${b.description || ''}</div>`;
         html += `</div>`;
         html += `<div class="badge-admin-actions">`;
-        html += `<button class="btn btn-sm" onclick="window.__editBadge('${b.id}')">✏️</button>`;
+        html += `<button class="btn btn-sm" onclick="window.__editBadge('${b.id}')">EDIT</button>`;
         html += `<button class="btn btn-sm btn-danger" onclick="window.__deleteBadge('${b.id}')">✕</button>`;
         html += `</div>`;
         html += `</div>`;
@@ -1736,7 +1733,7 @@
               <option value="epic">Epic</option>
               <option value="legendary">Legendary</option>
             </select>
-            <input type="text" id="badge-new-icon" placeholder="Icon emoji" class="admin-input" style="width:60px;" value="🏅">
+            <input type="text" id="badge-new-icon" placeholder="Icon text" class="admin-input" style="width:60px;" value="★">
           </div>
           <input type="text" id="badge-new-desc" placeholder="Description" class="admin-input" style="width:100%;margin-bottom:0.5rem;">
           <div style="display:flex;gap:0.5rem;">
@@ -1751,7 +1748,7 @@
   window.__createBadge = async function () {
     const name = document.getElementById('badge-new-name').value.trim();
     const rarity = document.getElementById('badge-new-rarity').value;
-    const icon = document.getElementById('badge-new-icon').value.trim() || '🏅';
+    const icon = document.getElementById('badge-new-icon').value.trim() || '★';
     const description = document.getElementById('badge-new-desc').value.trim();
     if (!name) return toast('Enter a badge name.', 'error');
     const res = await fetch('/api/badges/create', {
@@ -1772,7 +1769,7 @@
     if (!name) return;
     const rarity = prompt('Rarity (common/rare/epic/legendary):');
     if (!rarity) return;
-    const icon = prompt('Icon emoji:');
+    const icon = prompt('Badge icon:');
     const description = prompt('Description:');
     const res = await fetch('/api/badges/update', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1849,7 +1846,7 @@
       // Player dashboard section badges
       if (container) {
         if (badges.length === 0) {
-          container.innerHTML = '<div class="badges-empty"><span class="badge-locked">🔒</span><span class="badges-empty-text">No badges earned yet</span></div>';
+          container.innerHTML = '<div class="badges-empty"><span class="badge-locked">*</span><span class="badges-empty-text">No badges earned yet</span></div>';
         } else {
           let html = '<div class="player-badges-grid">';
           for (const b of badges) {
@@ -1909,7 +1906,7 @@
           <h4>Create Team</h4>
           <div class="team-create-form">
             <input type="text" id="team-create-name" placeholder="Team name" class="form-input" />
-            <input type="text" id="team-create-logo" placeholder="Emoji logo (e.g. 🦅)" class="form-input" style="max-width:80px" />
+            <input type="text" id="team-create-logo" placeholder="Logo (e.g. EAGLE)" class="form-input" style="max-width:80px" />
             <input type="color" id="team-create-color" value="#667eea" class="form-input" style="width:60px;height:40px;padding:2px" />
             <button class="btn btn-primary btn-sm" id="btn-team-create-submit">Create</button>
           </div>
@@ -1922,8 +1919,8 @@
             <span class="team-logo">${team.logo}</span>
             <span class="team-name">${team.name}</span>
             <div class="team-actions">
-              <button class="btn btn-sm btn-icon team-edit-btn" data-team-id="${team.id}" title="Edit Team">✏️</button>
-              <button class="btn btn-sm btn-icon team-delete-btn" data-team-id="${team.id}" title="Delete Team">🗑️</button>
+              <button class="btn btn-sm btn-icon team-edit-btn" data-team-id="${team.id}" title="Edit Team">EDIT</button>
+              <button class="btn btn-sm btn-icon team-delete-btn" data-team-id="${team.id}" title="Delete Team">DELETE</button>
             </div>
           </div>
           <div class="team-members">
@@ -1966,7 +1963,7 @@
     if (createBtn) {
       createBtn.addEventListener('click', async () => {
         const name = document.getElementById('team-create-name').value.trim();
-        const logo = document.getElementById('team-create-logo').value.trim() || '🏳️';
+        const logo = document.getElementById('team-create-logo').value.trim() || '*';
         const color = document.getElementById('team-create-color').value;
         if (!name) { toast('Enter a team name', 'error'); return; }
         const res = await fetch('/api/teams/create', {
@@ -2088,7 +2085,7 @@
       const res = await fetch('/api/teams').then(r => r.json());
       const teams = res.teams || [];
       if (teams.length === 0) {
-        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">👥</span><span class="badges-empty-text">No teams created yet</span></div>';
+        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">TEAMS</span><span class="badges-empty-text">No teams created yet</span></div>';
         return;
       }
       let html = '<div class="player-teams-grid">';
@@ -2107,7 +2104,7 @@
           <div class="team-member-list">${memberList}</div>
           ${team.notes ? `<div class="player-team-notes">${team.notes}</div>` : ''}
           <div class="player-team-coins">
-            <span class="player-team-coin-icon">🥈</span> Team Silver: <span class="monopoly-money positive"><span class="dollar-sign">$</span>${team.silverCoins || 0}</span>
+            <span class="player-team-coin-icon">$</span> Team Silver: <span class="monopoly-money positive"><span class="dollar-sign">$</span>${team.silverCoins || 0}</span>
           </div>
         </div>`;
       }
@@ -2238,7 +2235,7 @@
         dropdown.innerHTML = filtered.map(p =>
           `<div class="coin-dropdown-item" data-username="${p.username}" data-balance="${p.balance}" style="padding:0.4rem 0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.04);transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background=''">
             <span>${p.username}</span>
-            <span style="font-size:0.8rem;color:var(--accent);font-weight:600;">${p.balance} 🪙</span>
+            <span style="font-size:0.8rem;color:var(--accent);font-weight:600;">${p.balance}</span>
           </div>`
         ).join('');
         dropdown.style.display = 'block';
@@ -2251,7 +2248,7 @@
             hiddenInput.value = username;
             dropdown.style.display = 'none';
             // Update amount placeholder hint
-            document.getElementById('coin-amount-input').placeholder = `Amount (${username} has ${balance} 🪙)`;
+            document.getElementById('coin-amount-input').placeholder = `Amount (${username} has ${balance})`;
           });
         });
       }
@@ -2278,14 +2275,14 @@
       const amount = parseInt(document.getElementById('coin-amount-input').value);
       const stamp = document.getElementById('coin-stamp-select').value;
       if (!playerUsername || !amount || amount <= 0) { toast('Select a player and enter a positive amount.', 'error'); return; }
-      if (!confirm(`Award ${amount} 🪙 to ${playerUsername}?`)) return;
+      if (!confirm(`Award ${amount} coins to ${playerUsername}?`)) return;
       const res = await fetch('/api/coins/award', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ playerUsername, amount, stamp, note: 'Admin award' }),
       }).then(r => r.json());
       if (res.success) {
-        toast(`Awarded ${amount} 🪙 to ${playerUsername}`);
+        toast(`Awarded ${amount} coins to ${playerUsername}`);
         document.getElementById('coin-amount-input').value = '';
         document.getElementById('coin-player-search').value = '';
         document.getElementById('coin-player-input').value = '';
@@ -2303,7 +2300,7 @@
       const amount = parseInt(document.getElementById('coin-amount-input').value);
       const stamp = document.getElementById('coin-stamp-select').value;
       if (!playerUsername || !amount || amount <= 0) { toast('Select a player and enter a positive amount.', 'error'); return; }
-      if (!confirm(`Remove ${amount} 🪙 from ${playerUsername}? (Cannot go below zero)`)) return;
+      if (!confirm(`Remove ${amount} coins from ${playerUsername}? (Cannot go below zero)`)) return;
       const res = await fetch('/api/coins/award', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2311,7 +2308,7 @@
       }).then(r => r.json());
       if (res.success) {
         const remaining = res.balance;
-        toast(`Removed ${amount} 🪙 from ${playerUsername}. Balance: ${remaining} 🪙`);
+        toast(`Removed ${amount} coins from ${playerUsername}. Balance: ${remaining} coins`);
         document.getElementById('coin-amount-input').value = '';
         document.getElementById('coin-player-search').value = '';
         document.getElementById('coin-player-input').value = '';
@@ -2341,7 +2338,7 @@
         if (res.transactions && res.transactions.length > 0) {
           container.innerHTML = res.transactions.map(tx => `
             <div class="coin-history-item">
-              <span class="coin-tx-stamp">${tx.stamp || '⭐'}</span>
+              <span class="coin-tx-stamp">${tx.stamp || '*'}</span>
               <span class="coin-tx-amount">+${tx.amount}</span>
               <span class="coin-tx-note">${tx.note || ''}</span>
               <span class="coin-tx-time">${new Date(tx.timestamp).toLocaleDateString()}</span>
@@ -2390,7 +2387,7 @@
         return;
       }
       container.innerHTML = '<table class="data-table compact"><thead><tr><th>Player</th><th>Coins</th></tr></thead><tbody>' +
-        res.balances.slice(0, 20).map(b => `<tr><td>${b._id}</td><td><strong>${b.total}</strong> 🪙</td></tr>`).join('') +
+        res.balances.slice(0, 20).map(b => `<tr><td>${b._id}</td><td><strong>${b.total}</strong></td></tr>`).join('') +
         '</tbody></table>';
     };
 
@@ -2424,7 +2421,7 @@
       } else {
         toast(res.message || 'Failed to reset', 'error');
       }
-      btn.textContent = '🔄 Reset Coin Leaderboard';
+      btn.textContent = 'Reset Coin Leaderboard';
       btn.disabled = false;
     });
 
@@ -2721,7 +2718,7 @@
 
     socket.on('dailyTask:completed', (data) => {
       if (!data) return;
-      const msg = `✅ ${data.player} completed daily task: "${data.text}"`;
+      const msg = `${data.player} completed daily task: "${data.text}"`;
       toast(msg, 'success');
       SoundManager.notification();
       if (authState && authState.role === 'admin') {
