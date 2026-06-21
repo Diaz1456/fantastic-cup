@@ -164,6 +164,30 @@
     return () => cancelAnimationFrame(animId);
   }
 
+  /* ─── MONOPOLY VORTEX PARTICLES ─── */
+  function initVortexParticles() {
+    const container = document.getElementById('vortex-container');
+    if (!container) return;
+    const tokens = ['🎲', '🏠', '💰', '🚗', '🎩', '💵', '🏢', '⭐', '👞', '🐕', '🛶', '🔫'];
+    const baseRadius = Math.min(window.innerWidth, window.innerHeight) * 0.25;
+    for (let i = 0; i < 14; i++) {
+      const el = document.createElement('div');
+      el.className = 'vortex-particle';
+      el.textContent = tokens[i % tokens.length];
+      const radius = baseRadius + (i % 5) * 30;
+      const angle = (i / 14) * 360;
+      const delay = i * 0.7;
+      const duration = 10 + (i % 4) * 2;
+      el.style.setProperty('--radius', radius + 'px');
+      el.style.setProperty('--start-angle', angle + 'deg');
+      el.style.animationDuration = duration + 's';
+      el.style.animationDelay = delay + 's';
+      if (i % 3 === 0) el.style.fontSize = '2.4rem';
+      else if (i % 3 === 1) el.style.fontSize = '1.4rem';
+      container.appendChild(el);
+    }
+  }
+
   /* ─── THEME TOGGLE ─── */
   function toggleTheme() {
     isDark = !isDark;
@@ -2056,6 +2080,9 @@
   document.addEventListener('DOMContentLoaded', () => {
     // Init particles
     const stopParticles = initParticles();
+
+    // Init Monopoly vortex particles
+    initVortexParticles();
 
     // Init sounds
     SoundManager.init();

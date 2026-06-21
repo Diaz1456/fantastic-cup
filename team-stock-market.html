@@ -310,10 +310,120 @@
     0% { opacity: 1; transform: translateY(0) scale(1); }
     100% { opacity: 0; transform: translateY(-30px) scale(0.9); }
   }
+
+  /* ─── Center Stock Notification (Modal) ─── */
+  .stock-notification-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(44,24,16,0.4);
+    backdrop-filter: blur(3px);
+    animation: overlayFadeIn 0.3s ease;
+  }
+
+  .stock-notification-overlay.hide {
+    animation: overlayFadeOut 0.3s ease forwards;
+  }
+
+  .stock-notification-modal {
+    background: linear-gradient(180deg, #faf8f4 0%, #f0ece0 100%);
+    border: 2px solid #d4a017;
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(58,42,26,0.2), 0 0 80px rgba(212,160,23,0.08);
+    animation: modalPopIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    position: relative;
+  }
+
+  .stock-notification-modal::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #1a2744, #1b7a3d, #d4a017);
+    border-radius: 14px 14px 0 0;
+  }
+
+  .stock-notification-modal.exit {
+    animation: modalPopOut 0.3s ease forwards;
+  }
+
+  .stock-notif-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+  .stock-notif-team {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 900;
+    color: #1a2744;
+    margin-bottom: 0.3rem;
+  }
+  .stock-notif-change {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin-bottom: 0.3rem;
+  }
+  .stock-notif-change.up { color: #1b7a3d; }
+  .stock-notif-change.down { color: #c0392b; }
+  .stock-notif-price {
+    font-size: 1rem;
+    color: #7a6a5a;
+    margin-bottom: 0.5rem;
+  }
+  .stock-notif-player {
+    font-size: 0.85rem;
+    color: #7a6a5a;
+    margin-bottom: 1rem;
+    font-weight: 600;
+  }
+  .stock-notif-dismiss {
+    background: linear-gradient(180deg, #f5f0e8 0%, #e8dfd0 100%);
+    border: 1px solid rgba(58,42,26,0.15);
+    color: #3a2a1a;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    padding: 8px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: 700;
+    box-shadow: 0 2px 4px rgba(58,42,26,0.06), inset 0 1px 0 rgba(255,255,255,0.5);
+    transition: all 0.2s;
+  }
+  .stock-notif-dismiss:hover {
+    border-color: rgba(58,42,26,0.25);
+    background: linear-gradient(180deg, #faf8f4 0%, #f5f0e8 100%);
+  }
+
+  @keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes overlayFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes modalPopIn {
+    0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes modalPopOut {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(0.8) translateY(20px); }
+  }
 </style>
 </head>
 <body>
 <div id="donation-alert-container"></div>
+<div id="stock-notification-overlay" class="stock-notification-overlay" style="display:none">
+  <div class="stock-notification-modal" id="stock-notification-modal"></div>
+</div>
 <div class="container">
 
   <div class="header">
@@ -525,6 +635,42 @@ function showDonationAlert(teamName, teamColor, delta, player, cat, newPrice) {
   } catch(e) {}
 }
 
+// ─── CENTER NOTIFICATION ────────────────────────────────────────────────────
+function showCenterNotification(teamName, teamColor, delta, player, cat, newPrice) {
+  const overlay = document.getElementById('stock-notification-overlay');
+  const modal = document.getElementById('stock-notification-modal');
+  if (!overlay || !modal) return;
+  const isUp = delta > 0;
+  const icon = isUp ? '📈' : '📉';
+  const sign = isUp ? '+' : '';
+  const cls = isUp ? 'up' : 'down';
+  const label = cat || 'achievement';
+  modal.innerHTML = `
+    <div class="stock-notif-icon">${icon}</div>
+    <div class="stock-notif-team" style="color:${teamColor}">${teamName}</div>
+    <div class="stock-notif-change ${cls}">${sign}${delta}</div>
+    <div class="stock-notif-price">New price: <strong>$${newPrice}</strong></div>
+    <div class="stock-notif-player">${player} — ${label}</div>
+    <button class="stock-notif-dismiss" onclick="dismissCenterNotification()">Dismiss</button>
+  `;
+  overlay.style.display = 'flex';
+  overlay.classList.remove('hide');
+  modal.classList.remove('exit');
+  if (window._centerNotifTimer) clearTimeout(window._centerNotifTimer);
+  window._centerNotifTimer = setTimeout(dismissCenterNotification, 4000);
+}
+
+function dismissCenterNotification() {
+  const overlay = document.getElementById('stock-notification-overlay');
+  const modal = document.getElementById('stock-notification-modal');
+  if (!overlay || !modal) return;
+  modal.classList.add('exit');
+  overlay.classList.add('hide');
+  setTimeout(() => {
+    overlay.style.display = 'none';
+  }, 300);
+}
+
 // ─── SOCKET LISTENER: track fresh updates for glow ─────────────────────────
 socket.on('teamstockUpdate', (data) => {
   if (!data || !data.teams) return;
@@ -539,6 +685,7 @@ socket.on('teamstockUpdate', (data) => {
       updateBadge(t.name, t.stock.lastDelta, t.stock.lastPlayer, t.stock.lastEvent);
       addLog(t.name, t.stock.lastPlayer, t.stock.lastEvent, t.stock.lastDelta);
       showDonationAlert(t.name, t.color, t.stock.lastDelta, t.stock.lastPlayer, t.stock.lastEvent, t.stock.price);
+      showCenterNotification(t.name, t.color, t.stock.lastDelta, t.stock.lastPlayer, t.stock.lastEvent, t.stock.price);
       break;
     }
   }
