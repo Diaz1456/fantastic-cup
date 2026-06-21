@@ -8,7 +8,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, connectDB } = require('./db');
+const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, Badge, BadgeAssignment, Team, connectDB } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
@@ -395,15 +395,45 @@ app.post('/player-notes', async (req, res) => {
   res.json({ success: true });
 });
 
-// ─── BADGES SYSTEM (in-memory) ───
+// ─── BADGES SYSTEM (in-memory + MongoDB) ───
 
 let badgesData = {
   badges: [],          // { id, name, rarity, description, icon }
   playerBadges: {},    // username -> badgeId[]
 };
 
-// Seed default badges if empty
-function seedBadges() {
+async function syncBadgesToDB() {
+  if (!isMongoConnected()) return;
+  try {
+    for (const badge of badgesData.badges) {
+      await Badge.findOneAndUpdate({ id: badge.id }, badge, { upsert: true });
+    }
+    for (const [username, badgeIds] of Object.entries(badgesData.playerBadges)) {
+      await BadgeAssignment.findOneAndUpdate({ username }, { badgeIds }, { upsert: true });
+    }
+  } catch (e) { console.error('Badge sync failed:', e.message); }
+}
+
+async function loadBadgesFromDB() {
+  if (!isMongoConnected()) return false;
+  try {
+    const dbBadges = await Badge.find().lean();
+    if (dbBadges.length > 0) {
+      badgesData.badges = dbBadges;
+      const assignments = await BadgeAssignment.find().lean();
+      for (const a of assignments) {
+        badgesData.playerBadges[a.username] = a.badgeIds || [];
+      }
+      return true;
+    }
+  } catch { /* ignore */ }
+  return false;
+}
+
+// Seed default badges if empty (only if nothing in DB)
+async function seedBadges() {
+  const loaded = await loadBadgesFromDB();
+  if (loaded) return;
   if (badgesData.badges.length > 0) return;
   badgesData.badges = [
     { id: 'bdg-1', name: 'Rising Star',  rarity: 'common',    description: 'Showed great potential',           icon: '⭐' },
@@ -415,6 +445,7 @@ function seedBadges() {
     { id: 'bdg-7', name: 'Phoenix',       rarity: 'legendary', description: 'Rose from the ashes',              icon: '🔥' },
     { id: 'bdg-8', name: 'Lucky Charm',   rarity: 'common',    description: 'Fortune favours the bold',         icon: '🍀' },
   ];
+  syncBadgesToDB();
 }
 seedBadges();
 
@@ -446,6 +477,7 @@ app.post('/api/badges/create', (req, res) => {
   const id = 'bdg-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
   const badge = { id, name, rarity: rarity || 'common', description: description || '', icon: icon || '🏅' };
   badgesData.badges.push(badge);
+  syncBadgesToDB();
   io.emit('badgesUpdated');
   res.json({ success: true, badge });
 });
@@ -459,6 +491,7 @@ app.post('/api/badges/update', (req, res) => {
   if (rarity !== undefined) badge.rarity = rarity;
   if (description !== undefined) badge.description = description;
   if (icon !== undefined) badge.icon = icon;
+  syncBadgesToDB();
   io.emit('badgesUpdated');
   res.json({ success: true, badge });
 });
@@ -467,10 +500,13 @@ app.post('/api/badges/update', (req, res) => {
 app.post('/api/badges/delete', (req, res) => {
   const { id } = req.body;
   badgesData.badges = badgesData.badges.filter(b => b.id !== id);
-  // Remove from all players
   for (const username of Object.keys(badgesData.playerBadges)) {
     badgesData.playerBadges[username] = badgesData.playerBadges[username].filter(bId => bId !== id);
   }
+  if (isMongoConnected()) {
+    Badge.deleteOne({ id }).catch(() => {});
+  }
+  syncBadgesToDB();
   io.emit('badgesUpdated');
   res.json({ success: true });
 });
@@ -483,6 +519,7 @@ app.post('/api/badges/assign', (req, res) => {
   if (!badgesData.playerBadges[username].includes(badgeId)) {
     badgesData.playerBadges[username].push(badgeId);
   }
+  syncBadgesToDB();
   io.emit('badgesUpdated');
   res.json({ success: true });
 });
@@ -494,6 +531,7 @@ app.post('/api/badges/remove', (req, res) => {
   if (badgesData.playerBadges[username]) {
     badgesData.playerBadges[username] = badgesData.playerBadges[username].filter(id => id !== badgeId);
   }
+  syncBadgesToDB();
   io.emit('badgesUpdated');
   res.json({ success: true });
 });
@@ -501,10 +539,7 @@ app.post('/api/badges/remove', (req, res) => {
 // GET all players with their badges (for admin assignment UI)
 app.get('/api/badges/players', (req, res) => {
   const result = [];
-  // Get all known players from in-memory or player notes keys
   const allUsernames = new Set([...playerNotesMemory.keys()]);
-  // If MongoDB available, also fetch from there
-  // (fallback to empty if not)
   for (const username of allUsernames) {
     const assigned = badgesData.playerBadges[username] || [];
     result.push({ username, badges: assigned.map(id => badgesData.badges.find(b => b.id === id)).filter(Boolean) });
@@ -512,12 +547,32 @@ app.get('/api/badges/players', (req, res) => {
   res.json({ players: result });
 });
 
-// ─── TEAMS SYSTEM (in-memory, synced via socket) ───
+// ─── TEAMS SYSTEM (in-memory + MongoDB) ───
 
 let teamsData = {
   teams: [],  // { id, name, logo, color, members: [username], silverCoins: number, notes: string }
   memberCoins: {}, // username -> silver coin balance from teams
 };
+
+async function syncTeamsToDB() {
+  if (!isMongoConnected()) return;
+  try {
+    for (const team of teamsData.teams) {
+      await Team.findOneAndUpdate({ id: team.id }, team, { upsert: true });
+    }
+  } catch (e) { console.error('Team sync failed:', e.message); }
+}
+
+async function loadTeamsFromDB() {
+  if (!isMongoConnected()) return;
+  try {
+    const dbTeams = await Team.find().lean();
+    if (dbTeams.length > 0) {
+      teamsData.teams = dbTeams;
+    }
+  } catch { /* ignore */ }
+}
+loadTeamsFromDB();
 
 function getTeamsForPlayer(username) {
   return teamsData.teams.filter(t => t.members.includes(username));
@@ -569,6 +624,7 @@ app.post('/api/teams/create', (req, res) => {
   const id = 'team-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
   const team = { id, name, logo: logo || '🏳️', color: color || '#667eea', members: [], silverCoins: 0, notes: '' };
   teamsData.teams.push(team);
+  syncTeamsToDB();
   broadcastTeams();
   res.json({ success: true, team });
 });
@@ -584,6 +640,7 @@ app.post('/api/teams/update', (req, res) => {
   if (silverCoins !== undefined) team.silverCoins = Number(silverCoins) || 0;
   if (notes !== undefined) team.notes = notes;
   broadcastTeams();
+  syncTeamsToDB();
   res.json({ success: true, team });
 });
 
@@ -592,6 +649,9 @@ app.post('/api/teams/delete', (req, res) => {
   const { id } = req.body;
   teamsData.teams = teamsData.teams.filter(t => t.id !== id);
   broadcastTeams();
+  if (isMongoConnected()) {
+    Team.deleteOne({ id }).catch(() => {});
+  }
   res.json({ success: true });
 });
 
@@ -604,6 +664,7 @@ app.post('/api/teams/add-member', (req, res) => {
     team.members.push(username);
   }
   broadcastTeams();
+  syncTeamsToDB();
   res.json({ success: true, team });
 });
 
@@ -614,6 +675,7 @@ app.post('/api/teams/remove-member', (req, res) => {
   if (!team) return res.json({ success: false, message: 'Team not found.' });
   team.members = team.members.filter(m => m !== username);
   broadcastTeams();
+  syncTeamsToDB();
   res.json({ success: true, team });
 });
 

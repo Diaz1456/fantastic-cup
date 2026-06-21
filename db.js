@@ -68,6 +68,29 @@ const dailyTaskConfigSchema = new mongoose.Schema({
   text: { type: String, default: 'Daily Task' },
 });
 
+const badgeSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  name: String,
+  rarity: { type: String, default: 'common' },
+  description: { type: String, default: '' },
+  icon: { type: String, default: '🏅' },
+});
+
+const badgeAssignmentSchema = new mongoose.Schema({
+  username: { type: String, unique: true },
+  badgeIds: [{ type: String }],
+});
+
+const teamSchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  name: String,
+  logo: { type: String, default: '🏳️' },
+  color: { type: String, default: '#667eea' },
+  members: [{ type: String }],
+  silverCoins: { type: Number, default: 0 },
+  notes: { type: String, default: '' },
+});
+
 const User = mongoose.model('User', userSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Achievement = mongoose.model('Achievement', achievementSchema);
@@ -77,9 +100,12 @@ const Event = mongoose.model('Event', eventSchema);
 const CoinTransaction = mongoose.model('CoinTransaction', coinSchema);
 const DailyCompletion = mongoose.model('DailyCompletion', dailyCompletionSchema);
 const DailyTaskConfig = mongoose.model('DailyTaskConfig', dailyTaskConfigSchema);
+const Badge = mongoose.model('Badge', badgeSchema);
+const BadgeAssignment = mongoose.model('BadgeAssignment', badgeAssignmentSchema);
+const Team = mongoose.model('Team', teamSchema);
 
 async function connectDB(uri) {
   await mongoose.connect(uri);
 }
 
-module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, connectDB };
+module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, Badge, BadgeAssignment, Team, connectDB };

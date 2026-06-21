@@ -1899,20 +1899,21 @@
   }
 
   async function loadPlayerTeams() {
-    if (!authState) return;
     const container = document.getElementById('player-teams-display');
     if (!container) return;
     try {
-      const res = await fetch('/api/teams/player/' + encodeURIComponent(authState.username)).then(r => r.json());
+      const res = await fetch('/api/teams').then(r => r.json());
       const teams = res.teams || [];
-      const silverBalance = res.silverBalance || 0;
       if (teams.length === 0) {
-        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">👥</span><span class="badges-empty-text">Not on any team yet</span></div>';
+        container.innerHTML = '<div class="badges-empty"><span class="badge-locked">👥</span><span class="badges-empty-text">No teams created yet</span></div>';
         return;
       }
       let html = '<div class="player-teams-grid">';
       for (const team of teams) {
         const memberCount = team.members ? team.members.length : 0;
+        const memberList = team.members && team.members.length > 0
+          ? team.members.map(m => `<span class="team-member-tag">${m}</span>`).join('')
+          : '<span class="text-muted" style="font-size:0.8rem;">No members</span>';
         html += `
         <div class="player-team-card glass" style="border-left:4px solid ${team.color || '#667eea'}">
           <div class="player-team-header">
@@ -1920,6 +1921,7 @@
             <span class="player-team-name">${team.name}</span>
             <span class="player-team-members-count">${memberCount} member${memberCount === 1 ? '' : 's'}</span>
           </div>
+          <div class="team-member-list">${memberList}</div>
           ${team.notes ? `<div class="player-team-notes">${team.notes}</div>` : ''}
           <div class="player-team-coins">
             <span class="player-team-coin-icon">🥈</span> Team Silver Coins: <strong>${team.silverCoins || 0}</strong>
@@ -1927,9 +1929,6 @@
         </div>`;
       }
       html += '</div>';
-      if (silverBalance > 0) {
-        html += `<div class="player-teams-total"><span class="player-team-coin-icon">🥈</span> Your Total Team Silver: <strong>${silverBalance}</strong></div>`;
-      }
       container.innerHTML = html;
     } catch {
       container.innerHTML = '';
@@ -2184,6 +2183,15 @@
       });
     }
 
+    // Player Teams nav button – scroll to teams section
+    const teamsNavBtn = document.getElementById('player-teams-nav-btn');
+    if (teamsNavBtn) {
+      teamsNavBtn.addEventListener('click', () => {
+        const section = document.querySelector('.player-section:has(#player-teams-display)');
+        if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
     // "Show all players" toggle removed — searchable combo now shows all players
 
     // Coin leaderboard refresh
@@ -2266,6 +2274,17 @@
       });
     }
 
+    let _lastDisplayedMin = -1;
+
+    function triggerMinutePop() {
+      [document.getElementById('admin-countdown'), document.getElementById('player-countdown')].forEach(el => {
+        if (!el) return;
+        el.classList.remove('minute-pop');
+        void el.offsetWidth;
+        el.classList.add('minute-pop');
+      });
+    }
+
     function showCountdownMode(show) {
       const adminClock = document.getElementById('admin-clock');
       const adminCountdown = document.getElementById('admin-countdown');
@@ -2332,6 +2351,7 @@
       showCountdownMode(true);
       updateCountdownDisplay(remaining);
       _lastCountdownSec = -1;
+      _lastDisplayedMin = -1;
       applyCountdownEffects(remaining);
 
       // Dramatic start effect
@@ -2352,11 +2372,18 @@
             let totalSec = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
             if (totalSec > 0) {
               totalSec--;
+              const min = Math.floor(totalSec / 60);
+              if (min !== _lastDisplayedMin && totalSec > 0) {
+                _lastDisplayedMin = min;
+                triggerMinutePop();
+              }
               updateCountdownDisplay(totalSec * 1000);
               applyCountdownEffects(totalSec * 1000);
             } else {
-              // Zero reached
+              // Zero reached – restore clock after brief display
+              updateCountdownDisplay(0);
               applyCountdownEffects(0);
+              setTimeout(() => showCountdownMode(false), 3000);
             }
           }
         }
@@ -2364,6 +2391,12 @@
     });
 
     socket.on('countdownTick', (remaining) => {
+      const sec = Math.floor(remaining / 1000);
+      const min = Math.floor(sec / 60);
+      if (min !== _lastDisplayedMin && sec > 0) {
+        _lastDisplayedMin = min;
+        triggerMinutePop();
+      }
       updateCountdownDisplay(remaining);
       applyCountdownEffects(remaining);
     });
