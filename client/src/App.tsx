@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSocket } from './hooks/useSocket';
-import EventPage from './components/EventPage';
-import AdminPanel from './components/AdminPanel';
+import ShowdownPage from './components/ShowdownPage';
+import ShowdownAdmin from './components/ShowdownAdmin';
 import AdminLogin from './components/AdminLogin';
 
 export default function App() {
@@ -14,18 +14,18 @@ export default function App() {
       {view === 'admin' && !adminAuthed ? (
         <AdminLogin onLogin={() => setAdminAuthed(true)} />
       ) : view === 'admin' ? (
-        <AdminPanel socket={socket} onBack={() => { setView('player'); setAdminAuthed(false); }} />
+        <ShowdownAdmin socket={socket} onBack={() => { setView('player'); setAdminAuthed(false); }} />
       ) : (
-        <EventPage socket={socket} />
+        <ShowdownPage socket={socket} />
       )}
 
-      <div className="view-toggle">
-        <button className={`toggle-btn ${view === 'player' ? 'active' : ''}`} onClick={() => setView('player')}>PLAYER</button>
-        <button className={`toggle-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>ADMIN</button>
-        <a href="/" className="main-site-btn">MAIN SITE</a>
+      <div className="sd-view-toggle">
+        <button className={`sd-toggle-btn ${view === 'player' ? 'active' : ''}`} onClick={() => setView('player')}>SCOREBOARD</button>
+        <button className={`sd-toggle-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>ADMIN</button>
+        <a href="/" className="sd-main-btn">MAIN SITE</a>
       </div>
 
-      {socket.error && <div className="toast-error">{socket.error}</div>}
+      {socket.error && <div className="sd-toast">{socket.error}</div>}
     </div>
   );
 }

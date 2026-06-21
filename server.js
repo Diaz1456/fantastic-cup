@@ -14,75 +14,89 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// ─── STOCK MARKET (IN-MEMORY) ───
-const stockMarket = {
-  teams: [],
-  prices: {},
-  history: {},
-  playerPerformance: {},
-  sentiment: {},
-  frozen: {},
-  config: { multiplier: 5, baseValue: 100 },
-  lastUpdate: null,
+// ─── TOP 3 TEAMS STOCK SHOWDOWN ───
+
+let showdownState = {
+  teams: [],           // { id, name, logo, color, members, stockValue, change, rank }
+  baseValues: {},      // teamId -> admin-set base value
+  simulationActive: true,
+  interval: null,
+  prevRanks: {},       // teamId -> previous rank for change detection
 };
 
-function recalcTeamPrice(teamId) {
-  if (stockMarket.frozen[teamId]) return stockMarket.prices[teamId] || stockMarket.config.baseValue;
-  const team = stockMarket.teams.find(t => t.id === teamId);
-  if (!team) return stockMarket.config.baseValue;
-  const perf = stockMarket.playerPerformance[teamId] || {};
-  const totalPerf = Object.values(perf).reduce((a, b) => a + Number(b), 0);
-  const sent = Number(stockMarket.sentiment[teamId]) || 0;
-  const price = stockMarket.config.baseValue + totalPerf * stockMarket.config.multiplier + sent;
-  return Math.round(Math.max(price, 1));
-}
-
-function updateStockPrice(teamId) {
-  const oldPrice = stockMarket.prices[teamId] || stockMarket.config.baseValue;
-  const newPrice = recalcTeamPrice(teamId);
-  stockMarket.prices[teamId] = newPrice;
-  if (!stockMarket.history[teamId]) stockMarket.history[teamId] = [];
-  stockMarket.history[teamId].push({ price: newPrice, timestamp: Date.now() });
-  if (stockMarket.history[teamId].length > 20) stockMarket.history[teamId].shift();
-  stockMarket.lastUpdate = Date.now();
-  const change = newPrice - oldPrice;
-  const pctChange = oldPrice > 0 ? ((change / oldPrice) * 100).toFixed(2) : '0';
-  io.emit('stockPriceChange', { teamId, price: newPrice, oldPrice, change, pctChange: Number(pctChange), history: stockMarket.history[teamId] });
-  return { price: newPrice, change, pctChange: Number(pctChange) };
-}
-
-function broadcastStockMarket() {
-  const state = {
-    teams: stockMarket.teams,
-    prices: { ...stockMarket.prices },
-    history: { ...stockMarket.history },
-    sentiment: { ...stockMarket.sentiment },
-    frozen: { ...stockMarket.frozen },
-    config: { ...stockMarket.config },
-    lastUpdate: stockMarket.lastUpdate,
-    playerPerformance: { ...stockMarket.playerPerformance },
-  };
-  io.emit('stockMarketUpdate', state);
-}
-
-function syncTeamsToMarket() {
-  stockMarket.teams = JSON.parse(JSON.stringify(teamsData.teams));
-  for (const team of stockMarket.teams) {
-    if (stockMarket.prices[team.id] === undefined) {
-      stockMarket.prices[team.id] = stockMarket.config.baseValue;
+function syncShowdownTeams() {
+  const allTeams = JSON.parse(JSON.stringify(teamsData.teams));
+  for (const team of allTeams) {
+    if (showdownState.baseValues[team.id] !== undefined) {
+      team.stockValue = showdownState.baseValues[team.id];
+    } else {
+      team.stockValue = team.silverCoins || 0;
     }
-    if (!stockMarket.history[team.id]) stockMarket.history[team.id] = [];
-    if (!stockMarket.playerPerformance[team.id]) stockMarket.playerPerformance[team.id] = {};
   }
-  broadcastStockMarket();
+  allTeams.sort((a, b) => (b.stockValue || 0) - (a.stockValue || 0));
+  const top3 = allTeams.slice(0, 3);
+  const rankChanges = [];
+  for (let i = 0; i < top3.length; i++) {
+    const team = top3[i];
+    const oldRank = showdownState.prevRanks[team.id];
+    team.rank = i + 1;
+    if (oldRank !== undefined && oldRank !== team.rank) {
+      rankChanges.push({ teamId: team.id, name: team.name, logo: team.logo, fromRank: oldRank, toRank: team.rank });
+    }
+    showdownState.prevRanks[team.id] = team.rank;
+  }
+  showdownState.teams = top3;
+  broadcastShowdown(rankChanges);
 }
 
-// Sync teams on any teams update
-const originalBroadcastTeams = broadcastTeams;
-broadcastTeams = function() {
-  originalBroadcastTeams();
-  syncTeamsToMarket();
-};
+function broadcastShowdown(rankChanges) {
+  const state = {
+    teams: showdownState.teams.map(t => ({
+      id: t.id, name: t.name, logo: t.logo, color: t.color,
+      stockValue: t.stockValue, change: t._change || 0, rank: t.rank,
+      members: t.members || [],
+    })),
+    baseValues: { ...showdownState.baseValues },
+    simulationActive: showdownState.simulationActive,
+  };
+  io.emit('showdownUpdate', state);
+  if (rankChanges && rankChanges.length > 0) {
+    io.emit('showdownRankChange', { changes: rankChanges, teams: state.teams });
+  }
+}
+
+function applyFluctuation() {
+  if (!showdownState.simulationActive) return;
+  if (showdownState.teams.length === 0) return;
+  for (const team of showdownState.teams) {
+    const fluctuation = (Math.random() * 10 - 5);
+    const newValue = Math.max(0, team.stockValue + fluctuation);
+    team._change = Math.round(fluctuation * 100) / 100;
+    team.stockValue = Math.round(newValue * 100) / 100;
+    if (showdownState.baseValues[team.id] !== undefined) {
+      showdownState.baseValues[team.id] += fluctuation;
+    }
+  }
+  syncShowdownTeams();
+}
+
+function startShowdownSimulation() {
+  stopShowdownSimulation();
+  showdownState.interval = setInterval(applyFluctuation, 3000);
+}
+
+function stopShowdownSimulation() {
+  if (showdownState.interval) {
+    clearInterval(showdownState.interval);
+    showdownState.interval = null;
+  }
+}
+
+// Initial sync after teams load
+setTimeout(() => {
+  syncShowdownTeams();
+  startShowdownSimulation();
+}, 1000);
 
 let mongoReady = false;
 
@@ -590,6 +604,7 @@ function getTeamMemberBalance(username) {
 
 function broadcastTeams() {
   io.emit('teamsUpdate', teamsData.teams);
+  syncShowdownTeams();
 }
 
 // GET all teams
@@ -1277,87 +1292,53 @@ io.on('connection', (socket) => {
     socket.leave(`event:${eventId}`);
   });
 
-  // ─── STOCK MARKET SOCKET HANDLERS ───
+  // ─── TOP 3 TEAMS SHOWDOWN SOCKET HANDLERS ───
 
-  socket.on('stockMarket:join', () => {
+  socket.on('showdown:join', () => {
     const state = {
-      teams: stockMarket.teams,
-      prices: { ...stockMarket.prices },
-      history: { ...stockMarket.history },
-      sentiment: { ...stockMarket.sentiment },
-      frozen: { ...stockMarket.frozen },
-      config: { ...stockMarket.config },
-      lastUpdate: stockMarket.lastUpdate,
-      playerPerformance: { ...stockMarket.playerPerformance },
+      teams: showdownState.teams.map(t => ({
+        id: t.id, name: t.name, logo: t.logo, color: t.color,
+        stockValue: t.stockValue, change: t._change || 0, rank: t.rank,
+        members: t.members || [],
+      })),
+      baseValues: { ...showdownState.baseValues },
+      simulationActive: showdownState.simulationActive,
     };
-    socket.emit('stockMarketUpdate', state);
+    socket.emit('showdownUpdate', state);
   });
 
-  socket.on('stockMarket:adminLogin', (password) => {
+  socket.on('showdown:adminLogin', (password) => {
     if (password !== ADMIN_PASSWORD) return socket.emit('error', 'Invalid admin password');
-    socket.emit('stockMarket:adminGranted');
+    socket.emit('showdown:adminGranted');
   });
 
-  socket.on('stockMarket:updatePerformance', (data) => {
-    if (!data.teamId || !data.username || data.score === undefined) return;
-    if (!stockMarket.playerPerformance[data.teamId]) stockMarket.playerPerformance[data.teamId] = {};
-    stockMarket.playerPerformance[data.teamId][data.username] = Math.max(0, Number(data.score) || 0);
-    const result = updateStockPrice(data.teamId);
-    broadcastStockMarket();
-    io.emit('stockPerformanceUpdated', { teamId: data.teamId, username: data.username, score: Number(data.score) || 0 });
+  socket.on('showdown:setValue', (data) => {
+    if (!data.teamId || data.value === undefined) return;
+    showdownState.baseValues[data.teamId] = Math.max(0, Number(data.value) || 0);
+    // Update in showdownteams
+    const team = showdownState.teams.find(t => t.id === data.teamId);
+    if (team) team.stockValue = showdownState.baseValues[data.teamId];
+    syncShowdownTeams();
   });
 
-  socket.on('stockMarket:setSentiment', (data) => {
-    if (!data.teamId) return;
-    stockMarket.sentiment[data.teamId] = Number(data.sentiment) || 0;
-    updateStockPrice(data.teamId);
-    broadcastStockMarket();
-  });
-
-  socket.on('stockMarket:setFrozen', (data) => {
-    if (!data.teamId) return;
-    stockMarket.frozen[data.teamId] = !!data.frozen;
-    if (!data.frozen) updateStockPrice(data.teamId);
-    broadcastStockMarket();
-  });
-
-  socket.on('stockMarket:resetPrices', () => {
-    for (const team of stockMarket.teams) {
-      stockMarket.prices[team.id] = stockMarket.config.baseValue;
-      stockMarket.history[team.id] = [{ price: stockMarket.config.baseValue, timestamp: Date.now() }];
-      stockMarket.playerPerformance[team.id] = {};
-      stockMarket.sentiment[team.id] = 0;
-      stockMarket.frozen[team.id] = false;
+  socket.on('showdown:toggleSimulation', () => {
+    showdownState.simulationActive = !showdownState.simulationActive;
+    if (showdownState.simulationActive) {
+      startShowdownSimulation();
+    } else {
+      stopShowdownSimulation();
     }
-    broadcastStockMarket();
+    broadcastShowdown([]);
   });
 
-  socket.on('stockMarket:spike', (data) => {
-    if (!data.teamId) return;
-    const team = stockMarket.teams.find(t => t.id === data.teamId);
-    if (!team) return;
-    const amount = Number(data.amount) || 0;
-    const newPrice = Math.max(1, (stockMarket.prices[team.id] || stockMarket.config.baseValue) + amount);
-    stockMarket.prices[team.id] = newPrice;
-    if (!stockMarket.history[team.id]) stockMarket.history[team.id] = [];
-    stockMarket.history[team.id].push({ price: newPrice, timestamp: Date.now() });
-    if (stockMarket.history[team.id].length > 20) stockMarket.history[team.id].shift();
-    broadcastStockMarket();
-    io.emit('stockPriceChange', {
-      teamId: data.teamId, price: newPrice, oldPrice: newPrice - amount,
-      change: amount, pctChange: stockMarket.config.baseValue > 0 ? Number(((amount / (newPrice - amount)) * 100).toFixed(2)) : 0,
-      history: stockMarket.history[data.teamId],
-      spike: true,
-    });
-  });
-
-  socket.on('stockMarket:updateConfig', (data) => {
-    if (data.multiplier !== undefined) stockMarket.config.multiplier = Math.max(1, Number(data.multiplier));
-    if (data.baseValue !== undefined) stockMarket.config.baseValue = Math.max(1, Number(data.baseValue));
-    for (const team of stockMarket.teams) {
-      updateStockPrice(team.id);
+  socket.on('showdown:reset', () => {
+    showdownState.baseValues = {};
+    showdownState.prevRanks = {};
+    const allTeams = JSON.parse(JSON.stringify(teamsData.teams));
+    for (const team of allTeams) {
+      showdownState.baseValues[team.id] = team.silverCoins || 0;
     }
-    broadcastStockMarket();
+    syncShowdownTeams();
   });
 
   // ─── COUNTDOWN TIMER (Admin Dashboard) ───
@@ -1497,35 +1478,34 @@ setInterval(broadcastPresence, 15000);
 
 // ═══════════════════════════════════════════════
 
-// ─── STOCK MARKET REST ROUTES ───
+// ─── TOP 3 TEAMS SHOWDOWN REST ROUTES ───
 
-app.get('/api/stock-market/state', (req, res) => {
+app.get('/api/showdown/state', (req, res) => {
   res.json({
-    teams: stockMarket.teams,
-    prices: stockMarket.prices,
-    history: stockMarket.history,
-    sentiment: stockMarket.sentiment,
-    frozen: stockMarket.frozen,
-    config: stockMarket.config,
-    lastUpdate: stockMarket.lastUpdate,
-    playerPerformance: stockMarket.playerPerformance,
+    teams: showdownState.teams.map(t => ({
+      id: t.id, name: t.name, logo: t.logo, color: t.color,
+      stockValue: t.stockValue, change: t._change || 0, rank: t.rank,
+      members: t.members || [],
+    })),
+    baseValues: showdownState.baseValues,
+    simulationActive: showdownState.simulationActive,
   });
 });
 
-app.post('/api/stock-market/admin/login', (req, res) => {
+app.post('/api/showdown/admin/login', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
   res.json({ token: 'granted' });
 });
 
-// Serve the React Event Section (stock market)
+// Serve the React Event Section (showdown)
 const eventDist = path.join(__dirname, 'client', 'dist');
 app.use('/event', express.static(eventDist));
 app.get('/event/*', (req, res) => {
   res.sendFile(path.join(eventDist, 'index.html'));
 });
 
-// ─── END EVENT BRIDGE ───
+// ─── END SHOWDOWN SECTION ───
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
