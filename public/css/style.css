@@ -1818,6 +1818,7 @@ input[type="number"]::-webkit-outer-spin-button {
   outline: none;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
   transition: all var(--transition);
+  pointer-events: none;
 }
 
 .achievement-row input[type="range"]::-webkit-slider-thumb {
