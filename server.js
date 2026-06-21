@@ -583,6 +583,30 @@ let teamsData = {
   memberCoins: {}, // username -> silver coin balance from teams
 };
 
+// ─── TEAM STOCK MARKET STATE ────────────────────────────────────────────────
+let teamStockState = {}; // teamId -> { price, volume, lastDelta, lastAction, lastEvent, lastPlayer }
+
+function resetTeamStockState() {
+  teamStockState = {};
+  for (const team of teamsData.teams) {
+    teamStockState[team.id] = { price: 0, volume: 0, lastDelta: 0, lastAction: null, lastEvent: null, lastPlayer: null };
+  }
+}
+resetTeamStockState();
+
+function broadcastTeamStock() {
+  io.emit('teamstockUpdate', {
+    teams: teamsData.teams.map(t => ({
+      id: t.id,
+      name: t.name,
+      color: t.color,
+      logo: t.logo,
+      members: t.members,
+      stock: teamStockState[t.id] || { price: 0, volume: 0, lastDelta: 0, lastAction: null, lastEvent: null, lastPlayer: null },
+    })),
+  });
+}
+
 async function syncTeamsToDB() {
   if (!isMongoConnected()) return;
   try {
@@ -618,6 +642,7 @@ function getTeamMemberBalance(username) {
 
 function broadcastTeams() {
   io.emit('teamsUpdate', teamsData.teams);
+  broadcastTeamStock();
 }
 
 // GET all teams
@@ -762,12 +787,43 @@ app.get('/achievements/:player', async (req, res) => {
 
 app.post('/update-achievement', async (req, res) => {
   const { playerUsername, categoryId, value } = req.body;
+  const newVal = Number(value) || 0;
+
+  // Get old value to compute delta
+  let oldVal = 0;
+  try {
+    const existing = await Achievement.findOne({ playerUsername }).lean();
+    if (existing && existing.values && existing.values[categoryId] !== undefined) {
+      oldVal = Number(existing.values[categoryId]) || 0;
+    }
+  } catch { /* ignore */ }
+
+  const delta = newVal - oldVal;
 
   await Achievement.findOneAndUpdate(
     { playerUsername },
-    { $set: { [`values.${categoryId}`]: Number(value) || 0 } },
+    { $set: { [`values.${categoryId}`]: newVal } },
     { upsert: true }
   );
+
+  // Update team stock market if delta is non-zero
+  if (delta !== 0) {
+    for (const team of teamsData.teams) {
+      if (team.members.includes(playerUsername)) {
+        const st = teamStockState[team.id] || { price: 0, volume: 0, lastDelta: 0, lastAction: null, lastEvent: null, lastPlayer: null };
+        const absDelta = Math.abs(delta);
+        st.price = Math.max(0, st.price + delta);
+        st.volume += 1;
+        st.lastDelta = delta;
+        st.lastAction = delta > 0 ? 'pos' : 'neg';
+        st.lastPlayer = playerUsername;
+        st.lastEvent = categoryId;
+        teamStockState[team.id] = st;
+        break;
+      }
+    }
+    broadcastTeamStock();
+  }
 
   const leaderboard = await buildLeaderboard();
   res.json({ success: true, leaderboard });
@@ -1347,6 +1403,16 @@ io.on('connection', (socket) => {
     if (data.color !== undefined) company.color = data.color;
     broadcastMonopoly();
     persistMonopoly();
+  });
+
+  // ─── TEAM STOCK MARKET ───
+  socket.on('teamstock:join', () => {
+    broadcastTeamStock();
+  });
+
+  socket.on('teamstock:reset', () => {
+    resetTeamStockState();
+    broadcastTeamStock();
   });
 
   // ─── COUNTDOWN TIMER (Admin Dashboard) ───

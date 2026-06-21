@@ -17,10 +17,7 @@
     padding: 24px 16px;
   }
 
-  .container {
-    max-width: 920px;
-    width: 100%;
-  }
+  .container { max-width: 960px; width: 100%; }
 
   .header {
     display: flex;
@@ -77,45 +74,16 @@
     50% { box-shadow: 0 0 36px rgba(255,50,50,0.45); }
   }
 
-  .controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-  }
-
-  .ctrl-btn {
-    background: #0f1838;
-    border: 1px solid #1a2755;
-    color: #6e8bb8;
-    font-family: inherit;
+  .connection-status {
     font-size: 10px;
     letter-spacing: 1.5px;
-    padding: 7px 16px;
-    border-radius: 4px;
-    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 3px;
     text-transform: uppercase;
-    transition: all 0.2s;
   }
 
-  .ctrl-btn:hover {
-    border-color: #88a0c0;
-    color: #88a0c0;
-    background: #141e3e;
-  }
-
-  .ctrl-btn.active {
-    background: rgba(136,160,192,0.08);
-    border-color: #88a0c0;
-    color: #88a0c0;
-  }
-
-  .ctrl-label {
-    font-size: 11px;
-    color: #4a6a90;
-    letter-spacing: 1px;
-  }
+  .connection-status.online { color: #00ff46; border: 1px solid rgba(0,255,70,0.3); }
+  .connection-status.offline { color: #ff3232; border: 1px solid rgba(255,50,50,0.3); }
 
   .table-wrapper {
     overflow-x: auto;
@@ -128,7 +96,7 @@
   table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px;
+    min-width: 620px;
   }
 
   th {
@@ -151,9 +119,7 @@
     vertical-align: middle;
   }
 
-  tbody tr {
-    transition: background 0.5s ease;
-  }
+  tbody tr { transition: background 0.5s ease; }
 
   tbody tr.row-green {
     background: rgba(0,255,70,0.07) !important;
@@ -172,23 +138,15 @@
     color: #4a6a90;
   }
 
-  .rank-1 {
-    color: #ffd700 !important;
-    text-shadow: 0 0 10px rgba(255,215,0,0.4);
-  }
+  .rank-1 { color: #ffd700 !important; text-shadow: 0 0 10px rgba(255,215,0,0.4); }
 
-  .team-cell {
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
+  .team-cell { font-weight: bold; letter-spacing: 1px; }
+  .team-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
 
-  .team-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    margin-right: 7px;
-    vertical-align: middle;
+  .members-pill {
+    font-size: 10px;
+    color: #4a6a90;
+    letter-spacing: 0.5px;
   }
 
   .price {
@@ -197,72 +155,40 @@
     letter-spacing: 1px;
   }
 
-  .change {
-    font-size: 0.9rem;
-  }
-
-  .change .up {
-    color: #00ff46;
-    font-weight: bold;
-    animation: fadeUp 0.4s ease-out;
-  }
-
-  .change .down {
-    color: #ff3232;
-    font-weight: bold;
-    animation: fadeDown 0.4s ease-out;
-  }
-
-  .change .neutral {
-    color: #4a6a90;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .volume {
-    color: #4a6a90;
-    font-size: 0.9rem;
-  }
-
-  .last-event {
-    font-size: 0.8rem;
-    color: #6e8bb8;
-    max-width: 180px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .last-event.fresh {
-    color: #c8d6e5;
-    font-weight: bold;
-  }
-
-  .price-pop {
-    animation: priceBounce 0.3s ease;
-  }
-
+  .price.pop { animation: priceBounce 0.3s ease; }
   @keyframes priceBounce {
     0% { transform: scale(1); }
     40% { transform: scale(1.18); }
     100% { transform: scale(1); }
   }
 
+  .change { font-size: 0.9rem; }
+  .change .up { color: #00ff46; font-weight: bold; animation: fadeUp 0.4s ease-out; }
+  .change .down { color: #ff3232; font-weight: bold; animation: fadeDown 0.4s ease-out; }
+  .change .neutral { color: #4a6a90; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+  .volume { color: #4a6a90; font-size: 0.9rem; }
+
+  .last-event {
+    font-size: 0.78rem;
+    color: #6e8bb8;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .last-event.fresh { color: #c8d6e5; font-weight: bold; }
+
   .log-area {
-    margin-top: 16px;
+    margin-top: 14px;
     background: #0a0e1e;
     border: 1px solid #1a2755;
     border-radius: 6px;
     padding: 10px 14px;
-    max-height: 120px;
+    max-height: 130px;
     overflow-y: auto;
     font-size: 11px;
     color: #4a6a90;
@@ -277,6 +203,40 @@
   .log-entry .pos { color: #00ff46; }
   .log-entry .neg { color: #ff3232; }
 
+  .bottom-bar {
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .bottom-bar a, .bottom-bar button {
+    background: #0f1838;
+    border: 1px solid #1a2755;
+    color: #6e8bb8;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 7px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+
+  .bottom-bar a:hover, .bottom-bar button:hover {
+    border-color: #88a0c0;
+    color: #88a0c0;
+    background: #141e3e;
+  }
+
+  .bottom-bar button.danger:hover {
+    border-color: #ff3232;
+    color: #ff3232;
+  }
+
   @media (max-width: 640px) {
     body { padding: 12px 6px; }
     .title { font-size: 1rem; }
@@ -290,305 +250,203 @@
 <body>
 <div class="container">
 
-  <!-- Header -->
   <div class="header">
     <h1 class="title">📈 Team Stock Market Ticker</h1>
-    <span id="statusBadge" class="status-badge">⚪ Waiting for events...</span>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <span id="statusBadge" class="status-badge">⚪ Waiting...</span>
+      <span id="connStatus" class="connection-status offline">OFFLINE</span>
+    </div>
   </div>
 
-  <!-- Controls -->
-  <div class="controls">
-    <button class="ctrl-btn active" id="btnPlayPause">⏸ Pause</button>
-    <button class="ctrl-btn" id="btnReset">↻ Reset</button>
-    <span class="ctrl-label" id="timerLabel">Next event in 3s</span>
-  </div>
-
-  <!-- Table -->
   <div class="table-wrapper">
     <table>
       <thead>
         <tr>
           <th>#</th>
           <th>Team</th>
+          <th>Players</th>
           <th>Price</th>
           <th>Change</th>
           <th>Vol</th>
           <th>Last Event</th>
         </tr>
       </thead>
-      <tbody id="tbody"></tbody>
+      <tbody id="tbody">
+        <tr><td colspan="7" style="text-align:center;color:#4a6a90;padding:40px;">Connecting to server...</td></tr>
+      </tbody>
     </table>
   </div>
 
-  <!-- Log -->
   <div class="log-area" id="logArea"></div>
 
-  <div style="margin-top:14px;text-align:center;">
-    <a href="/event/" class="ctrl-btn" style="display:inline-block;text-decoration:none;">← Back to Event Hub</a>
+  <div class="bottom-bar">
+    <a href="/event/">← Back to Event Hub</a>
+    <button id="btnReset" class="danger">↻ Reset Prices</button>
   </div>
+
 </div>
 
+<script src="/socket.io/socket.io.js"></script>
 <script>
-// ─── ADMIN DATA ─────────────────────────────────────────────────────────────
-const ADMIN_DATA = {
-  eventIntervalMs: 3000,
-  teams: [
-    { name: 'Alpha Corp',  color: '#5b8def', players: ['Alpha-P1','Alpha-P2','Alpha-P3'] },
-    { name: 'Beta Inc',    color: '#f0a050', players: ['Beta-X','Beta-Y','Beta-Z'] },
-    { name: 'Gamma Ltd',   color: '#9b59b6', players: ['Gamma-G1','Gamma-G2','Gamma-G3','Gamma-G4'] },
-    { name: 'Delta Co',    color: '#1abc9c', players: ['Delta-D1','Delta-D2','Delta-D3'] },
-  ],
-  positiveEvents: ['Goal scored','Deal closed','Record broken','Viral post','Innovation award','Perfect pass','Game winner','Buzzer beater','MVP play','Clean sheet'],
-  negativeEvents: ['Injury','Scandal','Market dip','Own goal','Penalty','Timeout violation'],
-  minAdd: 5,
-  maxAdd: 25,
-  negativeChance: 0.1,
-  minSub: 3,
-  maxSub: 10,
-};
-
-// ─── STATE ──────────────────────────────────────────────────────────────────
-let running = true;
-let timerId = null;
-let countdownId = null;
-let countdown = ADMIN_DATA.eventIntervalMs / 1000;
-
-// Build teams data
-let teams = ADMIN_DATA.teams.map(t => {
-  const color = t.color.startsWith('#') ? t.color : '#' + t.color;
-  return {
-    name: t.name,
-    color: color,
-    players: [...t.players],
-    price: 0,
-    volume: 0,
-    lastEvent: null,
-    lastDelta: 0,
-    lastAction: null, // 'pos' | 'neg' | null
-    fresh: false,
-  };
-});
-
-// Log ring buffer
-const MAX_LOG = 40;
-const logEntries = [];
-
-// ─── DOM REFS ───────────────────────────────────────────────────────────────
+const socket = io({ transports: ['websocket', 'polling'] });
 const tbody = document.getElementById('tbody');
 const statusBadge = document.getElementById('statusBadge');
 const logArea = document.getElementById('logArea');
-const btnPlayPause = document.getElementById('btnPlayPause');
+const connStatus = document.getElementById('connStatus');
 const btnReset = document.getElementById('btnReset');
-const timerLabel = document.getElementById('timerLabel');
 
-// ─── PICK RANDOM ITEMS ──────────────────────────────────────────────────────
-function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+let teamsCache = [];  // { id, name, color, logo, members, stock }
+let logEntries = [];
+const MAX_LOG = 40;
+let freshTeamId = null;
+let freshAction = null;
+let rankVersion = 0;
 
-function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+// ─── CONNECTION ─────────────────────────────────────────────────────────────
+socket.on('connect', () => {
+  connStatus.textContent = '● ONLINE';
+  connStatus.className = 'connection-status online';
+  socket.emit('teamstock:join');
+});
 
-// ─── GENERATE EVENT ─────────────────────────────────────────────────────────
-function generateEvent() {
-  // Pick a random team weighted by nothing – uniform
-  const team = pickRandom(teams);
-  const player = pickRandom(team.players);
-  const isNegative = Math.random() < ADMIN_DATA.negativeChance;
-  const delta = isNegative
-    ? -randInt(ADMIN_DATA.minSub, ADMIN_DATA.maxSub)
-    : randInt(ADMIN_DATA.minAdd, ADMIN_DATA.maxAdd);
-  const eventText = isNegative ? pickRandom(ADMIN_DATA.negativeEvents) : pickRandom(ADMIN_DATA.positiveEvents);
+socket.on('disconnect', () => {
+  connStatus.textContent = 'OFFLINE';
+  connStatus.className = 'connection-status offline';
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#4a6a90;padding:40px;">Disconnected from server.</td></tr>';
+});
 
-  // Apply
-  team.price = Math.max(0, team.price + delta);
-  team.volume += 1;
-  team.lastEvent = eventText;
-  team.lastDelta = delta;
-  team.lastAction = isNegative ? 'neg' : 'pos';
-  team.fresh = true;
-
-  return { team, player, eventText, delta, isNegative };
-}
-
-// ─── RENDER TABLE ───────────────────────────────────────────────────────────
+// ─── RENDER ─────────────────────────────────────────────────────────────────
 function render() {
-  // Sort by price descending
-  const sorted = [...teams].sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
+  const sorted = [...teamsCache].sort((a, b) => (b.stock?.price || 0) - (a.stock?.price || 0) || a.name.localeCompare(b.name));
 
   let html = '';
   sorted.forEach((team, i) => {
     const rank = i + 1;
+    const st = team.stock || { price: 0, volume: 0, lastDelta: 0, lastAction: null, lastEvent: null, lastPlayer: null };
+
     const rankClass = rank === 1 ? 'rank rank-1' : 'rank';
     const rankDisp = rank === 1 ? '👑' : rank;
 
     let changeHtml = '';
-    if (team.lastAction === 'pos') {
-      changeHtml = `<span class="up">▲ +${team.lastDelta}</span>`;
-    } else if (team.lastAction === 'neg') {
-      changeHtml = `<span class="down">▼ ${team.lastDelta}</span>`;
-    } else {
-      changeHtml = `<span class="neutral">--</span>`;
-    }
+    if (st.lastAction === 'pos') changeHtml = `<span class="up">▲ +${st.lastDelta}</span>`;
+    else if (st.lastAction === 'neg') changeHtml = `<span class="down">▼ ${st.lastDelta}</span>`;
+    else changeHtml = `<span class="neutral">--</span>`;
 
-    const lastEventHtml = team.lastEvent
-      ? `${team.players[0]}…: ${team.lastEvent}`
+    const isFresh = freshTeamId === team.id;
+    const rowClass = isFresh ? (freshAction === 'pos' ? 'row-green' : (freshAction === 'neg' ? 'row-red' : '')) : '';
+    const lastText = st.lastPlayer
+      ? `${st.lastPlayer}: ${st.lastEvent} (${st.lastDelta > 0 ? '+' : ''}${st.lastDelta})`
       : '—';
 
-    const rowClass = team.fresh
-      ? (team.lastAction === 'pos' ? 'row-green' : (team.lastAction === 'neg' ? 'row-red' : ''))
-      : '';
+    const memberList = (team.members || []).join(', ');
 
     html += `<tr class="${rowClass}">
       <td class="${rankClass}">${rankDisp}</td>
       <td class="team-cell"><span class="team-dot" style="background:${team.color}"></span>${team.name}</td>
-      <td class="price ${team.fresh ? 'price-pop' : ''}">${team.price}</td>
+      <td class="members-pill">${memberList}</td>
+      <td class="price ${isFresh ? 'pop' : ''}">${st.price}</td>
       <td class="change">${changeHtml}</td>
-      <td class="volume">${team.volume.toLocaleString()}</td>
-      <td class="last-event ${team.fresh ? 'fresh' : ''}">${lastEventHtml}</td>
+      <td class="volume">${(st.volume || 0).toLocaleString()}</td>
+      <td class="last-event ${isFresh ? 'fresh' : ''}">${lastText}</td>
     </tr>`;
   });
 
   tbody.innerHTML = html;
 
-  // Clear fresh flags after a short delay (keeps row highlighted)
-  setTimeout(() => {
-    teams.forEach(t => { t.fresh = false; });
-    // re-render without highlights
-    renderPlain();
-  }, 2200);
+  // Clear freshness after 2s
+  if (freshTeamId) {
+    setTimeout(() => {
+      freshTeamId = null;
+      freshAction = null;
+      renderPlain();
+    }, 2200);
+  }
 }
 
-// Lightweight re-render that doesn't trigger another timeout chain
 function renderPlain() {
-  const sorted = [...teams].sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
+  const sorted = [...teamsCache].sort((a, b) => (b.stock?.price || 0) - (a.stock?.price || 0) || a.name.localeCompare(b.name));
   let html = '';
   sorted.forEach((team, i) => {
     const rank = i + 1;
+    const st = team.stock || { price: 0, volume: 0, lastDelta: 0, lastAction: null, lastEvent: null, lastPlayer: null };
     const rankClass = rank === 1 ? 'rank rank-1' : 'rank';
     const rankDisp = rank === 1 ? '👑' : rank;
-    let changeHtml = '';
-    if (team.lastAction === 'pos') changeHtml = `<span class="up">▲ +${team.lastDelta}</span>`;
-    else if (team.lastAction === 'neg') changeHtml = `<span class="down">▼ ${team.lastDelta}</span>`;
-    else changeHtml = `<span class="neutral">--</span>`;
-    const lastEventHtml = team.lastEvent ? `${team.players[0]}…: ${team.lastEvent}` : '—';
+    let ch = '';
+    if (st.lastAction === 'pos') ch = `<span class="up">▲ +${st.lastDelta}</span>`;
+    else if (st.lastAction === 'neg') ch = `<span class="down">▼ ${st.lastDelta}</span>`;
+    else ch = `<span class="neutral">--</span>`;
+    const lt = st.lastPlayer ? `${st.lastPlayer}: ${st.lastEvent} (${st.lastDelta > 0 ? '+' : ''}${st.lastDelta})` : '—';
     html += `<tr>
       <td class="${rankClass}">${rankDisp}</td>
       <td class="team-cell"><span class="team-dot" style="background:${team.color}"></span>${team.name}</td>
-      <td class="price">${team.price}</td>
-      <td class="change">${changeHtml}</td>
-      <td class="volume">${team.volume.toLocaleString()}</td>
-      <td class="last-event">${lastEventHtml}</td>
+      <td class="members-pill">${(team.members || []).join(', ')}</td>
+      <td class="price">${st.price}</td>
+      <td class="change">${ch}</td>
+      <td class="volume">${(st.volume || 0).toLocaleString()}</td>
+      <td class="last-event">${lt}</td>
     </tr>`;
   });
   tbody.innerHTML = html;
 }
 
-// ─── LOG ────────────────────────────────────────────────────────────────────
-function addLog(team, player, eventText, delta) {
-  const sign = delta >= 0 ? '+' : '';
-  const cls = delta >= 0 ? 'pos' : 'neg';
-  const ts = new Date().toLocaleTimeString();
-  logEntries.unshift(`<div class="log-entry">[${ts}] <strong>${team.name}</strong> — ${player}: ${eventText} <span class="${cls}">(${sign}${delta})</span></div>`);
-  if (logEntries.length > MAX_LOG) logEntries.length = MAX_LOG;
-  logArea.innerHTML = logEntries.join('');
-}
-
 // ─── STATUS BADGE ───────────────────────────────────────────────────────────
-function updateBadge(team, delta) {
-  if (!team) {
+function updateBadge(teamName, delta, player, cat) {
+  if (!teamName) {
     statusBadge.className = 'status-badge';
     statusBadge.textContent = '⚪ Waiting for events...';
     return;
   }
+  const label = cat || 'achievement';
   if (delta >= 0) {
     statusBadge.className = 'status-badge glow-green';
-    statusBadge.textContent = `🔥 ${team.name} just got a boost!`;
+    statusBadge.textContent = `🔥 ${teamName} boosted — ${player}: ${label} (+${delta})`;
   } else {
     statusBadge.className = 'status-badge glow-red';
-    statusBadge.textContent = `📉 ${team.name} takes a hit`;
+    statusBadge.textContent = `📉 ${teamName} dips — ${player}: ${label} (${delta})`;
   }
 }
 
-// ─── TICK ───────────────────────────────────────────────────────────────────
-function tick() {
-  if (!running) return;
+// ─── LOG ────────────────────────────────────────────────────────────────────
+function addLog(teamName, player, cat, delta) {
+  const sign = delta >= 0 ? '+' : '';
+  const cls = delta >= 0 ? 'pos' : 'neg';
+  const ts = new Date().toLocaleTimeString();
+  logEntries.unshift(`<div class="log-entry">[${ts}] <strong>${teamName}</strong> — ${player}: ${cat} <span class="${cls}">(${sign}${delta})</span></div>`);
+  if (logEntries.length > MAX_LOG) logEntries.length = MAX_LOG;
+  logArea.innerHTML = logEntries.join('');
+}
 
-  const { team, player, eventText, delta, isNegative } = generateEvent();
+// ─── SOCKET LISTENER: track fresh updates for glow ─────────────────────────
+socket.on('teamstockUpdate', (data) => {
+  if (!data || !data.teams) return;
+
+  // Detect which team was just updated
+  const prev = teamsCache;
+  for (const t of data.teams) {
+    const old = prev.find(p => p.id === t.id);
+    if (old && old.stock && t.stock && old.stock.volume !== t.stock.volume) {
+      freshTeamId = t.id;
+      freshAction = t.stock.lastAction;
+      updateBadge(t.name, t.stock.lastDelta, t.stock.lastPlayer, t.stock.lastEvent);
+      addLog(t.name, t.stock.lastPlayer, t.stock.lastEvent, t.stock.lastDelta);
+      break;
+    }
+  }
+
+  teamsCache = data.teams;
+  rankVersion++;
   render();
-  addLog(team, player, eventText, delta);
-  updateBadge(team, delta);
-
-  // Reset countdown
-  countdown = ADMIN_DATA.eventIntervalMs / 1000;
-  updateTimerLabel();
-  scheduleNext();
-}
-
-function scheduleNext() {
-  if (timerId) clearTimeout(timerId);
-  timerId = setTimeout(tick, ADMIN_DATA.eventIntervalMs);
-
-  // Visual countdown
-  if (countdownId) clearInterval(countdownId);
-  countdown = ADMIN_DATA.eventIntervalMs / 1000;
-  updateTimerLabel();
-  countdownId = setInterval(() => {
-    countdown = Math.max(0, countdown - 0.1);
-    updateTimerLabel();
-  }, 100);
-}
-
-function updateTimerLabel() {
-  timerLabel.textContent = `Next event in ${countdown.toFixed(1)}s`;
-}
-
-// ─── PLAY / PAUSE ──────────────────────────────────────────────────────────
-function pause() {
-  running = false;
-  if (timerId) { clearTimeout(timerId); timerId = null; }
-  if (countdownId) { clearInterval(countdownId); countdownId = null; }
-  btnPlayPause.textContent = '▶ Play';
-  btnPlayPause.classList.remove('active');
-  timerLabel.textContent = '⏸ Paused';
-}
-
-function play() {
-  running = true;
-  btnPlayPause.textContent = '⏸ Pause';
-  btnPlayPause.classList.add('active');
-  scheduleNext();
-}
-
-btnPlayPause.addEventListener('click', () => {
-  if (running) pause();
-  else play();
 });
 
 // ─── RESET ──────────────────────────────────────────────────────────────────
 btnReset.addEventListener('click', () => {
-  // Pause first
-  const wasRunning = running;
-  pause();
-  // Reset data
-  teams.forEach(t => {
-    t.price = 0;
-    t.volume = 0;
-    t.lastEvent = null;
-    t.lastDelta = 0;
-    t.lastAction = null;
-    t.fresh = false;
-  });
+  if (!confirm('Reset all team stock prices to 0?')) return;
+  socket.emit('teamstock:reset');
   logEntries.length = 0;
   logArea.innerHTML = '';
-  renderPlain();
   updateBadge(null);
-  if (wasRunning) play();
-  else {
-    timerLabel.textContent = '↻ Reset';
-  }
+  freshTeamId = null;
 });
-
-// ─── INIT ──────────────────────────────────────────────────────────────────
-renderPlain();
-scheduleNext();
 </script>
 </body>
 </html>
