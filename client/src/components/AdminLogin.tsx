@@ -15,7 +15,7 @@ export default function AdminLogin({ onLogin }: Props) {
     if (!pw) { setError('Access code required.'); return; }
     setLoading(true);
     try {
-      const res = await fetch('/api/showdown/admin/login', {
+      const res = await fetch('/api/monopoly/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: pw }),

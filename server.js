@@ -8,95 +8,111 @@ const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, Badge, BadgeAssignment, Team, connectDB } = require('./db');
+const { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, Badge, BadgeAssignment, Team, MonopolyCompany, connectDB } = require('./db');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-// ─── TOP 3 TEAMS STOCK SHOWDOWN ───
+// ─── MONOPOLY STOCK MARKET ───
 
-let showdownState = {
-  teams: [],           // { id, name, logo, color, members, stockValue, change, rank }
-  baseValues: {},      // teamId -> admin-set base value
-  simulationActive: true,
-  interval: null,
-  prevRanks: {},       // teamId -> previous rank for change detection
+let monopolyState = {
+  companies: [],
+  stocks: [],
+  lastTrade: null,
 };
 
-function syncShowdownTeams() {
-  const allTeams = JSON.parse(JSON.stringify(teamsData.teams));
-  for (const team of allTeams) {
-    if (showdownState.baseValues[team.id] !== undefined) {
-      team.stockValue = showdownState.baseValues[team.id];
-    } else {
-      team.stockValue = team.silverCoins || 0;
-    }
-  }
-  allTeams.sort((a, b) => (b.stockValue || 0) - (a.stockValue || 0));
-  const top3 = allTeams.slice(0, 3);
-  const rankChanges = [];
-  for (let i = 0; i < top3.length; i++) {
-    const team = top3[i];
-    const oldRank = showdownState.prevRanks[team.id];
-    team.rank = i + 1;
-    if (oldRank !== undefined && oldRank !== team.rank) {
-      rankChanges.push({ teamId: team.id, name: team.name, logo: team.logo, fromRank: oldRank, toRank: team.rank });
-    }
-    showdownState.prevRanks[team.id] = team.rank;
-  }
-  showdownState.teams = top3;
-  broadcastShowdown(rankChanges);
+const DEFAULT_MONOPOLY_DATA = {
+  companies: [
+    { id: 'c1', name: 'Alpha Corp', color: '#5b8def' },
+    { id: 'c2', name: 'Beta Inc', color: '#f0a050' },
+    { id: 'c3', name: 'Gamma Ltd', color: '#60d0a0' },
+  ],
+  stocks: [
+    { id: 's1', companyId: 'c1', name: 'ALP-A', price: 82, volume: 4560 },
+    { id: 's2', companyId: 'c1', name: 'ALP-B', price: 93, volume: 5100 },
+    { id: 's3', companyId: 'c1', name: 'ALP-C', price: 71, volume: 3900 },
+    { id: 's4', companyId: 'c1', name: 'ALP-D', price: 88, volume: 6200 },
+    { id: 's5', companyId: 'c2', name: 'BET-X', price: 77, volume: 7200 },
+    { id: 's6', companyId: 'c2', name: 'BET-Y', price: 65, volume: 2800 },
+    { id: 's7', companyId: 'c2', name: 'BET-Z', price: 100, volume: 8900 },
+    { id: 's8', companyId: 'c2', name: 'BET-W', price: 55, volume: 1500 },
+    { id: 's9', companyId: 'c3', name: 'GAM-1', price: 69, volume: 3400 },
+    { id: 's10', companyId: 'c3', name: 'GAM-2', price: 80, volume: 4100 },
+    { id: 's11', companyId: 'c3', name: 'GAM-3', price: 94, volume: 7600 },
+    { id: 's12', companyId: 'c3', name: 'GAM-4', price: 62, volume: 2000 },
+  ],
+};
+
+function initMonopolyData() {
+  monopolyState.companies = JSON.parse(JSON.stringify(DEFAULT_MONOPOLY_DATA.companies));
+  monopolyState.stocks = JSON.parse(JSON.stringify(DEFAULT_MONOPOLY_DATA.stocks));
+  monopolyState.lastTrade = null;
 }
 
-function broadcastShowdown(rankChanges) {
+function broadcastMonopoly() {
   const state = {
-    teams: showdownState.teams.map(t => ({
-      id: t.id, name: t.name, logo: t.logo, color: t.color,
-      stockValue: t.stockValue, change: t._change || 0, rank: t.rank,
-      members: t.members || [],
+    companies: monopolyState.companies,
+    stocks: monopolyState.stocks.map(s => ({
+      ...s,
+      lastDelta: s._lastDelta || 0,
+      lastAction: s._lastAction || 'none',
     })),
-    baseValues: { ...showdownState.baseValues },
-    simulationActive: showdownState.simulationActive,
+    lastTrade: monopolyState.lastTrade,
   };
-  io.emit('showdownUpdate', state);
-  if (rankChanges && rankChanges.length > 0) {
-    io.emit('showdownRankChange', { changes: rankChanges, teams: state.teams });
-  }
+  io.emit('monopolyUpdate', state);
 }
 
-function applyFluctuation() {
-  if (!showdownState.simulationActive) return;
-  if (showdownState.teams.length === 0) return;
-  for (const team of showdownState.teams) {
-    const fluctuation = (Math.random() * 10 - 5);
-    const newValue = Math.max(0, team.stockValue + fluctuation);
-    team._change = Math.round(fluctuation * 100) / 100;
-    team.stockValue = Math.round(newValue * 100) / 100;
-    if (showdownState.baseValues[team.id] !== undefined) {
-      showdownState.baseValues[team.id] += fluctuation;
+function tradeStock(stockId, isBuy) {
+  const stock = monopolyState.stocks.find(s => s.id === stockId);
+  if (!stock) return false;
+  const delta = Math.floor(Math.random() * 20) + 5;
+  if (isBuy) {
+    stock.price += delta;
+  } else {
+    stock.price = Math.max(0, stock.price - delta);
+  }
+  stock._lastDelta = delta;
+  stock._lastAction = isBuy ? 'buy' : 'sell';
+  monopolyState.lastTrade = { stockId, companyId: stock.companyId, action: isBuy ? 'buy' : 'sell' };
+  broadcastMonopoly();
+  return true;
+}
+
+function loadMonopolyFromDB() {
+  if (!isMongoConnected()) return;
+}
+
+async function loadMonopolyPersisted() {
+  if (!isMongoConnected()) return;
+  try {
+    const saved = await MonopolyCompany.find().lean();
+    if (saved.length > 0) {
+      monopolyState.companies = saved.map(c => ({ id: c.id, name: c.name, color: c.color }));
+      const allStocks = [];
+      for (const c of saved) {
+        if (c.stocks) allStocks.push(...c.stocks);
+      }
+      if (allStocks.length > 0) monopolyState.stocks = allStocks;
     }
-  }
-  syncShowdownTeams();
+  } catch { /* use defaults */ }
 }
 
-function startShowdownSimulation() {
-  stopShowdownSimulation();
-  showdownState.interval = setInterval(applyFluctuation, 3000);
+async function persistMonopoly() {
+  if (!isMongoConnected()) return;
+  try {
+    for (const company of monopolyState.companies) {
+      const companyStocks = monopolyState.stocks.filter(s => s.companyId === company.id);
+      await MonopolyCompany.findOneAndUpdate(
+        { id: company.id },
+        { ...company, stocks: companyStocks.map(s => ({ id: s.id, name: s.name, price: s.price, volume: s.volume })) },
+        { upsert: true }
+      );
+    }
+  } catch { /* ignore */ }
 }
 
-function stopShowdownSimulation() {
-  if (showdownState.interval) {
-    clearInterval(showdownState.interval);
-    showdownState.interval = null;
-  }
-}
-
-// Initial sync after teams load
-setTimeout(() => {
-  syncShowdownTeams();
-  startShowdownSimulation();
-}, 1000);
+initMonopolyData();
 
 let mongoReady = false;
 
@@ -602,7 +618,6 @@ function getTeamMemberBalance(username) {
 
 function broadcastTeams() {
   io.emit('teamsUpdate', teamsData.teams);
-  syncShowdownTeams();
 }
 
 // GET all teams
@@ -1290,53 +1305,48 @@ io.on('connection', (socket) => {
     socket.leave(`event:${eventId}`);
   });
 
-  // ─── TOP 3 TEAMS SHOWDOWN SOCKET HANDLERS ───
+  // ─── MONOPOLY STOCK MARKET SOCKET HANDLERS ───
 
-  socket.on('showdown:join', () => {
+  socket.on('monopoly:join', () => {
     const state = {
-      teams: showdownState.teams.map(t => ({
-        id: t.id, name: t.name, logo: t.logo, color: t.color,
-        stockValue: t.stockValue, change: t._change || 0, rank: t.rank,
-        members: t.members || [],
+      companies: monopolyState.companies,
+      stocks: monopolyState.stocks.map(s => ({
+        ...s,
+        lastDelta: s._lastDelta || 0,
+        lastAction: s._lastAction || 'none',
       })),
-      baseValues: { ...showdownState.baseValues },
-      simulationActive: showdownState.simulationActive,
+      lastTrade: monopolyState.lastTrade,
     };
-    socket.emit('showdownUpdate', state);
+    socket.emit('monopolyUpdate', state);
   });
 
-  socket.on('showdown:adminLogin', (password) => {
+  socket.on('monopoly:adminLogin', (password) => {
     if (password !== ADMIN_PASSWORD) return socket.emit('error', 'Invalid admin password');
-    socket.emit('showdown:adminGranted');
+    socket.emit('monopoly:adminGranted');
   });
 
-  socket.on('showdown:setValue', (data) => {
-    if (!data.teamId || data.value === undefined) return;
-    showdownState.baseValues[data.teamId] = Math.max(0, Number(data.value) || 0);
-    // Update in showdownteams
-    const team = showdownState.teams.find(t => t.id === data.teamId);
-    if (team) team.stockValue = showdownState.baseValues[data.teamId];
-    syncShowdownTeams();
+  socket.on('monopoly:trade', (data) => {
+    if (!data.stockId || data.action === undefined) return;
+    tradeStock(data.stockId, data.action === 'buy');
   });
 
-  socket.on('showdown:toggleSimulation', () => {
-    showdownState.simulationActive = !showdownState.simulationActive;
-    if (showdownState.simulationActive) {
-      startShowdownSimulation();
-    } else {
-      stopShowdownSimulation();
-    }
-    broadcastShowdown([]);
+  socket.on('monopoly:updateStock', (data) => {
+    const stock = monopolyState.stocks.find(s => s.id === data.stockId);
+    if (!stock) return;
+    if (data.name !== undefined) stock.name = data.name;
+    if (data.price !== undefined) stock.price = Math.max(0, Number(data.price));
+    if (data.volume !== undefined) stock.volume = Math.max(0, Number(data.volume));
+    broadcastMonopoly();
+    persistMonopoly();
   });
 
-  socket.on('showdown:reset', () => {
-    showdownState.baseValues = {};
-    showdownState.prevRanks = {};
-    const allTeams = JSON.parse(JSON.stringify(teamsData.teams));
-    for (const team of allTeams) {
-      showdownState.baseValues[team.id] = team.silverCoins || 0;
-    }
-    syncShowdownTeams();
+  socket.on('monopoly:updateCompany', (data) => {
+    const company = monopolyState.companies.find(c => c.id === data.companyId);
+    if (!company) return;
+    if (data.name !== undefined) company.name = data.name;
+    if (data.color !== undefined) company.color = data.color;
+    broadcastMonopoly();
+    persistMonopoly();
   });
 
   // ─── COUNTDOWN TIMER (Admin Dashboard) ───
@@ -1476,34 +1486,34 @@ setInterval(broadcastPresence, 15000);
 
 // ═══════════════════════════════════════════════
 
-// ─── TOP 3 TEAMS SHOWDOWN REST ROUTES ───
+// ─── MONOPOLY REST ROUTES ───
 
-app.get('/api/showdown/state', (req, res) => {
+app.get('/api/monopoly/state', (req, res) => {
   res.json({
-    teams: showdownState.teams.map(t => ({
-      id: t.id, name: t.name, logo: t.logo, color: t.color,
-      stockValue: t.stockValue, change: t._change || 0, rank: t.rank,
-      members: t.members || [],
+    companies: monopolyState.companies,
+    stocks: monopolyState.stocks.map(s => ({
+      ...s,
+      lastDelta: s._lastDelta || 0,
+      lastAction: s._lastAction || 'none',
     })),
-    baseValues: showdownState.baseValues,
-    simulationActive: showdownState.simulationActive,
+    lastTrade: monopolyState.lastTrade,
   });
 });
 
-app.post('/api/showdown/admin/login', (req, res) => {
+app.post('/api/monopoly/admin/login', (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
   res.json({ token: 'granted' });
 });
 
-// Serve the React Event Section (showdown)
+// Serve the React Event Section (monopoly)
 const eventDist = path.join(__dirname, 'client', 'dist');
 app.use('/event', express.static(eventDist));
 app.get('/event/*', (req, res) => {
   res.sendFile(path.join(eventDist, 'index.html'));
 });
 
-// ─── END SHOWDOWN SECTION ───
+// ─── END MONOPOLY SECTION ───
 
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -1535,6 +1545,7 @@ async function start() {
   // Load persisted data now that DB is available (or seed defaults if not)
   await seedBadges();
   await loadTeamsFromDB();
+  await loadMonopolyPersisted();
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`✓ Server running on http://0.0.0.0:${PORT}`);

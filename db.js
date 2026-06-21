@@ -91,6 +91,18 @@ const teamSchema = new mongoose.Schema({
   notes: { type: String, default: '' },
 });
 
+const monopolyCompanySchema = new mongoose.Schema({
+  id: { type: String, unique: true },
+  name: String,
+  color: { type: String, default: '#5b8def' },
+  stocks: [{
+    id: String,
+    name: String,
+    price: { type: Number, default: 50 },
+    volume: { type: Number, default: 1000 },
+  }],
+});
+
 const User = mongoose.model('User', userSchema);
 const Category = mongoose.model('Category', categorySchema);
 const Achievement = mongoose.model('Achievement', achievementSchema);
@@ -103,9 +115,10 @@ const DailyTaskConfig = mongoose.model('DailyTaskConfig', dailyTaskConfigSchema)
 const Badge = mongoose.model('Badge', badgeSchema);
 const BadgeAssignment = mongoose.model('BadgeAssignment', badgeAssignmentSchema);
 const Team = mongoose.model('Team', teamSchema);
+const MonopolyCompany = mongoose.model('MonopolyCompany', monopolyCompanySchema);
 
 async function connectDB(uri) {
   await mongoose.connect(uri);
 }
 
-module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, Badge, BadgeAssignment, Team, connectDB };
+module.exports = { User, Category, Achievement, Feedback, PlayerNote, Event, CoinTransaction, DailyCompletion, DailyTaskConfig, Badge, BadgeAssignment, Team, MonopolyCompany, connectDB };
