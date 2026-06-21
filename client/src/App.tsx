@@ -22,6 +22,7 @@ export default function App() {
       <div className="mp-view-toggle">
         <button className={`mp-toggle-btn ${view === 'player' ? 'active' : ''}`} onClick={() => setView('player')}>SCOREBOARD</button>
         <button className={`mp-toggle-btn ${view === 'admin' ? 'active' : ''}`} onClick={() => setView('admin')}>ADMIN</button>
+        <a href="/event/team-stock.html" className="mp-main-btn">TEAM STOCK</a>
         <a href="/" className="mp-main-btn">MAIN SITE</a>
       </div>
 

@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Stock Market Ticker</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #080c1a;
+    color: #c8d6e5;
+    font-family: 'Courier New', 'SF Mono', 'Fira Code', Courier, monospace;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .container {
+    max-width: 920px;
+    width: 100%;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .title {
+    font-size: 1.25rem;
+    letter-spacing: 2px;
+    color: #88a0c0;
+    text-shadow: 0 0 18px rgba(136,160,192,0.25);
+  }
+
+  .status-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    font-weight: bold;
+    border: 1px solid #1a2755;
+    background: #0f1838;
+    color: #6e8bb8;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+
+  .status-badge.glow-green {
+    background: rgba(0,255,70,0.10);
+    border-color: #00ff46;
+    color: #9effbe;
+    box-shadow: 0 0 20px rgba(0,255,70,0.2);
+    animation: pulseGreen 1s ease-in-out 3;
+  }
+
+  .status-badge.glow-red {
+    background: rgba(255,50,50,0.10);
+    border-color: #ff3232;
+    color: #ff9e9e;
+    box-shadow: 0 0 20px rgba(255,50,50,0.2);
+    animation: pulseRed 1s ease-in-out 3;
+  }
+
+  @keyframes pulseGreen {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,255,70,0.2); }
+    50% { box-shadow: 0 0 36px rgba(0,255,70,0.45); }
+  }
+
+  @keyframes pulseRed {
+    0%, 100% { box-shadow: 0 0 20px rgba(255,50,50,0.2); }
+    50% { box-shadow: 0 0 36px rgba(255,50,50,0.45); }
+  }
+
+  .controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .ctrl-btn {
+    background: #0f1838;
+    border: 1px solid #1a2755;
+    color: #6e8bb8;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    padding: 7px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .ctrl-btn:hover {
+    border-color: #88a0c0;
+    color: #88a0c0;
+    background: #141e3e;
+  }
+
+  .ctrl-btn.active {
+    background: rgba(136,160,192,0.08);
+    border-color: #88a0c0;
+    color: #88a0c0;
+  }
+
+  .ctrl-label {
+    font-size: 11px;
+    color: #4a6a90;
+    letter-spacing: 1px;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #1a2755;
+    background: #0f1838;
+    box-shadow: 0 6px 32px rgba(0,0,0,0.45);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 600px;
+  }
+
+  th {
+    text-align: left;
+    padding: 12px 10px;
+    color: #4a6a90;
+    border-bottom: 2px solid #1a2755;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    background: rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+  }
+
+  td {
+    padding: 11px 10px;
+    border-bottom: 1px solid #16224a;
+    transition: background 0.35s ease, color 0.35s ease;
+    vertical-align: middle;
+  }
+
+  tbody tr {
+    transition: background 0.5s ease;
+  }
+
+  tbody tr.row-green {
+    background: rgba(0,255,70,0.07) !important;
+    border-left: 3px solid #00ff46;
+  }
+
+  tbody tr.row-red {
+    background: rgba(255,50,50,0.07) !important;
+    border-left: 3px solid #ff3232;
+  }
+
+  .rank {
+    width: 38px;
+    text-align: center;
+    font-weight: bold;
+    color: #4a6a90;
+  }
+
+  .rank-1 {
+    color: #ffd700 !important;
+    text-shadow: 0 0 10px rgba(255,215,0,0.4);
+  }
+
+  .team-cell {
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  .team-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: middle;
+  }
+
+  .price {
+    font-weight: bold;
+    font-size: 1.25rem;
+    letter-spacing: 1px;
+  }
+
+  .change {
+    font-size: 0.9rem;
+  }
+
+  .change .up {
+    color: #00ff46;
+    font-weight: bold;
+    animation: fadeUp 0.4s ease-out;
+  }
+
+  .change .down {
+    color: #ff3232;
+    font-weight: bold;
+    animation: fadeDown 0.4s ease-out;
+  }
+
+  .change .neutral {
+    color: #4a6a90;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .volume {
+    color: #4a6a90;
+    font-size: 0.9rem;
+  }
+
+  .last-event {
+    font-size: 0.8rem;
+    color: #6e8bb8;
+    max-width: 180px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .last-event.fresh {
+    color: #c8d6e5;
+    font-weight: bold;
+  }
+
+  .price-pop {
+    animation: priceBounce 0.3s ease;
+  }
+
+  @keyframes priceBounce {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  .log-area {
+    margin-top: 16px;
+    background: #0a0e1e;
+    border: 1px solid #1a2755;
+    border-radius: 6px;
+    padding: 10px 14px;
+    max-height: 120px;
+    overflow-y: auto;
+    font-size: 11px;
+    color: #4a6a90;
+    letter-spacing: 0.5px;
+  }
+
+  .log-area::-webkit-scrollbar { width: 4px; }
+  .log-area::-webkit-scrollbar-track { background: transparent; }
+  .log-area::-webkit-scrollbar-thumb { background: #1a2755; border-radius: 3px; }
+
+  .log-entry { margin-bottom: 2px; }
+  .log-entry .pos { color: #00ff46; }
+  .log-entry .neg { color: #ff3232; }
+
+  @media (max-width: 640px) {
+    body { padding: 12px 6px; }
+    .title { font-size: 1rem; }
+    th, td { padding: 7px 5px; font-size: 0.7rem; }
+    .price { font-size: 1rem; }
+    .last-event { max-width: 100px; }
+    .status-badge { font-size: 10px; padding: 4px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1 class="title">📈 Team Stock Market Ticker</h1>
+    <span id="statusBadge" class="status-badge">⚪ Waiting for events...</span>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn active" id="btnPlayPause">⏸ Pause</button>
+    <button class="ctrl-btn" id="btnReset">↻ Reset</button>
+    <span class="ctrl-label" id="timerLabel">Next event in 3s</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Team</th>
+          <th>Price</th>
+          <th>Change</th>
+          <th>Vol</th>
+          <th>Last Event</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Log -->
+  <div class="log-area" id="logArea"></div>
+
+  <div style="margin-top:14px;text-align:center;">
+    <a href="/event/" class="ctrl-btn" style="display:inline-block;text-decoration:none;">← Back to Event Hub</a>
+  </div>
+</div>
+
+<script>
+// ─── ADMIN DATA ─────────────────────────────────────────────────────────────
+const ADMIN_DATA = {
+  eventIntervalMs: 3000,
+  teams: [
+    { name: 'Alpha Corp',  color: '#5b8def', players: ['Alpha-P1','Alpha-P2','Alpha-P3'] },
+    { name: 'Beta Inc',    color: '#f0a050', players: ['Beta-X','Beta-Y','Beta-Z'] },
+    { name: 'Gamma Ltd',   color: '#9b59b6', players: ['Gamma-G1','Gamma-G2','Gamma-G3','Gamma-G4'] },
+    { name: 'Delta Co',    color: '#1abc9c', players: ['Delta-D1','Delta-D2','Delta-D3'] },
+  ],
+  positiveEvents: ['Goal scored','Deal closed','Record broken','Viral post','Innovation award','Perfect pass','Game winner','Buzzer beater','MVP play','Clean sheet'],
+  negativeEvents: ['Injury','Scandal','Market dip','Own goal','Penalty','Timeout violation'],
+  minAdd: 5,
+  maxAdd: 25,
+  negativeChance: 0.1,
+  minSub: 3,
+  maxSub: 10,
+};
+
+// ─── STATE ──────────────────────────────────────────────────────────────────
+let running = true;
+let timerId = null;
+let countdownId = null;
+let countdown = ADMIN_DATA.eventIntervalMs / 1000;
+
+// Build teams data
+let teams = ADMIN_DATA.teams.map(t => {
+  const color = t.color.startsWith('#') ? t.color : '#' + t.color;
+  return {
+    name: t.name,
+    color: color,
+    players: [...t.players],
+    price: 0,
+    volume: 0,
+    lastEvent: null,
+    lastDelta: 0,
+    lastAction: null, // 'pos' | 'neg' | null
+    fresh: false,
+  };
+});
+
+// Log ring buffer
+const MAX_LOG = 40;
+const logEntries = [];
+
+// ─── DOM REFS ───────────────────────────────────────────────────────────────
+const tbody = document.getElementById('tbody');
+const statusBadge = document.getElementById('statusBadge');
+const logArea = document.getElementById('logArea');
+const btnPlayPause = document.getElementById('btnPlayPause');
+const btnReset = document.getElementById('btnReset');
+const timerLabel = document.getElementById('timerLabel');
+
+// ─── PICK RANDOM ITEMS ──────────────────────────────────────────────────────
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+// ─── GENERATE EVENT ─────────────────────────────────────────────────────────
+function generateEvent() {
+  // Pick a random team weighted by nothing – uniform
+  const team = pickRandom(teams);
+  const player = pickRandom(team.players);
+  const isNegative = Math.random() < ADMIN_DATA.negativeChance;
+  const delta = isNegative
+    ? -randInt(ADMIN_DATA.minSub, ADMIN_DATA.maxSub)
+    : randInt(ADMIN_DATA.minAdd, ADMIN_DATA.maxAdd);
+  const eventText = isNegative ? pickRandom(ADMIN_DATA.negativeEvents) : pickRandom(ADMIN_DATA.positiveEvents);
+
+  // Apply
+  team.price = Math.max(0, team.price + delta);
+  team.volume += 1;
+  team.lastEvent = eventText;
+  team.lastDelta = delta;
+  team.lastAction = isNegative ? 'neg' : 'pos';
+  team.fresh = true;
+
+  return { team, player, eventText, delta, isNegative };
+}
+
+// ─── RENDER TABLE ───────────────────────────────────────────────────────────
+function render() {
+  // Sort by price descending
+  const sorted = [...teams].sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
+
+  let html = '';
+  sorted.forEach((team, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? 'rank rank-1' : 'rank';
+    const rankDisp = rank === 1 ? '👑' : rank;
+
+    let changeHtml = '';
+    if (team.lastAction === 'pos') {
+      changeHtml = `<span class="up">▲ +${team.lastDelta}</span>`;
+    } else if (team.lastAction === 'neg') {
+      changeHtml = `<span class="down">▼ ${team.lastDelta}</span>`;
+    } else {
+      changeHtml = `<span class="neutral">--</span>`;
+    }
+
+    const lastEventHtml = team.lastEvent
+      ? `${team.players[0]}…: ${team.lastEvent}`
+      : '—';
+
+    const rowClass = team.fresh
+      ? (team.lastAction === 'pos' ? 'row-green' : (team.lastAction === 'neg' ? 'row-red' : ''))
+      : '';
+
+    html += `<tr class="${rowClass}">
+      <td class="${rankClass}">${rankDisp}</td>
+      <td class="team-cell"><span class="team-dot" style="background:${team.color}"></span>${team.name}</td>
+      <td class="price ${team.fresh ? 'price-pop' : ''}">${team.price}</td>
+      <td class="change">${changeHtml}</td>
+      <td class="volume">${team.volume.toLocaleString()}</td>
+      <td class="last-event ${team.fresh ? 'fresh' : ''}">${lastEventHtml}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+
+  // Clear fresh flags after a short delay (keeps row highlighted)
+  setTimeout(() => {
+    teams.forEach(t => { t.fresh = false; });
+    // re-render without highlights
+    renderPlain();
+  }, 2200);
+}
+
+// Lightweight re-render that doesn't trigger another timeout chain
+function renderPlain() {
+  const sorted = [...teams].sort((a, b) => b.price - a.price || a.name.localeCompare(b.name));
+  let html = '';
+  sorted.forEach((team, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? 'rank rank-1' : 'rank';
+    const rankDisp = rank === 1 ? '👑' : rank;
+    let changeHtml = '';
+    if (team.lastAction === 'pos') changeHtml = `<span class="up">▲ +${team.lastDelta}</span>`;
+    else if (team.lastAction === 'neg') changeHtml = `<span class="down">▼ ${team.lastDelta}</span>`;
+    else changeHtml = `<span class="neutral">--</span>`;
+    const lastEventHtml = team.lastEvent ? `${team.players[0]}…: ${team.lastEvent}` : '—';
+    html += `<tr>
+      <td class="${rankClass}">${rankDisp}</td>
+      <td class="team-cell"><span class="team-dot" style="background:${team.color}"></span>${team.name}</td>
+      <td class="price">${team.price}</td>
+      <td class="change">${changeHtml}</td>
+      <td class="volume">${team.volume.toLocaleString()}</td>
+      <td class="last-event">${lastEventHtml}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+}
+
+// ─── LOG ────────────────────────────────────────────────────────────────────
+function addLog(team, player, eventText, delta) {
+  const sign = delta >= 0 ? '+' : '';
+  const cls = delta >= 0 ? 'pos' : 'neg';
+  const ts = new Date().toLocaleTimeString();
+  logEntries.unshift(`<div class="log-entry">[${ts}] <strong>${team.name}</strong> — ${player}: ${eventText} <span class="${cls}">(${sign}${delta})</span></div>`);
+  if (logEntries.length > MAX_LOG) logEntries.length = MAX_LOG;
+  logArea.innerHTML = logEntries.join('');
+}
+
+// ─── STATUS BADGE ───────────────────────────────────────────────────────────
+function updateBadge(team, delta) {
+  if (!team) {
+    statusBadge.className = 'status-badge';
+    statusBadge.textContent = '⚪ Waiting for events...';
+    return;
+  }
+  if (delta >= 0) {
+    statusBadge.className = 'status-badge glow-green';
+    statusBadge.textContent = `🔥 ${team.name} just got a boost!`;
+  } else {
+    statusBadge.className = 'status-badge glow-red';
+    statusBadge.textContent = `📉 ${team.name} takes a hit`;
+  }
+}
+
+// ─── TICK ───────────────────────────────────────────────────────────────────
+function tick() {
+  if (!running) return;
+
+  const { team, player, eventText, delta, isNegative } = generateEvent();
+  render();
+  addLog(team, player, eventText, delta);
+  updateBadge(team, delta);
+
+  // Reset countdown
+  countdown = ADMIN_DATA.eventIntervalMs / 1000;
+  updateTimerLabel();
+  scheduleNext();
+}
+
+function scheduleNext() {
+  if (timerId) clearTimeout(timerId);
+  timerId = setTimeout(tick, ADMIN_DATA.eventIntervalMs);
+
+  // Visual countdown
+  if (countdownId) clearInterval(countdownId);
+  countdown = ADMIN_DATA.eventIntervalMs / 1000;
+  updateTimerLabel();
+  countdownId = setInterval(() => {
+    countdown = Math.max(0, countdown - 0.1);
+    updateTimerLabel();
+  }, 100);
+}
+
+function updateTimerLabel() {
+  timerLabel.textContent = `Next event in ${countdown.toFixed(1)}s`;
+}
+
+// ─── PLAY / PAUSE ──────────────────────────────────────────────────────────
+function pause() {
+  running = false;
+  if (timerId) { clearTimeout(timerId); timerId = null; }
+  if (countdownId) { clearInterval(countdownId); countdownId = null; }
+  btnPlayPause.textContent = '▶ Play';
+  btnPlayPause.classList.remove('active');
+  timerLabel.textContent = '⏸ Paused';
+}
+
+function play() {
+  running = true;
+  btnPlayPause.textContent = '⏸ Pause';
+  btnPlayPause.classList.add('active');
+  scheduleNext();
+}
+
+btnPlayPause.addEventListener('click', () => {
+  if (running) pause();
+  else play();
+});
+
+// ─── RESET ──────────────────────────────────────────────────────────────────
+btnReset.addEventListener('click', () => {
+  // Pause first
+  const wasRunning = running;
+  pause();
+  // Reset data
+  teams.forEach(t => {
+    t.price = 0;
+    t.volume = 0;
+    t.lastEvent = null;
+    t.lastDelta = 0;
+    t.lastAction = null;
+    t.fresh = false;
+  });
+  logEntries.length = 0;
+  logArea.innerHTML = '';
+  renderPlain();
+  updateBadge(null);
+  if (wasRunning) play();
+  else {
+    timerLabel.textContent = '↻ Reset';
+  }
+});
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+renderPlain();
+scheduleNext();
+</script>
+</body>
+</html>
